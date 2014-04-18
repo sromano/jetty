@@ -1,5 +1,7 @@
 
 
+module IntMap = Map.Make(struct type t = int let compare = compare end)
+
 let is_invalid (x : float) = x <> x || x = infinity || x = neg_infinity;;
 
 let lse x y = 

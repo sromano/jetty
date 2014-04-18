@@ -53,29 +53,34 @@ let make_app f x =
 type expressionNode = ExpressionLeaf of expression
   | ExpressionBranch of int * int;;
 type expressionGraph = 
-    (int,expressionNode) Hashtbl.t * (expressionNode,int) Hashtbl.t int ref;;
+    ((int,expressionNode) Hashtbl.t) * ((expressionNode,int) Hashtbl.t) * (int ref);;
 let make_expression_graph size : expressionGraph = 
   (Hashtbl.create size,Hashtbl.create size,ref 0);;
 
 
-let insert_expression_node (i2n,n2i,nxt) n =
+let insert_expression_node (i2n,n2i,nxt) (n : expressionNode) : int =
   try
     Hashtbl.find n2i n
   with Not_found -> 
-    Hashtbl.add (!nxt) n i2n;
-    Hashtbl.add n (!nxt) n2i;
+    Hashtbl.add i2n (!nxt) n;
+    Hashtbl.add n2i n (!nxt);
     incr nxt; !nxt - 1;;
 
 
 let rec insert_expression g (e : expression) = 
   match e with
     Terminal(_,_,_) ->
-      insert_expression_node (ExpressionLeaf(e))
+      insert_expression_node g (ExpressionLeaf(e))
   | Application(_,f,x) -> 
-      insert_expression_node (ExpressionBranch(insert_expression g f,insert_expression g x));;
+      insert_expression_node g (ExpressionBranch(insert_expression g f,insert_expression g x));;
 
 
-
+let rec extract_expression g i = 
+  let (i2n,_,_) = g in
+  match Hashtbl.find i2n i with
+    ExpressionLeaf(e) -> e
+  | ExpressionBranch(f,x) -> 
+      make_app (extract_expression g f) (extract_expression g x);;
 
 
 let test_expression () =
