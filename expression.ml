@@ -2,6 +2,7 @@
 open Obj
 open Type
 
+open Thread
 
 type expression = 
   | Terminal of string * tp * unit ref
@@ -13,6 +14,16 @@ let rec runExpression (e:expression) : 'a =
     Terminal(_,_,thing) -> !(Obj.magic thing)
   | Application(_,f,x) -> 
       (Obj.magic (runExpression f)) (Obj.magic (runExpression x));;
+
+exception Timeout;;
+let sigalrm_handler = Sys.Signal_handle (fun _ -> raise Timeout) ;;
+let run_expression_for_interval (time : float) (e : expression) : 'a option = 
+  let old_behavior = Sys.signal Sys.sigalrm sigalrm_handler in
+   let reset_sigalrm () = Sys.set_signal Sys.sigalrm old_behavior 
+   in ignore (Unix.setitimer ITIMER_REAL {it_interval = 0.0; it_value = time}) ;
+      try let res = runExpression e in reset_sigalrm () ; Some(res)  
+      with exc -> reset_sigalrm () ;
+        if exc=Timeout then None else raise exc ;;
 
 
 let rec compare_expression e1 e2 = 
@@ -91,8 +102,15 @@ let test_expression () =
   let e3 = Application(t1, Application(t1, e1,e1),e2) in
   let e4 = Terminal("+", t1, Obj.magic (ref (fun x -> fun y -> x+y))) in
   let e5 = Application(t1, Application(t1, e4,e3),e42) in
-  print_int (runExpression e5);;
-  
+  let p = Terminal("p",t1,Obj.magic (ref (fun x -> Thread.delay 0.05; x))) in
+  let q = Application(t1,p,e5) in
+  (match run_expression_for_interval 0.01 q with
+    Some(x) -> print_int x
+  | None -> print_string "timeout");
+  (match run_expression_for_interval 0.1 q with
+    Some(x) -> print_int x
+  | None -> print_string "timeout")
+;;
 
 
- (* main ();; *)
+ (* test_expression ();; *)

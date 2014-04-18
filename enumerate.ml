@@ -52,4 +52,4 @@ let test_enumerate () =
   let (indices,dagger) = enumerate_bounded polynomial_library (make_arrow tint tint) 18.4 in
   print_string (String.concat "\n" (List.map (fun (e,_) -> string_of_expression (extract_expression dagger e)) (IntMap.bindings indices )));;
 
-test_enumerate ();;
+ (* test_enumerate ();; *)

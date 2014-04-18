@@ -143,4 +143,4 @@ let test_type () =
   print_string (string_of_bool (can_unify (make_arrow t1 t1) (make_arrow (make_arrow t1 t2) t3)));
   print_string (string_of_bool (not (can_unify (make_arrow t1 t1) (make_arrow (make_arrow t1 t2) (make_ground "int")))));
 ;;
-test_type ();;
+ (* test_type ();; *)
