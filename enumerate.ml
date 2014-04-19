@@ -49,7 +49,12 @@ let enumerate_bounded (log_application,distribution) rt bound =
 
 
 let test_enumerate () = 
-  let (indices,dagger) = enumerate_bounded polynomial_library (make_arrow tint tint) 18.4 in
-  print_string (String.concat "\n" (List.map (fun (e,_) -> string_of_expression (extract_expression dagger e)) (IntMap.bindings indices )));;
+  let (indices,dagger) = enumerate_bounded polynomial_library (make_arrow tint tint) 10.0 in
+  let type_array = infer_graph_types dagger in
+  let requests = IntMap.map (fun _ -> (make_arrow tint tint)) indices in
+  let ls = program_likelihoods polynomial_library dagger type_array requests in
+  print_string (String.concat "\n" (List.map (fun (e,l) -> 
+    string_of_expression (extract_expression dagger e) ^ "\t" ^ string_of_float l ^ "\t" ^ string_of_float (Hashtbl.find ls (e,make_arrow tint tint)))
+				      (IntMap.bindings indices )));;
 
- (* test_enumerate ();; *)
+test_enumerate ();;

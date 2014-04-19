@@ -93,6 +93,28 @@ let rec extract_expression g i =
   | ExpressionBranch(f,x) -> 
       make_app (extract_expression g f) (extract_expression g x);;
 
+let expression_graph_size (_,_,s) = !s;;
+
+
+(* performs type inference upon the entire graph of expressions *)
+(* returns an array whose ith element is the type of the ith expression *)
+let infer_graph_types dagger = 
+  let type_map = Array.make (expression_graph_size dagger) (TID(0)) in
+  let done_map = Array.make (expression_graph_size dagger) false in
+  let (i2n,_,_) = dagger in
+  let rec infer i = 
+    if done_map.(i) then type_map.(i)
+    else let q = (match Hashtbl.find i2n i with
+      ExpressionLeaf(Terminal(_,t,_)) -> t
+    | ExpressionBranch(f,x) -> 
+	let ft = infer f in
+	let xt = infer x in
+	application_type ft xt
+    | _ -> raise (Failure "leaf that is not a terminal")) in
+    done_map.(i) <- true; type_map.(i) <- q; q
+  in for i = 0 to (expression_graph_size dagger - 1) do
+    ignore (infer i)
+  done; type_map;;
 
 let test_expression () =
   let t1 = TID(0) in

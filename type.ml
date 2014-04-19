@@ -8,6 +8,8 @@ type tp =
   | TCon of string * tp list
 
 type tContext = int * tp TypeMap.t
+let empty_context = (0,TypeMap.empty);;
+let make_arrow t q = TCon("->", [t;q]);;
 
 let makeTID context = 
     (TID(fst context), (fst context+1, snd context));;
@@ -119,7 +121,44 @@ let instantiate_type (n,m) t =
   (q,(!next,m))
 ;;
 
-let make_arrow t q = TCon("->", [t;q]);;
+(* puts a type into normal form *)
+let canonical_type t = 
+  let next = ref 0 in
+  let substitution = ref [] in
+  let rec canon q = 
+    match q with
+      TID(i) -> (try TID(List.assoc i (!substitution))
+		with Not_found -> substitution := (i,!next)::!substitution; next := (1+ !next); TID(!next-1))
+    | TCon(k,a) -> TCon(k,List.map canon a)
+  in canon t
+;;
+
+let application_type f x = 
+  let (f,c1) = instantiate_type empty_context f in
+  let (x,c2) = instantiate_type c1 x in
+  let (r,c3) = makeTID c2 in
+  let c4 = unify c3 f (make_arrow x r) in
+  canonical_type (fst (chaseType c4 r));;
+
+let argument_request request left = 
+  let (request,c1) = instantiate_type empty_context request in
+  let (left,c2) = instantiate_type c1 left in
+  match left with
+    TCon(_,[right;result]) -> 
+      let c3 = unify c2 request result in
+      canonical_type (fst (chaseType c3 right))
+  | _ -> raise (Failure "invalid function type");;
+
+let rec next_type_variable t = 
+  match t with
+    TID(i) -> i+1
+  | TCon(_,[]) -> 0
+  | TCon(_,is) -> List.fold_left max 0 (List.map next_type_variable is)
+;;
+
+
+
+
 let make_ground g = TCon(g,[]);;
 let tint = make_ground "int";;
 let t1 = TID(1);;
