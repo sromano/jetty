@@ -190,10 +190,16 @@ let polynomial_library =
   make_flat_library [c_S;c_B;c_C;c_K;c_I;c_one;c_zero;c_plus;c_times;];;
 
 
+let string_of_library (log_application,distribution) = 
+  String.concat "\n"
+    ((string_of_float log_application)::
+     (List.map (fun (e,w) -> Printf.sprintf "\t %f \t %s " w (string_of_expression e)) 
+	(ExpressionMap.bindings distribution)));;
+
 let test_library () = 
   let i =make_app (make_app c_S c_K) c_K in
   let i2 =make_app (make_app c_B i) i in
-  print_string (show_type (infer_type i2));;
+  print_string (string_of_type (infer_type i2));;
 
 
  (* test_library ();; *)
