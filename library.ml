@@ -16,7 +16,8 @@ let make_flat_library primitives =
 
 
 (* computes likelihoods of all expressions using a dynamic program *)
-(* program_types is a hashmap from ID to type, requests map from ID to requested type *)
+(* program_types is a hashmap from ID to type
+   requests maps from ID to list of all requested types *)
 (* returns a hash map from (ID,requested type) to log likelihood *)
 let program_likelihoods (log_application,library) dagger program_types requests = 
   let log_terminal = log (1.0 -. exp log_application) in
@@ -47,7 +48,7 @@ let program_likelihoods (log_application,library) dagger program_types requests 
       in
       Hashtbl.add likelihoods (i,request) log_probability;
       log_probability
-  in IntMap.iter (fun i r -> ignore (likelihood i r)) requests; likelihoods
+  in IntMap.iter (fun i -> List.iter (fun r -> ignore (likelihood i r))) requests; likelihoods
 ;;
 
 (* keeps track of the number of times that each production has been used, or could have been used *)
@@ -62,7 +63,7 @@ type useCounts = {
    dagger is the expression graph
    program_types is a map from graph ID to type
    likelihood specifies the likelihood of each expression for each requested type
-   corpus is a list of (expression ID,weight,requested type)
+   corpus is a list of ((expression ID,requested type),weight)
    returns the grammar with the parameters fit *)
 let fit_grammar smoothing (log_application,library) dagger program_types likelihoods corpus = 
   let (i2n,n2i,nxt) = dagger in
@@ -131,7 +132,7 @@ let fit_grammar smoothing (log_application,library) dagger program_types likelih
   let terminals = ref smoothing in
   let terminal_uses = Array.make number_terminals smoothing in
   let terminal_chances = Array.make number_terminals smoothing in
-  List.iter (fun (i,w,request) -> 
+  List.iter (fun ((i,request),w) -> 
 	    let u = uses i request in
 	    applications := w*.u.application_counts +. !applications;
 	    terminals := w*.u.terminal_counts +. !terminals;

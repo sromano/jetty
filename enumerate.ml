@@ -3,8 +3,7 @@ open Expression
 open Type
 open Utils
 
-let enumerate_bounded (log_application,distribution) rt bound = 
-  let dagger = make_expression_graph 10000 in
+let enumerate_bounded dagger (log_application,distribution) rt bound = 
   let log_terminal = log (1.0-. exp log_application) in
   let terminals = List.map (fun (e,l) ->
     (infer_type e,(insert_expression dagger e, l)))
@@ -43,18 +42,19 @@ let enumerate_bounded (log_application,distribution) rt bound =
 	  let (t,context1) = instantiate_type context t in
 	  let context2 = unify context1 t requestedType in
 	  add_node acc e (log_terminal+.l) context2) applications availableTerminals
-  in (IntMap.map fst (enumerate (5,TypeMap.empty) rt bound), dagger)
+  in IntMap.map fst (enumerate (5,TypeMap.empty) rt bound)
 ;;
 
 
 
 let test_enumerate () = 
-  let (indices,dagger) = enumerate_bounded polynomial_library (make_arrow tint tint) 10.0 in
+  let dagger = make_expression_graph 10000 in
+  let indices = enumerate_bounded dagger polynomial_library (make_arrow tint tint) 10.0 in
   let type_array = infer_graph_types dagger in
-  let requests = IntMap.map (fun _ -> (make_arrow tint tint)) indices in
+  let requests = IntMap.map (fun _ -> [(make_arrow tint tint)]) indices in
   let ls = program_likelihoods polynomial_library dagger type_array requests in
   print_string (String.concat "\n" (List.map (fun (e,l) -> 
     string_of_expression (extract_expression dagger e) ^ "\t" ^ string_of_float l ^ "\t" ^ string_of_float (Hashtbl.find ls (e,make_arrow tint tint)))
 				      (IntMap.bindings indices )));;
 
-test_enumerate ();;
+(* test_enumerate ();; *)
