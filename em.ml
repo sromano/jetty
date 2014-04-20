@@ -65,8 +65,9 @@ let expectation_maximization_iteration
   in Hashtbl.iter (fun i w -> reward_expression w i) rewards;
   (* find those productions that have enough weight to make it into the library *)
   let productions = List.map (fun (i,_) ->
-    extract_expression dagger i) (List.filter (fun (_,r) -> r > lambda)
-				 (hash_bindings expression_rewards)) in
+    extract_expression dagger i) (List.filter (fun (i,r) -> 
+       is_leaf_ID dagger i || r > lambda)
+				    (hash_bindings expression_rewards)) in
   let new_grammar = make_flat_library productions in
   print_string "Computed posterior probabilities. \n";
   (* assembled corpus *)

@@ -2,17 +2,17 @@
 open Obj
 open Type
 
-open Thread
+
 
 type expression = 
   | Terminal of string * tp * unit ref
-  | Application of tp * expression * expression
+  | Application of expression * expression
 
 
 let rec runExpression (e:expression) : 'a = 
   match e with
     Terminal(_,_,thing) -> !(Obj.magic thing)
-  | Application(_,f,x) -> 
+  | Application(f,x) -> 
       (Obj.magic (runExpression f)) (Obj.magic (runExpression x));;
 
 exception Timeout;;
@@ -31,7 +31,7 @@ let rec compare_expression e1 e2 =
     (Terminal(n1,_,_),Terminal(n2,_,_)) -> compare n1 n2
   | (Terminal(_,_,_),_) -> -1
   | (_,Terminal(_,_,_)) -> 1
-  | (Application(_,l,r),Application(_,l_,r_)) -> 
+  | (Application(l,r),Application(l_,r_)) -> 
       let c = compare_expression l l_ in
       if c == 0 then compare_expression r r_ else c
 ;;
@@ -40,7 +40,7 @@ let infer_type (e : expression) =
   let rec infer c r = 
     match r with
       Terminal(_,t,_) -> instantiate_type c t
-    | Application(_,f,x) -> 
+    | Application(f,x) -> 
 	let (ft,c1) = infer c f in
 	let (xt,c2) = infer c1 x in
 	let (rt,c3) = makeTID c2 in
@@ -53,11 +53,11 @@ let infer_type (e : expression) =
 let rec string_of_expression e = 
   match e with
     Terminal(s,_,_) -> s
-  | Application(_,f,x) ->
+  | Application(f,x) ->
       "("^(string_of_expression f)^" "^(string_of_expression x)^")";;
 
 let make_app f x = 
-  Application(TCon("undefined",[]),f,x);;
+  Application(f,x);;
 
 
 (* compact representation of expressions sharing many subtrees *)
@@ -82,7 +82,7 @@ let rec insert_expression g (e : expression) =
   match e with
     Terminal(_,_,_) ->
       insert_expression_node g (ExpressionLeaf(e))
-  | Application(_,f,x) -> 
+  | Application(f,x) -> 
       insert_expression_node g (ExpressionBranch(insert_expression g f,insert_expression g x));;
 
 
@@ -95,6 +95,11 @@ let rec extract_expression g i =
 
 let expression_graph_size (_,_,s) = !s;;
 
+let is_leaf_ID (g,_,_) i = 
+  match Hashtbl.find g i with
+    ExpressionLeaf(_) -> true
+  | _ -> false;;
+  
 
 (* performs type inference upon the entire graph of expressions *)
 (* returns an array whose ith element is the type of the ith expression *)
@@ -115,7 +120,7 @@ let infer_graph_types dagger =
   in for i = 0 to (expression_graph_size dagger - 1) do
     ignore (infer i)
   done; type_map;;
-
+ (* 
 let test_expression () =
   let t1 = TID(0) in
   let e1 = Terminal("I", t1, Obj.magic (ref (fun x -> x))) in
@@ -133,6 +138,6 @@ let test_expression () =
     Some(x) -> print_int x
   | None -> print_string "timeout")
 ;;
-
+  *)
 
  (* test_expression ();; *)

@@ -23,7 +23,7 @@ let lse_list l =
 let rec remove_duplicates l = 
   match l with
     [] -> []
-  | (x::y) -> List.filter (fun z -> not (z = x)) (remove_duplicates y);;
+  | (x::y) -> x::(List.filter (fun z -> not (z = x)) (remove_duplicates y));;
 
 
 let combine_with f _ a b = 
@@ -37,3 +37,9 @@ let hash_bindings h =
   let b = ref [] in
   Hashtbl.iter (fun k v -> b := (k,v)::(!b)) h;
   !b;;
+
+
+let (--) i j = 
+  let rec aux n acc =
+    if n < i then acc else aux (n-1) (n :: acc)
+  in aux j [] ;;

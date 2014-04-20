@@ -187,12 +187,12 @@ let c_times = Terminal("*",
 		     Obj.magic (ref (fun x y ->x*y )));;
 
 let polynomial_library = 
-  make_flat_library [c_S;c_B;c_C;c_K;c_I;c_one;c_zero;c_plus;c_times;];;
+  make_flat_library [c_S;c_B;c_C;c_I;c_one;c_zero;c_plus;c_times;];;
 
 
 let string_of_library (log_application,distribution) = 
   String.concat "\n"
-    ((string_of_float log_application)::
+    ((string_of_float (exp log_application))::
      (List.map (fun (e,w) -> Printf.sprintf "\t %f \t %s " w (string_of_expression e)) 
 	(ExpressionMap.bindings distribution)));;
 

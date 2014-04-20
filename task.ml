@@ -12,8 +12,9 @@ type task =
 let enumerate_frontiers_for_tasks grammar frontier_size tasks 
     : (tp*int list) list*expressionGraph = 
   let types = remove_duplicates (List.map (fun t -> t.task_type) tasks) in
+  Printf.printf "number of types: %i \n" (List.length types);
   let dagger = make_expression_graph 100000 in
-  let indices = List.map (fun t -> enumerate_bounded dagger grammar t frontier_size) types in
+  let indices = List.map (fun t -> enumerate_ID dagger grammar t frontier_size) types in
   (List.combine types 
   (List.map (compose (List.map fst) IntMap.bindings) indices),
    dagger);;
