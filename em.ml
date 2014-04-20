@@ -82,6 +82,7 @@ let expectation_maximization_iteration
 	      ) posterior
 	    ) (List.combine tasks task_posteriors);
   (* fit the continuous parameters of the new grammar and then return it *)
+  let likelihoods = program_likelihoods new_grammar dagger type_array requests in
   let final_grammar = fit_grammar smoothing new_grammar dagger type_array likelihoods (hash_bindings corpus) in
   print_string (string_of_library final_grammar);
   print_newline ();
