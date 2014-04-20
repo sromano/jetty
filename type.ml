@@ -168,12 +168,12 @@ let t4 = TID(4);;
 
 
 
-let rec show_type t = 
+let rec string_of_type t = 
   match t with
     TID(i) -> string_of_int i
   | TCon(k,[]) -> k
-  | TCon(k,[p;q]) when k = "->" -> "("^(show_type p)^" -> "^(show_type q)^")"
-  | TCon(k,a) -> "("^k^" "^(String.concat " " (List.map show_type a))^")";;
+  | TCon(k,[p;q]) when k = "->" -> "("^(string_of_type p)^" -> "^(string_of_type q)^")"
+  | TCon(k,a) -> "("^k^" "^(String.concat " " (List.map string_of_type a))^")";;
 
 
 
