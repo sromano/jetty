@@ -21,9 +21,12 @@ let run_expression_for_interval (time : float) (e : expression) : 'a option =
   let old_behavior = Sys.signal Sys.sigalrm sigalrm_handler in
    let reset_sigalrm () = Sys.set_signal Sys.sigalrm old_behavior 
    in ignore (Unix.setitimer ITIMER_REAL {it_interval = 0.0; it_value = time}) ;
-      try let res = runExpression e in reset_sigalrm () ; Some(res)  
-      with exc -> reset_sigalrm () ;
-        if exc=Timeout then None else raise exc ;;
+      try
+	let res = runExpression e in 
+	ignore (Unix.setitimer ITIMER_REAL {it_interval = 0.0; it_value = 0.0}) ;
+	reset_sigalrm () ; Some(res)  
+      with exc -> reset_sigalrm () ; None;;
+
 
 
 let rec compare_expression e1 e2 = 
@@ -120,24 +123,28 @@ let infer_graph_types dagger =
   in for i = 0 to (expression_graph_size dagger - 1) do
     ignore (infer i)
   done; type_map;;
- (* 
+
 let test_expression () =
   let t1 = TID(0) in
   let e1 = Terminal("I", t1, Obj.magic (ref (fun x -> x))) in
   let e42 = Terminal("31", t1, Obj.magic (ref 31)) in
   let e2 = Terminal("1", t1, Obj.magic (ref 1)) in
-  let e3 = Application(t1, Application(t1, e1,e1),e2) in
+  let e3 = Application(Application(e1,e1),e2) in
   let e4 = Terminal("+", t1, Obj.magic (ref (fun x -> fun y -> x+y))) in
-  let e5 = Application(t1, Application(t1, e4,e3),e42) in
+  let e5 = Application(Application(e4,e3),e42) in
   let p = Terminal("p",t1,Obj.magic (ref (fun x -> Thread.delay 0.05; x))) in
-  let q = Application(t1,p,e5) in
+  let q = Application(p,e5) in
   (match run_expression_for_interval 0.01 q with
     Some(x) -> print_int x
   | None -> print_string "timeout");
   (match run_expression_for_interval 0.1 q with
     Some(x) -> print_int x
+  | None -> print_string "timeout");
+  Thread.delay 1.;
+  (match run_expression_for_interval 0.1 q with
+    Some(x) -> print_int x
   | None -> print_string "timeout")
 ;;
-  *)
 
- (* test_expression ();; *)
+
+ (* test_expression ();;  *)
