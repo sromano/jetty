@@ -59,12 +59,14 @@ let enumerate_ID dagger library t frontier_size =
 
 let test_enumerate () = 
   let dagger = make_expression_graph 10000 in
-  let indices = enumerate_bounded dagger polynomial_library (make_arrow tint tint) 10.0 in
+  let indices = enumerate_bounded dagger polynomial_library (make_arrow tint tint) 11.49 in
   let type_array = infer_graph_types dagger in
   let requests = IntMap.map (fun _ -> [(make_arrow tint tint)]) indices in
   let ls = program_likelihoods polynomial_library dagger type_array requests in
-  print_string (String.concat "\n" (List.map (fun (e,l) -> 
-    string_of_expression (extract_expression dagger e) ^ "\t" ^ string_of_float l ^ "\t" ^ string_of_float (Hashtbl.find ls (e,make_arrow tint tint)))
-				      (IntMap.bindings indices )));;
+  let through = List.map (fun (e,_) -> ((Hashtbl.find ls (e,make_arrow tint tint)),(extract_expression dagger e))) (IntMap.bindings indices )
+  in let kansas = List.sort (fun (l,_) (r,_) -> compare l r) through in
+  print_string (String.concat "\n" (List.map (fun (l,e) -> 
+    string_of_expression  e ^ "\t" ^ string_of_float l)
+				    kansas  ));;
 
-(* test_enumerate ();; *)
+ (* test_enumerate ();; *)

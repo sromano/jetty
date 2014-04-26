@@ -11,7 +11,7 @@ type library = float * float ExpressionMap.t;;
 
 (* creates a new library with all the production weights equal *)
 let make_flat_library primitives = 
-  (log 0.5, List.fold_left (fun a p -> ExpressionMap.add p 0.0 a)
+  (log 0.35, List.fold_left (fun a p -> ExpressionMap.add p 0.0 a)
   ExpressionMap.empty primitives);;
 
 
@@ -191,10 +191,11 @@ let polynomial_library =
 
 
 let string_of_library (log_application,distribution) = 
+  let bindings = ExpressionMap.bindings distribution in
   String.concat "\n"
     ((string_of_float (exp log_application))::
      (List.map (fun (e,w) -> Printf.sprintf "\t %f \t %s " w (string_of_expression e)) 
-	(ExpressionMap.bindings distribution)));;
+	bindings));;
 
 let test_library () = 
   let i =make_app (make_app c_S c_K) c_K in
