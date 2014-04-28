@@ -32,9 +32,9 @@ let poly () =
       List.concat (List.map (fun b ->
 	(List.map (fun c -> make_polynomial_task a b c)
 	  interval)) interval)) interval)  in
-  for i = 1 to 15 do
+  for i = 1 to 3 do
     Printf.printf "\n \n \n Iteration %i \n" i;
-    let g1 = expectation_maximization_iteration 1.5 1.0 10000 tasks (!g) in
+    let g1 = expectation_maximization_iteration 1.5 1.0 2000 tasks (!g) in
     g := g1
   done
 ;;
