@@ -49,10 +49,11 @@ let enumerate_bounded dagger (log_application,distribution) rt bound =
 let enumerate_ID dagger library t frontier_size = 
   let rec iterate bound = 
     let indices = enumerate_bounded dagger library t bound in
-    Printf.printf "Type %s \t Bound %f \t  => %i / %i programs \n" (string_of_type t) bound (IntMap.cardinal indices) frontier_size;
     if (IntMap.cardinal indices) < frontier_size
     then iterate (bound+.0.4)
-    else indices
+    else
+      (Printf.printf "Type %s \t Bound %f \t  => %i / %i programs \n" (string_of_type t) bound (IntMap.cardinal indices) frontier_size;
+       indices)
   in iterate (log (float_of_int frontier_size))
 ;;
 

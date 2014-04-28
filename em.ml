@@ -4,6 +4,8 @@ open Task
 open Library
 open Enumerate
 open Utils
+open Compress
+
 
 let expectation_maximization_iteration
     lambda smoothing frontier_size 
@@ -33,6 +35,10 @@ let expectation_maximization_iteration
 		   ) requests frontier
 				) IntMap.empty frontiers
   in
+  let task_solutions = List.filter (fun (_,s) -> List.length s > 0) 
+      (List.combine tasks @@ List.map (List.filter (fun (_,s) -> s > log (0.999))) program_scores)
+  in
+  ignore (compress lambda dagger type_array requests task_solutions);
   let likelihoods = program_likelihoods grammar dagger type_array requests in
   let task_posteriors = 
     List.map2 (fun task scores ->
@@ -84,7 +90,7 @@ let expectation_maximization_iteration
   (* fit the continuous parameters of the new grammar and then return it *)
   let likelihoods = program_likelihoods new_grammar dagger type_array requests in
   let final_grammar = fit_grammar smoothing new_grammar dagger type_array likelihoods (hash_bindings corpus) in
-  print_string (string_of_library final_grammar);
+(*  print_string (string_of_library final_grammar); *)
   print_newline ();
   final_grammar
 ;;
