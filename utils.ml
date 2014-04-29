@@ -8,6 +8,14 @@ let compose f g = fun x -> f (g x);;
 let is_invalid (x : float) = x <> x || x = infinity || x = neg_infinity;;
 let is_valid = compose not is_invalid;;
 
+let index_of l x = 
+  let rec loop a r = 
+    match r with
+      [] -> raise (Failure "index_of: not found")
+    | (y::ys) -> if y = x then a else loop (a+1) ys
+  in loop 0 l
+
+let log2 = log 2.
 
 let lse x y = 
   if is_invalid x then y else if is_invalid y then x else

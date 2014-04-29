@@ -8,7 +8,7 @@ let compute_job_IDs dagger type_array terminals candidates requests =
   let (i2n,_,_) = dagger in
   (* number all of the candidates *)
   let candidates = candidates |> List.mapi (fun i c -> (c,i)) in
-   (* maps tuples of (ID,request) to job ID *)
+  (* maps tuples of (ID,request) to job ID *)
   let jobs = Hashtbl.create 10000 in
   (* these lists contain information about the jobs *)
   let candidate_index = ref [] in
@@ -22,7 +22,7 @@ let compute_job_IDs dagger type_array terminals candidates requests =
       Hashtbl.find jobs (i,request) 
     with Not_found -> 
       (match Hashtbl.find i2n i with
-	ExpressionLeaf(Terminal(t,_,_)) -> 
+	ExpressionLeaf(Terminal(_,_,_)) -> 
 	  has_children := !has_children @ [false];
 	  left_child := !left_child @ [0];
 	  right_child := !right_child @ [0]
@@ -38,11 +38,11 @@ let compute_job_IDs dagger type_array terminals candidates requests =
       candidate_index := !candidate_index @
 	[try List.assoc i candidates with _ -> -1];
       terminal_conflicts := !terminal_conflicts @
-        [log @@ float_of_int @@ List.length @@ (terminals |> 
+        [float_of_int @@ List.length @@ (terminals |> 
 	List.filter (fun t -> can_unify type_array.(t) request))];
       candidate_conflicts := !candidate_conflicts @
 	[List.map snd @@ (candidates |> List.filter
-	  (fun (_,c) -> can_unify type_array.(c) request))];
+	  (fun (c,_) -> can_unify type_array.(c) request))];
       let j = Hashtbl.length jobs in
       Hashtbl.add jobs (i,request) j;
       j
@@ -63,12 +63,9 @@ let compute_job_IDs dagger type_array terminals candidates requests =
 let compress lambda dagger type_array requests (task_solutions : (task * (int*float) list) list) = 
   let (i2n,n2i,_) = dagger in
   let terminals = List.map fst @@ List.filter (fun (i,_) -> is_leaf_ID dagger i) (hash_bindings i2n) in
-  (* Printf.printf "%i tasks solved by %i programs \n" (List.length task_solutions) (List.length @@ List.concat @@ List.map snd task_solutions); *)
   (* request might have spurious request for programs that don't solve any tasks *)
-  (* Printf.printf "initial size of requests is %i \n" (IntMap.cardinal requests); *)
   let requests = requests |> IntMap.filter (fun i _ -> task_solutions |> 
   List.exists (fun (_,s) -> s |> List.exists (fun (j,_) -> j = i))) in
-  (* Printf.printf "final size of requests is %i \n" (IntMap.cardinal requests); *)
   (* find the productions that are used in more than one task *)
   let task_uses = task_solutions |> List.map (fun (_,solutions) -> 
     solutions |> List.fold_left (fun a (i,_) -> 
@@ -86,20 +83,61 @@ let compress lambda dagger type_array requests (task_solutions : (task * (int*fl
   let candidates = List.map fst (IntMap.bindings task_counts |> List.filter (fun (i,c) -> c > 1 && not (is_leaf_ID dagger i))) in
   Printf.printf "Found %i candidate productions \n" (List.length candidates);
   (* compute the dependencies of each candidate *)
-  let dependencies = candidates |> List.map (fun i -> get_sub_IDs dagger i |> IntSet.filter (fun j -> List.mem j candidates)) in
+  let dependencies =
+    Array.of_list (candidates
+		   |> List.map (fun i ->
+		       let children = IntSet.elements @@ get_sub_IDs dagger i in
+		       let children = children |> List.filter (fun j -> List.mem j candidates) in
+		       children |> List.map (index_of candidates))) in
+  (* precompute all of the typing information *)
+  let (candidate_index,has_children,
+       left_child,right_child,
+       terminal_conflicts,candidate_conflicts,
+       jobs) = compute_job_IDs dagger type_array terminals candidates requests
+  in
+  (* figure out correspondence between jobs and tasks *)
+  let task_jobs = List.map (fun (task,solutions) -> 
+			   List.map (fun (i,l) -> 
+			     (Hashtbl.find jobs (i,task.task_type), l)
+				    ) solutions
+			   ) task_solutions in
+  (* routine for performing the dynamic program *)
+  let number_jobs = Hashtbl.length jobs in
+  let job_likelihoods = Array.make number_jobs 0. in
+  let do_jobs productions = 
+    for j = 0 to (number_jobs-1) do
+      let application = 
+	if has_children.(j)
+	then -.log2 +. 
+	    job_likelihoods.(left_child.(j)) +.
+	    job_likelihoods.(right_child.(j))
+	else neg_infinity
+      in let terminal =
+	if not has_children.(j) || 
+	    (candidate_index.(j) > -1 && productions.(candidate_index.(j)))
+	then -.log2 -.
+	    log (List.fold_left (fun a k -> 
+	      if productions.(k) then a+.1. else a
+				) terminal_conflicts.(j) candidate_conflicts.(j))
+	else neg_infinity
+      in job_likelihoods.(j) <- lse application terminal
+    done
+  in
   (* computes log posterior for a given subset of the candidates *)
   let posterior productions = 
-    let production_expressions = List.map (extract_expression dagger) productions in
-    let grammar = make_flat_library production_expressions in
-    let likelihoods = program_likelihoods grammar dagger type_array requests in
-    let log_prior = -.lambda *. (float_of_int @@ List.length productions) in
-    task_solutions |> List.fold_left (fun ll (task,solutions) ->
-      ll +. (solutions |> List.fold_left (fun a (i,l) ->
-	lse a @@ l +. Hashtbl.find likelihoods (i,task.task_type)) neg_infinity)) log_prior
+    let log_prior = -.lambda *. Array.fold_left 
+	(fun a u -> if u then a+.1. else a) 0. productions in
+    let likelihood = List.fold_left (fun a t -> 
+      let ls = List.map (fun (j,l) -> l +. job_likelihoods.(j)) t in
+      a +. lse_list ls) 0. task_jobs in
+    Printf.printf "prior = %f, likelihood = %f, task_jobs = %i \n" log_prior likelihood (List.length task_jobs);
+    log_prior +. likelihood
   in
   let t1 = Sys.time () in
-  let p = posterior terminals in
-  ignore (for i = 1 to 50 do ignore (posterior terminals) done);
+  let initial_state = Array.make (List.length candidates) false in
+  do_jobs initial_state;
+  let p = posterior initial_state in
+(*   ignore (for i = 1 to 50 do ignore (posterior terminals) done); *)
   let t2 = Sys.time () in
   (* about .05 sec for all likelihoods *)
   Printf.printf "time to compute posterior (%f) is %f \n" p (t2-.t1);

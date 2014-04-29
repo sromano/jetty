@@ -6,7 +6,7 @@ open Utils
 
 type task = 
     { name : string; task_type : tp;
-    score : expression -> float; };;
+    score : expression -> float; }
 
 
 let enumerate_frontiers_for_tasks grammar frontier_size tasks 
@@ -17,7 +17,7 @@ let enumerate_frontiers_for_tasks grammar frontier_size tasks
   let indices = List.map (fun t -> enumerate_ID dagger grammar t frontier_size) types in
   (List.combine types 
   (List.map (compose (List.map fst) IntMap.bindings) indices),
-   dagger);;
+   dagger)
 
 
 let score_programs dagger frontiers tasks = 
@@ -28,4 +28,4 @@ let score_programs dagger frontiers tasks =
 	(i,task.score e)
 		) (List.assoc task.task_type frontiers))
 	   ) tasks
-;;
+
