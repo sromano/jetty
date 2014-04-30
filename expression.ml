@@ -108,7 +108,7 @@ let rec get_sub_IDs g i =
   match Hashtbl.find i2n i with
     ExpressionLeaf(_) -> IntSet.singleton i
   | ExpressionBranch(f,x) -> 
-      IntSet.add i (IntSet.union (get_sub_IDs g f) (get_sub_IDs g f));;
+      IntSet.add i (IntSet.union (get_sub_IDs g f) (get_sub_IDs g x));;
 
 (* performs type inference upon the entire graph of expressions *)
 (* returns an array whose ith element is the type of the ith expression *)

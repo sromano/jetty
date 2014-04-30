@@ -22,27 +22,27 @@ let compute_job_IDs dagger type_array terminals candidates requests =
       Hashtbl.find jobs (i,request) 
     with Not_found -> 
       (match Hashtbl.find i2n i with
-	ExpressionLeaf(Terminal(_,_,_)) -> 
-	  has_children := !has_children @ [false];
-	  left_child := !left_child @ [0];
-	  right_child := !right_child @ [0]
+        ExpressionLeaf(Terminal(_,_,_)) -> 
+          has_children := !has_children @ [false];
+          left_child := !left_child @ [0];
+          right_child := !right_child @ [0]
       | ExpressionLeaf(_) -> raise (Failure "leaf not terminal")
       | ExpressionBranch(l,r) -> 
-	  let left_request = canonical_type (make_arrow (TID(next_type_variable request)) request) in
-	  let right_request = argument_request request type_array.(l) in
-	  let left_job = make_job l left_request in
-	  let right_job = make_job r right_request in
-	  has_children := !has_children @ [true];
-	  left_child := !left_child @ [left_job];
-	  right_child := !right_child @ [right_job]);
+          let left_request = canonical_type (make_arrow (TID(next_type_variable request)) request) in
+          let right_request = argument_request request type_array.(l) in
+          let left_job = make_job l left_request in
+          let right_job = make_job r right_request in
+          has_children := !has_children @ [true];
+          left_child := !left_child @ [left_job];
+          right_child := !right_child @ [right_job]);
       candidate_index := !candidate_index @
-	[try List.assoc i candidates with _ -> -1];
+        [try List.assoc i candidates with _ -> -1];
       terminal_conflicts := !terminal_conflicts @
         [float_of_int @@ List.length @@ (terminals |> 
-	List.filter (fun t -> can_unify type_array.(t) request))];
+        List.filter (fun t -> can_unify type_array.(t) request))];
       candidate_conflicts := !candidate_conflicts @
-	[List.map snd @@ (candidates |> List.filter
-	  (fun (c,_) -> can_unify type_array.(c) request))];
+        [List.map snd @@ (candidates |> List.filter
+          (fun (c,_) -> can_unify type_array.(c) request))];
       let j = Hashtbl.length jobs in
       Hashtbl.add jobs (i,request) j;
       j
@@ -70,25 +70,25 @@ let compress lambda dagger type_array requests (task_solutions : (task * (int*fl
   let task_uses = task_solutions |> List.map (fun (_,solutions) -> 
     solutions |> List.fold_left (fun a (i,_) -> 
       IntSet.union a @@ get_sub_IDs dagger i
-				) IntSet.empty 
-					     ) in
+                                ) IntSet.empty 
+                                             ) in
   let task_counts = List.fold_left (fun counts uses -> 
     IntSet.fold (fun i a -> 
       try
-	let old_count = IntMap.find i a in
-	IntMap.add i (old_count+1) a
+        let old_count = IntMap.find i a in
+        IntMap.add i (old_count+1) a
       with Not_found -> IntMap.add i 1 a
-		) uses counts
-				   ) IntMap.empty task_uses in
+                ) uses counts
+                                   ) IntMap.empty task_uses in
   let candidates = List.map fst (IntMap.bindings task_counts |> List.filter (fun (i,c) -> c > 1 && not (is_leaf_ID dagger i))) in
   Printf.printf "Found %i candidate productions \n" (List.length candidates);
   (* compute the dependencies of each candidate *)
   let dependencies =
     Array.of_list (candidates
-		   |> List.map (fun i ->
-		       let children = IntSet.elements @@ get_sub_IDs dagger i in
-		       let children = children |> List.filter (fun j -> List.mem j candidates) in
-		       children |> List.map (index_of candidates))) in
+                   |> List.map (fun i ->
+                       let children = IntSet.elements @@ get_sub_IDs dagger i in
+                       let children = children |> List.filter (fun j -> List.mem j candidates) in
+                       children |> List.map (index_of candidates))) in
   (* precompute all of the typing information *)
   let (candidate_index,has_children,
        left_child,right_child,
@@ -97,49 +97,69 @@ let compress lambda dagger type_array requests (task_solutions : (task * (int*fl
   in
   (* figure out correspondence between jobs and tasks *)
   let task_jobs = List.map (fun (task,solutions) -> 
-			   List.map (fun (i,l) -> 
-			     (Hashtbl.find jobs (i,task.task_type), l)
-				    ) solutions
-			   ) task_solutions in
+                           List.map (fun (i,l) -> 
+                             (Hashtbl.find jobs (i,task.task_type), l)
+                                    ) solutions
+                           ) task_solutions in
   (* routine for performing the dynamic program *)
   let number_jobs = Hashtbl.length jobs in
   let job_likelihoods = Array.make number_jobs 0. in
   let do_jobs productions = 
     for j = 0 to (number_jobs-1) do
       let application = 
-	if has_children.(j)
-	then -.log2 +. 
-	    job_likelihoods.(left_child.(j)) +.
-	    job_likelihoods.(right_child.(j))
-	else neg_infinity
+        if has_children.(j)
+        then -.log2 +. 
+            job_likelihoods.(left_child.(j)) +.
+            job_likelihoods.(right_child.(j))
+        else neg_infinity
       in let terminal =
-	if not has_children.(j) || 
-	    (candidate_index.(j) > -1 && productions.(candidate_index.(j)))
-	then -.log2 -.
-	    log (List.fold_left (fun a k -> 
-	      if productions.(k) then a+.1. else a
-				) terminal_conflicts.(j) candidate_conflicts.(j))
-	else neg_infinity
+        if not has_children.(j) || 
+            (candidate_index.(j) > -1 && productions.(candidate_index.(j)))
+        then -.log2 -.
+            log (List.fold_left (fun a k -> 
+              if productions.(k) then a+.1. else a
+                                ) terminal_conflicts.(j) candidate_conflicts.(j))
+        else neg_infinity
       in job_likelihoods.(j) <- lse application terminal
     done
   in
   (* computes log posterior for a given subset of the candidates *)
   let posterior productions = 
     let log_prior = -.lambda *. Array.fold_left 
-	(fun a u -> if u then a+.1. else a) 0. productions in
+        (fun a u -> if u then a+.1. else a) 0. productions in
     let likelihood = List.fold_left (fun a t -> 
       let ls = List.map (fun (j,l) -> l +. job_likelihoods.(j)) t in
       a +. lse_list ls) 0. task_jobs in
-    Printf.printf "prior = %f, likelihood = %f, task_jobs = %i \n" log_prior likelihood (List.length task_jobs);
     log_prior +. likelihood
+  in
+  (* computes the state successors in the search space *)
+  let successors productions =
+    let new_productions = 0--(List.length candidates - 1) |> 
+    List.filter (fun p -> not productions.(p)) 
+    in List.map (fun p -> 
+                let a = Array.copy productions in
+                a.(p) <- true;
+		List.iter (fun q -> a.(q) <- true) @@ dependencies.(p);
+		a) new_productions
+  in
+  (* performs a greedy search *)
+  let rec hill_climb productions = 
+    do_jobs productions;
+    let current_score = posterior productions in
+    let new_scores = successors productions |> List.map (fun s -> do_jobs s; (posterior s, s)) in
+    let (new_score,new_productions) = List.fold_left (fun (s1,p1) (s2,p2) -> if s1 > s2 then (s1,p1) else (s2,p2)) (List.hd new_scores) (List.tl new_scores) in
+    if new_score > current_score
+    then hill_climb new_productions
+    else productions
   in
   let t1 = Sys.time () in
   let initial_state = Array.make (List.length candidates) false in
-  do_jobs initial_state;
-  let p = posterior initial_state in
-(*   ignore (for i = 1 to 50 do ignore (posterior terminals) done); *)
+  let productions = hill_climb initial_state in
+  let es = List.map (fun (c,_) -> extract_expression dagger c) @@
+    List.filter (fun (_,i) -> productions.(i)) @@ 
+    List.mapi (fun i c -> (c,i)) candidates in
+  let new_grammar = make_flat_library es in
   let t2 = Sys.time () in
-  (* about .05 sec for all likelihoods *)
-  Printf.printf "time to compute posterior (%f) is %f \n" p (t2-.t1);
+  Printf.printf "time to compute grammar is %f \n new grammar: \n %s \n " (t2-.t1) (string_of_library new_grammar);
 0;;
 
