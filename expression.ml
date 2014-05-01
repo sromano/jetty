@@ -3,6 +3,7 @@ open Obj
 open Type
 open Utils
 
+open Unix
 
 type expression = 
   | Terminal of string * tp * unit ref

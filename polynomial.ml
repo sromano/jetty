@@ -4,7 +4,7 @@ open Expression
 open Type
 open Utils
 open Library
-
+open Ec
 
 
 let make_polynomial_task a b c = 
@@ -34,7 +34,7 @@ let poly () =
 	  interval)) interval)) interval)  in
   for i = 1 to 3 do
     Printf.printf "\n \n \n Iteration %i \n" i;
-    let g1 = expectation_maximization_iteration 1.5 1.0 2000 tasks (!g) in
+    let g1 = (* expectation_maximization_iteration *) lower_bound_refinement_iteration 1.5 1.0 2000 tasks (!g) in
     g := g1
   done
 ;;

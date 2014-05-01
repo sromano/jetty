@@ -22,7 +22,7 @@ let expectation_maximization_iteration
     List.length scores > 0
 						   ) program_scores) in
   Printf.printf "Hit %i / %i \n" number_hit (List.length tasks);
-  Printf.printf "Partial credit %i / %i \n" number_of_partial (List.length tasks);
+  Printf.printf "Partial credit %i / %i \n" (number_of_partial-number_hit) (List.length tasks);
   (* compute likelihoods under grammar and then normalize the frontiers *)
   let type_array = infer_graph_types dagger in  
   let requests = List.fold_left (fun requests (requested_type,frontier) -> 
@@ -35,10 +35,6 @@ let expectation_maximization_iteration
 		   ) requests frontier
 				) IntMap.empty frontiers
   in
-  let task_solutions = List.filter (fun (_,s) -> List.length s > 0)
-      (List.combine tasks @@ List.map (List.filter (fun (_,s) -> s > log (0.999))) program_scores)
-  in
-  ignore (compress lambda smoothing dagger type_array requests task_solutions);
   let likelihoods = program_likelihoods grammar dagger type_array requests in
   let task_posteriors = 
     List.map2 (fun task scores ->
