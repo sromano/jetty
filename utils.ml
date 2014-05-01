@@ -5,6 +5,24 @@ module IntSet = Set.Make(struct type t = int let compare = compare end)
 let compose f g = fun x -> f (g x);;
 
 
+let hash_bindings h = 
+  let b = ref [] in
+  Hashtbl.iter (fun k v -> b := (k,v)::(!b)) h;
+  !b
+
+
+let merge_a_list c ls = 
+  let merged = Hashtbl.create 100000 in
+  List.iter (fun l ->
+    List.iter (fun (tag,value) -> 
+      try
+	let old_value = Hashtbl.find merged tag in
+	Hashtbl.replace merged tag (c value old_value)
+      with Not_found -> Hashtbl.add merged tag value
+	      ) l
+	    ) ls;
+  hash_bindings merged
+
 let is_invalid (x : float) = x <> x || x = infinity || x = neg_infinity;;
 let is_valid = compose not is_invalid;;
 
@@ -44,7 +62,7 @@ let combine_with f _ a b =
 let hash_bindings h = 
   let b = ref [] in
   Hashtbl.iter (fun k v -> b := (k,v)::(!b)) h;
-  !b;;
+  !b
 
 
 let (--) i j = 

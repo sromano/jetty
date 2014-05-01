@@ -2,6 +2,7 @@ open Library
 open Expression
 open Type
 open Utils
+open Task
 
 let enumerate_bounded dagger (log_application,distribution) rt bound = 
   let log_terminal = log (1.0-. exp log_application) in
@@ -55,7 +56,18 @@ let enumerate_ID dagger library t frontier_size =
       (Printf.printf "Type %s \t Bound %f \t  => %i / %i programs \n" (string_of_type t) bound (IntMap.cardinal indices) frontier_size;
        indices)
   in iterate (log (float_of_int frontier_size))
-;;
+
+
+let enumerate_frontiers_for_tasks grammar frontier_size tasks 
+    : (tp*int list) list*expressionGraph = 
+  let types = remove_duplicates (List.map (fun t -> t.task_type) tasks) in
+  Printf.printf "number of types: %i \n" (List.length types);
+  let dagger = make_expression_graph 100000 in
+  let indices = List.map (fun t -> enumerate_ID dagger grammar t frontier_size) types in
+  (List.combine types 
+  (List.map (compose (List.map fst) IntMap.bindings) indices),
+   dagger)
+
 
 
 let test_enumerate () = 
@@ -68,6 +80,6 @@ let test_enumerate () =
   in let kansas = List.sort (fun (l,_) (r,_) -> compare l r) through in
   print_string (String.concat "\n" (List.map (fun (l,e) -> 
     string_of_expression  e ^ "\t" ^ string_of_float l)
-				    kansas  ));;
+				    kansas  ))
 
  (* test_enumerate ();; *)

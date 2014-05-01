@@ -60,7 +60,7 @@ let compute_job_IDs dagger type_array terminals candidates requests =
    jobs)
   
 
-let compress lambda dagger type_array requests (task_solutions : (task * (int*float) list) list) = 
+let compress lambda smoothing dagger type_array requests (task_solutions : (task * (int*float) list) list) = 
   let (i2n,n2i,_) = dagger in
   let terminals = List.map fst @@ List.filter (fun (i,_) -> is_leaf_ID dagger i) (hash_bindings i2n) in
   (* request might have spurious request for programs that don't solve any tasks *)
@@ -155,10 +155,12 @@ let compress lambda dagger type_array requests (task_solutions : (task * (int*fl
   let t1 = Sys.time () in
   let initial_state = Array.make (List.length candidates) false in
   let productions = hill_climb initial_state in
-  let es = List.map (fun (c,_) -> extract_expression dagger c) @@
-    List.filter (fun (_,i) -> productions.(i)) @@ 
-    List.mapi (fun i c -> (c,i)) candidates in
-  let new_grammar = make_flat_library es in
+  let es = List.map (extract_expression dagger) @@
+    terminals @ (List.map fst @@ 
+                 List.filter (fun (_,i) -> productions.(i)) @@ 
+                 List.mapi (fun i c -> (c,i)) candidates) in
+  let new_grammar = fit_grammar_to_tasks smoothing (make_flat_library es) 
+    dagger type_array requests task_solutions in
   let t2 = Sys.time () in
   Printf.printf "time to compute grammar is %f \n new grammar: \n %s \n " (t2-.t1) (string_of_library new_grammar);
 0;;

@@ -35,10 +35,10 @@ let expectation_maximization_iteration
 		   ) requests frontier
 				) IntMap.empty frontiers
   in
-  let task_solutions = List.filter (fun (_,s) -> List.length s > 0) 
+  let task_solutions = List.filter (fun (_,s) -> List.length s > 0)
       (List.combine tasks @@ List.map (List.filter (fun (_,s) -> s > log (0.999))) program_scores)
   in
-  ignore (compress lambda dagger type_array requests task_solutions);
+  ignore (compress lambda smoothing dagger type_array requests task_solutions);
   let likelihoods = program_likelihoods grammar dagger type_array requests in
   let task_posteriors = 
     List.map2 (fun task scores ->
@@ -77,20 +77,13 @@ let expectation_maximization_iteration
   let new_grammar = make_flat_library productions in
   print_string "Computed posterior probabilities. \n";
   (* assembled corpus *)
-  let corpus = Hashtbl.create 100000 in
-  List.iter (fun (task, posterior) ->
-    List.iter (fun (i,log_posterior) -> 
-      let tag = (i,task.task_type) in
-      try
-	let old_weight = Hashtbl.find corpus tag in
-	Hashtbl.replace corpus tag (old_weight+.(exp log_posterior))
-      with Not_found -> Hashtbl.add corpus tag (exp log_posterior)
-	      ) posterior
-	    ) (List.combine tasks task_posteriors);
+  let corpus = List.map (fun (i,l) -> (i,exp l)) @@ merge_a_list lse @@ 
+    List.map2 (fun task ->
+      List.map @@ fun (i,l) -> ((i,task.task_type),l))
+      tasks task_posteriors in
   (* fit the continuous parameters of the new grammar and then return it *)
   let likelihoods = program_likelihoods new_grammar dagger type_array requests in
-  let final_grammar = fit_grammar smoothing new_grammar dagger type_array likelihoods (hash_bindings corpus) in
+  let final_grammar = fit_grammar smoothing new_grammar dagger type_array likelihoods corpus in
 (*  print_string (string_of_library final_grammar); *)
   print_newline ();
   final_grammar
-;;

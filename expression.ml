@@ -13,7 +13,7 @@ let rec runExpression (e:expression) : 'a =
   match e with
     Terminal(_,_,thing) -> !(Obj.magic thing)
   | Application(f,x) -> 
-      (Obj.magic (runExpression f)) (Obj.magic (runExpression x));;
+      (Obj.magic (runExpression f)) (Obj.magic (runExpression x))
 
 exception Timeout;;
 let sigalrm_handler = Sys.Signal_handle (fun _ -> raise Timeout) ;;
