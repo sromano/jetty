@@ -41,8 +41,11 @@ let compute_job_IDs dagger type_array terminals candidates requests =
         [float_of_int @@ List.length @@ (terminals |> 
         List.filter (fun t -> can_unify type_array.(t) request))];
       candidate_conflicts := !candidate_conflicts @
-        [List.map snd @@ (candidates |> List.filter
-          (fun (c,_) -> can_unify type_array.(c) request))];
+        [let conflict_list = List.map snd @@ (candidates |> List.filter
+                                                (fun (c,_) -> can_unify type_array.(c) request)) in
+(*          let cs = Array.make (List) in *)
+         conflict_list
+        ];
       let j = Hashtbl.length jobs in
       Hashtbl.add jobs (i,request) j;
       j
@@ -61,6 +64,7 @@ let compute_job_IDs dagger type_array terminals candidates requests =
   
 
 let compress lambda smoothing dagger type_array requests (task_solutions : (task * (int*float) list) list) = 
+  let t1 = Sys.time () in
   let (i2n,n2i,_) = dagger in
   let terminals = List.map fst @@ List.filter (fun (i,_) -> is_leaf_ID dagger i) (hash_bindings i2n) in
   (* request might have spurious request for programs that don't solve any tasks *)
@@ -152,6 +156,10 @@ let compress lambda smoothing dagger type_array requests (task_solutions : (task
     then hill_climb new_productions
     else productions
   in
+  let t2 = Sys.time () in
+  Printf.printf "time to prepare for hillclimbing is %f" (t2-.t1);
+  print_newline ();
+  Printf.printf "about to begin hillclimbing..."; print_newline ();
   let t1 = Sys.time () in
   let initial_state = Array.make (List.length candidates) false in
   let productions = hill_climb initial_state in

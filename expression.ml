@@ -1,9 +1,8 @@
-
-open Obj
 open Type
 open Utils
 
 open Unix
+open Obj
 
 type expression = 
   | Terminal of string * tp * unit ref
@@ -28,8 +27,6 @@ let run_expression_for_interval (time : float) (e : expression) : 'a option =
 	reset_sigalrm () ; Some(res)  
       with exc -> reset_sigalrm () ; None;;
 
-
-
 let rec compare_expression e1 e2 = 
   match (e1,e2) with
     (Terminal(n1,_,_),Terminal(n2,_,_)) -> compare n1 n2
@@ -38,7 +35,7 @@ let rec compare_expression e1 e2 =
   | (Application(l,r),Application(l_,r_)) -> 
       let c = compare_expression l l_ in
       if c == 0 then compare_expression r r_ else c
-;;
+
 
 let infer_type (e : expression) = 
   let rec infer c r = 
@@ -51,17 +48,16 @@ let infer_type (e : expression) =
 	let c4 = unify c3 ft (make_arrow xt rt) in
 	chaseType c4 rt
   in fst (infer (1,TypeMap.empty) e)
-;;
 
 
 let rec string_of_expression e = 
   match e with
     Terminal(s,_,_) -> s
-  | Application(f,x) ->
-      "("^(string_of_expression f)^" "^(string_of_expression x)^")";;
+  | Application(f,x) -> 
+      "("^(string_of_expression f)^" "^(string_of_expression x)^")"
 
 let make_app f x = 
-  Application(f,x);;
+  Application(f,x)
 
 
 (* compact representation of expressions sharing many subtrees *)
@@ -70,7 +66,7 @@ type expressionNode = ExpressionLeaf of expression
 type expressionGraph = 
     ((int,expressionNode) Hashtbl.t) * ((expressionNode,int) Hashtbl.t) * (int ref);;
 let make_expression_graph size : expressionGraph = 
-  (Hashtbl.create size,Hashtbl.create size,ref 0);;
+  (Hashtbl.create size,Hashtbl.create size,ref 0)
 
 
 let insert_expression_node (i2n,n2i,nxt) (n : expressionNode) : int =

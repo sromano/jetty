@@ -119,7 +119,7 @@ let instantiate_type (n,m) t =
     | TCon(k,js) -> TCon(k,List.map instantiate js)
   in let q = instantiate t in
   (q,(!next,m))
-;;
+
 
 (* puts a type into normal form *)
 let canonical_type t = 
@@ -131,7 +131,7 @@ let canonical_type t =
 		with Not_found -> substitution := (i,!next)::!substitution; next := (1+ !next); TID(!next-1))
     | TCon(k,a) -> TCon(k,List.map canon a)
   in canon t
-;;
+
 
 let application_type f x = 
   let (f,c1) = instantiate_type empty_context f in

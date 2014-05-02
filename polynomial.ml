@@ -26,17 +26,18 @@ let make_polynomial_task a b c =
 
 let poly () = 
   let g = ref (polynomial_library) in
-  let interval = 0--9 in
+  let interval = 0--4 in
   let tasks = 
     List.concat (List.map (fun a ->
       List.concat (List.map (fun b ->
 	(List.map (fun c -> make_polynomial_task a b c)
 	  interval)) interval)) interval)  in
-  for i = 1 to 3 do
+  for i = 1 to 10 do
     Printf.printf "\n \n \n Iteration %i \n" i;
-    let g1 = (* expectation_maximization_iteration *) lower_bound_refinement_iteration 1.5 1.0 2000 tasks (!g) in
+    let g1 = (* expectation_maximization_iteration *) lower_bound_refinement_iteration 1.5 1.0 10000 tasks (!g) in
     g := g1
   done
 ;;
+
 
 poly ();;

@@ -13,7 +13,8 @@ let lower_bound_refinement_iteration
     lambda smoothing frontier_size 
     tasks grammar = 
   let (frontiers,dagger) = enumerate_frontiers_for_tasks grammar frontier_size tasks in
-    print_string "Scoring programs... \n";
+  print_string "Scoring programs...";
+  print_newline ();
   let program_scores = score_programs dagger frontiers tasks in
   (* display the hit rate *)
   let number_hit = List.length (List.filter (fun scores -> 
@@ -23,7 +24,8 @@ let lower_bound_refinement_iteration
     List.length scores > 0
 						   ) program_scores) in
   Printf.printf "Hit %i / %i \n" number_hit (List.length tasks);
-  Printf.printf "Partial credit %i / %i \n" (number_of_partial-number_hit) (List.length tasks);
+  Printf.printf "Partial credit %i / %i" (number_of_partial-number_hit) (List.length tasks);
+  print_newline ();
   let type_array = infer_graph_types dagger in  
   let requests = List.fold_left (fun requests (requested_type,frontier) -> 
     List.fold_left (fun (a : (tp list) IntMap.t) (i : int) -> 

@@ -4,7 +4,6 @@ open Task
 open Library
 open Enumerate
 open Utils
-open Compress
 
 
 let expectation_maximization_iteration
