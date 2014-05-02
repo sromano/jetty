@@ -8,6 +8,11 @@ type expression =
   | Terminal of string * tp * unit ref
   | Application of expression * expression
 
+let terminal_type e = 
+  match e with
+  | Terminal(_,t,_) -> t
+  | _ -> raise (Failure "terminal_type: not a terminal")
+
 
 let rec runExpression (e:expression) : 'a = 
   match e with

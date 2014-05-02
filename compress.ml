@@ -41,10 +41,8 @@ let compute_job_IDs dagger type_array terminals candidates requests =
         [float_of_int @@ List.length @@ (terminals |> 
         List.filter (fun t -> can_unify type_array.(t) request))];
       candidate_conflicts := !candidate_conflicts @
-        [let conflict_list = List.map snd @@ (candidates |> List.filter
-                                                (fun (c,_) -> can_unify type_array.(c) request)) in
-(*          let cs = Array.make (List) in *)
-         conflict_list
+        [List.map snd @@ (candidates |> List.filter
+                            (fun (c,_) -> can_unify type_array.(c) request))
         ];
       let j = Hashtbl.length jobs in
       Hashtbl.add jobs (i,request) j;

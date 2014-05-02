@@ -166,28 +166,28 @@ let fit_grammar_to_tasks smoothing grammar dagger program_types requests task_so
   fit_grammar smoothing grammar dagger program_types likelihoods corpus
 
 (* various built-in primitives *)
-let c_S = Terminal("S", 
+let c_S = Terminal("S", canonical_type @@  
                   make_arrow (make_arrow t1 (make_arrow t2 t3))
                              (make_arrow (make_arrow t1 t2)
                                          (make_arrow t1 t3)),
                   Obj.magic (ref (fun f g x -> (f x) (g x))));;
-let c_B = Terminal("B", 
+let c_B = Terminal("B", canonical_type @@ 
                   make_arrow (make_arrow t2 t3)
                              (make_arrow (make_arrow t1 t2)
                                          (make_arrow t1 t3)),
                   Obj.magic (ref (fun f g x -> f (g x))));;
-let c_C = Terminal("C", 
+let c_C = Terminal("C",  canonical_type @@ 
                   make_arrow (make_arrow t1 (make_arrow t2 t3))
                              (make_arrow t2 (make_arrow t1 t3)),
                   Obj.magic (ref (fun f g x -> (f x) g)));;
-let c_K = Terminal("K",
+let c_K = Terminal("K", canonical_type @@ 
                    make_arrow t1 (make_arrow t2 t1),
                    Obj.magic (ref (fun x _ -> x)));;
-let c_I = Terminal("I",
+let c_I = Terminal("I", canonical_type @@ 
                    make_arrow t1 t1,
                    Obj.magic (ref (fun x -> x)));;
 let combinatory_library = 
-  make_flat_library [c_S;c_B;c_C;c_K;c_I];;
+  make_flat_library [c_S;c_B;c_C;c_K;c_I]
 
 
 let c_one = Terminal("1",make_ground "int",Obj.magic (ref 1));;

@@ -9,7 +9,8 @@ let enumerate_bounded dagger (log_application,distribution) rt bound =
   let terminals = List.map (fun (e,l) ->
     (infer_type e,(insert_expression dagger e, l)))
       (ExpressionMap.bindings distribution) in
-  let rec enumerate context requestedType budget = 
+  let identity_ID = insert_expression dagger c_I in
+  let rec enumerate can_identify context requestedType budget = 
     let add_node acc e l c = 
       try
 	let (other_l,other_context) = IntMap.find e acc in
@@ -22,17 +23,18 @@ let enumerate_bounded dagger (log_application,distribution) rt bound =
       if budget < -.log_application
       then IntMap.empty
       else let (xt,c2) = makeTID context in
-           let fs = enumerate c2 (make_arrow xt requestedType) (budget+.log_application) in
+           let fs = enumerate false c2 (make_arrow xt requestedType) (budget+.log_application) in
 	   List.fold_left (fun acc (f,(fun_l,fun_context)) -> 
 	     let (xt2,c3) = chaseType fun_context xt in
-	     let xs = enumerate c3 xt2 (budget+.log_application+.fun_l) in
+	     let xs = enumerate true c3 xt2 (budget+.log_application+.fun_l) in
 	     List.fold_left (fun acc2 (x,(arg_l,arg_context)) -> 
 	       let application = insert_expression_node dagger (ExpressionBranch(f,x)) in
 	       add_node acc2 application (arg_l+.fun_l+.log_application) arg_context
 			    ) acc (IntMap.bindings xs)
 			  ) IntMap.empty (IntMap.bindings fs)
     in
-    let availableTerminals = List.filter (fun (t,_) -> can_unify t requestedType) terminals in
+    let availableTerminals = terminals |> List.filter (fun (t,(e,_)) -> 
+        can_unify t requestedType && (can_identify || e <> identity_ID)) in
     match availableTerminals with
       [] -> applications
     | _ ->
@@ -43,8 +45,8 @@ let enumerate_bounded dagger (log_application,distribution) rt bound =
 	  let (t,context1) = instantiate_type context t in
 	  let context2 = unify context1 t requestedType in
 	  add_node acc e (log_terminal+.l) context2) applications availableTerminals
-  in IntMap.map fst (enumerate (5,TypeMap.empty) rt bound)
-;;
+  in IntMap.map fst (enumerate true (5,TypeMap.empty) rt bound)
+
 
 (* iterative deepening version of enumerate_bounded *)
 let enumerate_ID dagger library t frontier_size = 
