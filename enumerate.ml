@@ -31,7 +31,7 @@ let enumerate_bounded dagger (log_application,distribution) rt bound =
              List.fold_left (fun acc2 (x,(arg_l,arg_type)) -> 
                 let application = insert_expression_node dagger (ExpressionBranch(f,x)) in
                 let my_type = application_type fun_type arg_type in
-                if false (*  List.mem my_type type_blacklist *)
+                if List.mem my_type type_blacklist
                 then acc2 
                 else add_node acc2 application (arg_l+.fun_l+.log_application) my_type
                             ) acc (IntMap.bindings xs)
