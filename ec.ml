@@ -10,7 +10,7 @@ open Compress
 
 
 let lower_bound_refinement_iteration
-    lambda smoothing frontier_size 
+    prefix lambda smoothing frontier_size 
     tasks grammar = 
   let (frontiers,dagger) = enumerate_frontiers_for_tasks grammar frontier_size tasks in
   print_string "Scoring programs...";
@@ -40,6 +40,8 @@ let lower_bound_refinement_iteration
   let task_solutions = List.filter (fun (_,s) -> List.length s > 0)
       (List.combine tasks @@ List.map (List.filter (fun (_,s) -> is_valid s)) program_scores)
   in
-  compress lambda smoothing dagger type_array requests task_solutions
-
- 
+  let g = compress lambda smoothing dagger type_array requests task_solutions in
+  let c = open_out (prefix^"_grammar") in
+  Printf.fprintf c "%s" (string_of_library g);
+  close_out c;
+  g

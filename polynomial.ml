@@ -34,7 +34,7 @@ let poly () =
 	  interval)) interval)) interval)  in
   for i = 1 to 10 do
     Printf.printf "\n \n \n Iteration %i \n" i;
-    let g1 = (* expectation_maximization_iteration *) lower_bound_refinement_iteration 1.5 1.0 2000 tasks (!g) in
+    let g1 = lower_bound_refinement_iteration ("log/iter_"^string_of_int i) 1.5 1.0 2000 tasks (!g) in
     g := g1
   done
 ;;

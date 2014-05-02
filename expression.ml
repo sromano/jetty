@@ -103,14 +103,14 @@ let expression_graph_size (_,_,s) = !s;;
 let is_leaf_ID (g,_,_) i = 
   match Hashtbl.find g i with
     ExpressionLeaf(_) -> true
-  | _ -> false;;
+  | _ -> false
   
 let rec get_sub_IDs g i = 
   let (i2n,_,_) = g in
   match Hashtbl.find i2n i with
     ExpressionLeaf(_) -> IntSet.singleton i
   | ExpressionBranch(f,x) -> 
-      IntSet.add i (IntSet.union (get_sub_IDs g f) (get_sub_IDs g x));;
+      IntSet.add i (IntSet.union (get_sub_IDs g f) (get_sub_IDs g x))
 
 (* performs type inference upon the entire graph of expressions *)
 (* returns an array whose ith element is the type of the ith expression *)
@@ -130,7 +130,7 @@ let infer_graph_types dagger =
     done_map.(i) <- true; type_map.(i) <- q; q
   in for i = 0 to (expression_graph_size dagger - 1) do
     ignore (infer i)
-  done; type_map;;
+  done; type_map
 
 let test_expression () =
   let t1 = TID(0) in

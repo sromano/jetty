@@ -3,4 +3,4 @@ all:
 clean:
 	rm test *.cmi *.cmo *cmx *~ 
 run:
-	./test
+	./test | tee log/output

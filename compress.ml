@@ -168,6 +168,6 @@ let compress lambda smoothing dagger type_array requests (task_solutions : (task
   let new_grammar = fit_grammar_to_tasks smoothing (make_flat_library es) 
     dagger type_array requests task_solutions in
   let t2 = Sys.time () in
-  Printf.printf "time to compute grammar is %f \n new grammar: \n %s \n " (t2-.t1) (string_of_library new_grammar);
+  Printf.printf "time to compute grammar is %f \n " (t2-.t1);
   new_grammar
 
