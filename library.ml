@@ -210,10 +210,34 @@ let string_of_library (log_application,distribution) =
      (List.map (fun (e,w) -> Printf.sprintf "\t %f \t %s " w (string_of_expression e)) 
         bindings));;
 
+let all_terminals = [c_K;c_S;c_B;c_C;c_I;c_one;c_zero;c_plus;c_times;] |> 
+                    List.map (fun e -> (string_of_expression e,e))
+
+(* parses an expression. has to be in library because needs definitions of terminals *)
+let expression_of_string s = 
+  let i = ref 0 in
+  let rec read () = 
+    if !i < String.length s
+    then (if s.[!i] == '('
+          then (incr i;
+                let f = read () in
+                incr i;
+                let x = read () in
+                incr i;
+                Application(f, x))
+          else (let j = ref (!i) in
+                while !j < String.length s && s.[!j] <> ')' && s.[!j] <> ' ' do
+                  incr j
+                done;
+                let name = String.sub s !i (!j - !i) in
+                i := !j;
+                List.assoc name all_terminals))
+    else raise (Failure ("expression_of_string: "^s))
+  in read ()
+
 let test_library () = 
-  let i =make_app (make_app c_S c_K) c_K in
-  let i2 =make_app (make_app c_B i) i in
-  print_string (string_of_type (infer_type i2));;
+  ["I";"((C +) 1)";"(K (+ (0 S)))"] |> List.map 
+    (fun s -> print_string (string_of_expression @@ expression_of_string s); print_newline ());;
 
 
- (* test_library ();; *)
+(* test_library ();; *)
