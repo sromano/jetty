@@ -8,6 +8,20 @@ type expression =
   | Terminal of string * tp * unit ref
   | Application of expression * expression
 
+let rec compare_expression e1 e2 = 
+  match (e1,e2) with
+    (Terminal(n1,_,_),Terminal(n2,_,_)) -> compare n1 n2
+  | (Terminal(_,_,_),_) -> -1
+  | (_,Terminal(_,_,_)) -> 1
+  | (Application(l,r),Application(l_,r_)) -> 
+      let c = compare_expression l l_ in
+      if c == 0 then compare_expression r r_ else c
+
+
+module ExpressionMap = Map.Make(struct type t =expression let compare = compare_expression end)
+module ExpressionSet = Set.Make(struct type t =expression let compare = compare_expression end)
+
+
 let terminal_type e = 
   match e with
   | Terminal(_,t,_) -> t
@@ -31,15 +45,6 @@ let run_expression_for_interval (time : float) (e : expression) : 'a option =
 	ignore (Unix.setitimer ITIMER_REAL {it_interval = 0.0; it_value = 0.0}) ;
 	reset_sigalrm () ; Some(res)  
       with exc -> reset_sigalrm () ; None;;
-
-let rec compare_expression e1 e2 = 
-  match (e1,e2) with
-    (Terminal(n1,_,_),Terminal(n2,_,_)) -> compare n1 n2
-  | (Terminal(_,_,_),_) -> -1
-  | (_,Terminal(_,_,_)) -> 1
-  | (Application(l,r),Application(l_,r_)) -> 
-      let c = compare_expression l l_ in
-      if c == 0 then compare_expression r r_ else c
 
 
 let infer_type (e : expression) = 

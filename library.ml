@@ -3,19 +3,15 @@ open Expression
 open Type
 open Utils
 
-
 open Obj
 
 
-module ExpressionMap = Map.Make(struct type t =expression let compare = compare_expression end)
-
-type library = float * float ExpressionMap.t;;
+type library = float * (float*tp) ExpressionMap.t
 
 (* creates a new library with all the production weights equal *)
 let make_flat_library primitives = 
-  (log 0.35, List.fold_left (fun a p -> ExpressionMap.add p 0.0 a)
-  ExpressionMap.empty primitives);;
-
+  (log 0.35, List.fold_left (fun a p -> ExpressionMap.add p (0.0,infer_type p) a)
+  ExpressionMap.empty primitives)
 
 (* computes likelihoods of all expressions using a dynamic program *)
 (* program_types is a hashmap from ID to type
@@ -25,9 +21,11 @@ let program_likelihoods (log_application,library) dagger program_types requests 
   let log_terminal = log (1.0 -. exp log_application) in
   (* store map from production ID to log probability *)
   let terminals = Hashtbl.create 100 in
-  List.iter (fun (e,l) -> Hashtbl.add terminals (insert_expression dagger e) l) (ExpressionMap.bindings library);
+  ExpressionMap.bindings library |> List.iter (fun (e,(l,_)) ->
+      Hashtbl.add terminals (insert_expression dagger e) l);
   (* get all of the different types we can choose from *)
-  let terminal_types = List.map (fun (e,l) -> (infer_type e,l)) (ExpressionMap.bindings library) in
+  let terminal_types =
+    List.map (fun (_,(l,t)) -> (t,l)) (ExpressionMap.bindings library) in
   let (i2n,n2i,nxt) = dagger in
   let likelihoods = Hashtbl.create (expression_graph_size dagger) in
   let rec likelihood (i : int) (request : tp) = 
@@ -38,26 +36,57 @@ let program_likelihoods (log_application,library) dagger program_types requests 
         let terminal_probability = 
           try
             let my_likelihood = Hashtbl.find terminals i in
-            let z = lse_list (List.map snd (List.filter (fun (t,_) -> can_unify t request) terminal_types)) in
+            let z = lse_list (List.map snd (List.filter (fun (t,_) -> 
+                can_unify t request) terminal_types)) in
             log_terminal+.my_likelihood-.z
           with Not_found -> neg_infinity
         in match Hashtbl.find i2n i with
           ExpressionBranch(f,x) -> 
-            let left_request = canonical_type (make_arrow (TID(next_type_variable request)) request) in
+            let left_request = function_request request in
             let right_request = argument_request request program_types.(f) in
-            lse terminal_probability (log_application+. likelihood f left_request +. likelihood x right_request)
+            let application_probability = log_application+. likelihood f left_request 
+                                          +. likelihood x right_request in
+            lse terminal_probability application_probability
         | _ -> terminal_probability
       in
       Hashtbl.add likelihoods (i,request) log_probability;
       log_probability
   in IntMap.iter (fun i -> List.iter (fun r -> ignore (likelihood i r))) requests; likelihoods
-;;
 
-(* keeps track of the number of times that each production has been used, or could have been used *)
+(* computes likelihood of a possibly ill typed program: returns None if it doesn't type *)
+let likelihood_option (log_application,library) e request = 
+  let log_terminal = log (1.0 -. exp log_application) in
+  (* get all of the different types we can choose from *)
+  let terminal_types =
+    List.map (fun (_,(l,t)) -> (t,l)) (ExpressionMap.bindings library) in
+  let rec l q r = 
+    match q with
+    | Terminal(_,t,_) -> 
+      let log_probability = fst @@ ExpressionMap.find q library in
+      let z = lse_list @@ List.map snd @@ 
+        List.filter (compose (can_unify r) fst) terminal_types in
+      (log_terminal+.log_probability-.z, t)
+    | Application(f,x) -> 
+      let (left_likelihood,f_type) = l f (function_request r) in
+      let (right_likelihood,x_type) = l x (argument_request r f_type) in
+      let application_likelihood = log_application+.left_likelihood+.right_likelihood in
+      try
+        let (log_probability,t) = ExpressionMap.find q library in
+        let z = lse_list @@ List.map snd @@ 
+          List.filter (compose (can_unify r) fst) terminal_types in
+        (lse (log_terminal+.log_probability-.z) application_likelihood, t)
+      with Not_found -> (application_likelihood, application_type f_type x_type)
+  in try
+    Some(fst @@ l e request)
+  with _ -> None
+    
+        
+
+(* tracks the number of times that each production has been used, or could have been used *)
 type useCounts = { 
     application_counts : float; terminal_counts : float;
     use_counts : float array; possible_counts : float array;
-  };;
+  }
 
 (* uses the inside out algorithm to fit the continuous parameters of a grammar
    does so using a dynamic program similar to the one used to compute likelihoods
@@ -75,8 +104,8 @@ let fit_grammar smoothing (log_application,library) dagger program_types likelih
      "offsets" index into this list
    *)
   let terminal_order =
-    List.mapi (fun i (e,l) -> (insert_expression dagger e,
-                               (infer_type e, l, i)))
+    List.mapi (fun i (e,(l,t)) -> (insert_expression dagger e,
+                                   (t, l, i)))
       (ExpressionMap.bindings library) in
   let number_terminals = List.length terminal_order in
   (* hash map from (ID,requested type) to use counts *)
@@ -106,7 +135,7 @@ let fit_grammar smoothing (log_application,library) dagger program_types likelih
           (* recurse on function and argument *)
         | ExpressionBranch(f,x) ->
             (* get probability that an application was used *)
-            let left_request = canonical_type (make_arrow (TID(next_type_variable request)) request) in
+            let left_request = function_request request in
             let right_request = argument_request request program_types.(f) in
             let left_probability = Hashtbl.find likelihoods (f,left_request) in
             let right_probability = Hashtbl.find likelihoods (x,right_request) in
@@ -147,7 +176,7 @@ let fit_grammar smoothing (log_application,library) dagger program_types likelih
   let distribution = List.fold_left (fun a (i,(_,_,o)) -> 
                                     let p = log (terminal_uses.(o)) -. log (terminal_chances.(o))
                                     and e = extract_expression dagger i
-                                    in ExpressionMap.add e p a)
+                                    in ExpressionMap.add e (p,infer_type e) a)
       ExpressionMap.empty terminal_order
   in (log_application,distribution)
 
@@ -207,7 +236,7 @@ let string_of_library (log_application,distribution) =
   let bindings = ExpressionMap.bindings distribution in
   String.concat "\n"
     ((string_of_float (exp log_application))::
-     (List.map (fun (e,w) -> Printf.sprintf "\t %f \t %s " w (string_of_expression e)) 
+     (List.map (fun (e,(w,_)) -> Printf.sprintf "\t %f \t %s " w (string_of_expression e)) 
         bindings));;
 
 let all_terminals = [c_K;c_S;c_B;c_C;c_I;c_one;c_zero;c_plus;c_times;] |> 

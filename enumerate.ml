@@ -6,8 +6,8 @@ open Task
 
 let enumerate_bounded dagger (log_application,distribution) rt bound = 
   let log_terminal = log (1.0-. exp log_application) in
-  let terminals = List.map (fun (e,l) ->
-    (infer_type e,(insert_expression dagger e, l)))
+  let terminals = List.map (fun (e,(l,t)) ->
+    (t,(insert_expression dagger e, l)))
       (ExpressionMap.bindings distribution) in
   let type_blacklist = [c_S;c_B;c_C;c_K;c_I] |> List.map terminal_type in
   let identity_ID = insert_expression dagger c_I in

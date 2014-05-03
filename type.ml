@@ -132,13 +132,19 @@ let canonical_type t =
     | TCon(k,a) -> TCon(k,List.map canon a)
   in canon t
 
+let rec next_type_variable t = 
+  match t with
+    TID(i) -> i+1
+  | TCon(_,[]) -> 0
+  | TCon(_,is) -> List.fold_left max 0 (List.map next_type_variable is)
+
 
 let application_type f x = 
   let (f,c1) = instantiate_type empty_context f in
   let (x,c2) = instantiate_type c1 x in
   let (r,c3) = makeTID c2 in
   let c4 = unify c3 f (make_arrow x r) in
-  canonical_type (fst (chaseType c4 r));;
+  canonical_type (fst (chaseType c4 r))
 
 let argument_request request left = 
   let (request,c1) = instantiate_type empty_context request in
@@ -147,14 +153,10 @@ let argument_request request left =
     TCon(_,[right;result]) -> 
       let c3 = unify c2 request result in
       canonical_type (fst (chaseType c3 right))
-  | _ -> raise (Failure "invalid function type");;
+  | _ -> raise (Failure "invalid function type")
 
-let rec next_type_variable t = 
-  match t with
-    TID(i) -> i+1
-  | TCon(_,[]) -> 0
-  | TCon(_,is) -> List.fold_left max 0 (List.map next_type_variable is)
-;;
+let function_request request = 
+  canonical_type (make_arrow (TID(next_type_variable request)) request)
 
 
 
@@ -173,7 +175,7 @@ let rec string_of_type t =
     TID(i) -> string_of_int i
   | TCon(k,[]) -> k
   | TCon(k,[p;q]) when k = "->" -> "("^(string_of_type p)^" -> "^(string_of_type q)^")"
-  | TCon(k,a) -> "("^k^" "^(String.concat " " (List.map string_of_type a))^")";;
+  | TCon(k,a) -> "("^k^" "^(String.concat " " (List.map string_of_type a))^")"
 
 
 
