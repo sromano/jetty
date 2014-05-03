@@ -4,6 +4,13 @@ module IntSet = Set.Make(struct type t = int let compare = compare end)
 
 let compose f g = fun x -> f (g x);;
 
+let is_some = function
+  | None -> false
+  | _ -> true;;
+let get_some = function
+  | Some(x) -> x
+  | _ -> raise (Failure "get_some");;
+
 
 let hash_bindings h = 
   let b = ref [] in

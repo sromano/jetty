@@ -54,7 +54,7 @@ let program_likelihoods (log_application,library) dagger program_types requests 
   in IntMap.iter (fun i -> List.iter (fun r -> ignore (likelihood i r))) requests; likelihoods
 
 (* computes likelihood of a possibly ill typed program: returns None if it doesn't type *)
-let likelihood_option (log_application,library) e request = 
+let likelihood_option (log_application,library) request e = 
   let log_terminal = log (1.0 -. exp log_application) in
   (* get all of the different types we can choose from *)
   let terminal_types =
