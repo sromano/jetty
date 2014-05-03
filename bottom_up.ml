@@ -3,6 +3,13 @@ open Type
 open Utils
 open Library
 
+module PQ = Set.Make
+  (struct
+     type t = float * int (* pair of priority and task name *)
+     let compare = compare
+   end)
+
+
 let match_template (i2n,_,_) template i = 
   let bindings = ref [] in
   let rec m t j = 
@@ -65,4 +72,20 @@ let backward_children dagger grammar request rewrites j =
      List.filter (compose is_some fst) |> 
      List.map (fun (l,e) -> (insert_expression dagger e, get_some l))
 
-(* let backward_enumerate dagger grammar likelihoods rewrites size i = *)
+let backward_enumerate dagger grammar rewrites size request i =
+  let closed = ref @@ PQ.singleton (0.,i) in
+  let opened = ref @@ PQ.singleton (0.,i) in
+  let rec search () = 
+    if PQ.cardinal !closed > size || PQ.cardinal !opened = 0
+    then PQ.elements !closed
+    else let next = PQ.max_elt !opened in
+         opened := PQ.remove next !opened;
+         backward_children dagger grammar request rewrites (snd next) |> 
+         List.iter (fun (j,l) -> let c = (l,j) in
+                   if PQ.mem c !closed then ()
+                   else begin
+                     closed := PQ.add c !closed;
+                     opened := PQ.add c !opened
+                   end);
+         search ()
+  in search ()
