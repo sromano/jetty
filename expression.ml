@@ -66,9 +66,6 @@ let rec string_of_expression e =
   | Application(f,x) -> 
       "("^(string_of_expression f)^" "^(string_of_expression x)^")"
 
-let make_app f x = 
-  Application(f,x)
-
 
 (* compact representation of expressions sharing many subtrees *)
 type expressionNode = ExpressionLeaf of expression
@@ -101,7 +98,7 @@ let rec extract_expression g i =
   match Hashtbl.find i2n i with
     ExpressionLeaf(e) -> e
   | ExpressionBranch(f,x) -> 
-      make_app (extract_expression g f) (extract_expression g x);;
+      Application(extract_expression g f, extract_expression g x)
 
 let expression_graph_size (_,_,s) = !s;;
 

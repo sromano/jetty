@@ -260,7 +260,9 @@ let expression_of_string s =
                 done;
                 let name = String.sub s !i (!j - !i) in
                 i := !j;
-                List.assoc name all_terminals))
+                if name.[0] = '?'
+                then Terminal(name,t1,ref ())
+                else List.assoc name all_terminals))
     else raise (Failure ("expression_of_string: "^s))
   in read ()
 
