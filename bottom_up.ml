@@ -117,4 +117,4 @@ let test_backwards () =
     Printf.printf "%s\n" @@ string_of_expression @@ extract_expression dagger e);;
 
 
-test_backwards ();;
+(* test_backwards ();; *)
