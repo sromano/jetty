@@ -231,6 +231,16 @@ let c_times = Terminal("*",
 let polynomial_library = 
   make_flat_library [c_S;c_B;c_C;c_I;c_one;c_zero;c_plus;c_times;];;
 
+let c_null = Terminal("null",canonical_type (TCon("list",[t1])),Obj.magic (ref []));;
+let c_cons = Terminal("cons",
+                      canonical_type @@ make_arrow t1 @@ 
+                      make_arrow (TCon("list",[t1])) @@ (TCon("list",[t1])),
+                      Obj.magic @@ ref (fun x y -> x::y));;
+let c_append = Terminal("@",
+                        canonical_type @@ make_arrow (TCon("list",[t1])) @@ 
+                        make_arrow (TCon("list",[t1])) @@ (TCon("list",[t1])),
+                        Obj.magic @@ ref (@));;
+
 
 let string_of_library (log_application,distribution) = 
   let bindings = ExpressionMap.bindings distribution in
@@ -239,7 +249,7 @@ let string_of_library (log_application,distribution) =
      (List.map (fun (e,(w,_)) -> Printf.sprintf "\t %f \t %s " w (string_of_expression e)) 
         bindings));;
 
-let all_terminals = [c_K;c_S;c_B;c_C;c_I;c_one;c_zero;c_plus;c_times;] |> 
+let all_terminals = [c_K;c_S;c_B;c_C;c_I;c_one;c_zero;c_plus;c_times;c_null;c_append;c_cons] |> 
                     List.map (fun e -> (string_of_expression e,e))
 
 (* parses an expression. has to be in library because needs definitions of terminals *)
@@ -262,7 +272,9 @@ let expression_of_string s =
                 i := !j;
                 if name.[0] = '?'
                 then Terminal(name,t1,ref ())
-                else List.assoc name all_terminals))
+                else try
+                  List.assoc name all_terminals
+                with Not_found -> raise (Failure ("not in all_terminals: "^name))))
     else raise (Failure ("expression_of_string: "^s))
   in read ()
 

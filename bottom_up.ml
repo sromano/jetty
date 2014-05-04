@@ -5,7 +5,7 @@ open Library
 
 module PQ = Set.Make
   (struct
-     type t = float * int (* pair of priority and task name *)
+     type t = float * int (* pair of priority (likelihood) and datum (program ID) *)
      let compare = compare
    end)
 
@@ -100,12 +100,19 @@ let c_rewrite = (expression_of_string "((?0 ?1) ?2)",
                  apply_template (expression_of_string "(((C ?0) ?2) ?1)"));;
 let s_rewrite = (expression_of_string "((?0 ?2) (?1 ?2))",
                  apply_template (expression_of_string "(((S ?0) ?1) ?2)"));;
+let append_rewrite1 = (expression_of_string "?0",
+                       apply_template @@ expression_of_string "((@ null) ?0)");;
+let append_rewrite2 = (expression_of_string "((cons ?0) ((@ ?1) ?2))",
+                      apply_template @@ expression_of_string "((@ ((cons ?0) ?1)) ?2)");;
 
 let test_backwards () = 
   let dagger = make_expression_graph 1000 in
   snd polynomial_library |> ExpressionMap.bindings |> List.iter (fun (e,_) -> 
     ignore(insert_expression dagger e));
-  backward_enumerate dagger polynomial_library [i_rewrite; b_rewrite;c_rewrite;s_rewrite] 1000 t1
+  let rewrites = 
+    [i_rewrite; b_rewrite;c_rewrite;s_rewrite;append_rewrite1;append_rewrite2;]
+  in
+  backward_enumerate dagger polynomial_library rewrites 1000 t1
     (insert_expression dagger @@ expression_of_string "1") |> List.iter (fun (_,e) -> 
     Printf.printf "%s\n" @@ string_of_expression @@ extract_expression dagger e);;
 
