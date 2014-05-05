@@ -28,11 +28,11 @@ let terminal_type e =
   | _ -> raise (Failure "terminal_type: not a terminal")
 
 
-let rec runExpression (e:expression) : 'a = 
+let rec run_expression (e:expression) : 'a = 
   match e with
     Terminal(_,_,thing) -> !(Obj.magic thing)
   | Application(f,x) -> 
-      (Obj.magic (runExpression f)) (Obj.magic (runExpression x))
+      (Obj.magic (run_expression f)) (Obj.magic (run_expression x))
 
 exception Timeout;;
 let sigalrm_handler = Sys.Signal_handle (fun _ -> raise Timeout) ;;
@@ -41,10 +41,14 @@ let run_expression_for_interval (time : float) (e : expression) : 'a option =
    let reset_sigalrm () = Sys.set_signal Sys.sigalrm old_behavior 
    in ignore (Unix.setitimer ITIMER_REAL {it_interval = 0.0; it_value = time}) ;
       try
-	let res = runExpression e in 
+	let res = run_expression e in 
 	ignore (Unix.setitimer ITIMER_REAL {it_interval = 0.0; it_value = 0.0}) ;
 	reset_sigalrm () ; Some(res)  
-      with exc -> reset_sigalrm () ; None;;
+      with exc -> begin
+        reset_sigalrm ();
+ 	ignore (Unix.setitimer ITIMER_REAL {it_interval = 0.0; it_value = 0.0}) ; 
+        None
+      end
 
 
 let infer_type (e : expression) = 

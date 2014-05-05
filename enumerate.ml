@@ -9,7 +9,7 @@ let enumerate_bounded dagger (log_application,distribution) rt bound =
   let terminals = List.map (fun (e,(l,t)) ->
     (t,(insert_expression dagger e, l)))
       (ExpressionMap.bindings distribution) in
-  let type_blacklist = [c_S;c_B;c_C;c_K;c_I] |> List.map terminal_type in
+  let type_blacklist = TID(0) :: ([c_S;c_B;c_C;c_K;c_I] |> List.map terminal_type) in
   let identity_ID = insert_expression dagger c_I in
   let rec enumerate can_identify requestedType budget = 
     let add_node acc e l c = 

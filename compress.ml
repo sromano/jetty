@@ -141,17 +141,21 @@ let compress lambda smoothing dagger type_array requests (task_solutions : (task
     in List.map (fun p -> 
                 let a = Array.copy productions in
                 a.(p) <- true;
-		List.iter (fun q -> a.(q) <- true) @@ dependencies.(p);
-		a) new_productions
+                List.iter (fun q -> a.(q) <- true) @@ dependencies.(p);
+                a) new_productions
   in
   (* performs a greedy search *)
   let rec hill_climb productions = 
     do_jobs productions;
     let current_score = posterior productions in
     let new_scores = successors productions |> List.map (fun s -> do_jobs s; (posterior s, s)) in
-    let (new_score,new_productions) = List.fold_left (fun (s1,p1) (s2,p2) -> if s1 > s2 then (s1,p1) else (s2,p2)) (List.hd new_scores) (List.tl new_scores) in
-    if new_score > current_score
-    then hill_climb new_productions
+    if List.length new_scores > 0
+    then let (new_score,new_productions) = 
+      List.fold_left (fun (s1,p1) (s2,p2) -> if s1 > s2 then (s1,p1) else (s2,p2))
+        (List.hd new_scores) (List.tl new_scores) in
+      if new_score > current_score
+      then hill_climb new_productions
+      else productions
     else productions
   in
   let t2 = Sys.time () in

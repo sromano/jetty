@@ -240,6 +240,9 @@ let c_append = Terminal("@",
                         canonical_type @@ make_arrow (TCon("list",[t1])) @@ 
                         make_arrow (TCon("list",[t1])) @@ (TCon("list",[t1])),
                         Obj.magic @@ ref (@));;
+let c_last_one = Terminal("last-one",
+                          canonical_type @@ make_arrow (TCon("list",[t1])) t1,
+                          Obj.magic @@ ref last_one);;
 
 
 let string_of_library (log_application,distribution) = 
@@ -249,7 +252,8 @@ let string_of_library (log_application,distribution) =
      (List.map (fun (e,(w,_)) -> Printf.sprintf "\t %f \t %s " w (string_of_expression e)) 
         bindings));;
 
-let all_terminals = [c_K;c_S;c_B;c_C;c_I;c_one;c_zero;c_plus;c_times;c_null;c_append;c_cons] |> 
+let all_terminals = [c_K;c_S;c_B;c_C;c_I;c_one;c_zero;c_plus;c_times;
+                     c_null;c_append;c_cons;c_last_one] |> 
                     List.map (fun e -> (string_of_expression e,e))
 
 (* parses an expression. has to be in library because needs definitions of terminals *)

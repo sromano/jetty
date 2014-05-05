@@ -21,7 +21,7 @@ let make_polynomial_task a b c =
 	  | _ -> neg_infinity
     in t test_cases)
   in { name = n; task_type = make_arrow tint tint; score = scoring_function; }
-;;
+
 
 
 let poly () = 

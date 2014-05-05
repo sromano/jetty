@@ -33,6 +33,11 @@ let merge_a_list c ls =
 let is_invalid (x : float) = x <> x || x = infinity || x = neg_infinity;;
 let is_valid = compose not is_invalid;;
 
+let rec last_one = function
+  | [] -> raise (Failure "last_one: empty")
+  | [x] -> x
+  | x::y -> last_one y
+
 let index_of l x = 
   let rec loop a r = 
     match r with

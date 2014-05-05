@@ -39,10 +39,10 @@ type phone = Vowel of vowel | Consonant of consonant
 let make_phonetic (n : string) : string = "/"^n^"/"
 
 let make_consonant (n : string) (f : consonant) : expression = 
-  Terminal(make_phonetic n,make_ground "phone",Obj.magic @@ ref f)
+  Terminal(make_phonetic n,make_ground "phone",Obj.magic @@ ref @@ Consonant(f))
 
 let make_vowel (n : string) (v : vowel) : expression = 
-  Terminal(make_phonetic n,make_ground "phone",Obj.magic @@ ref v)
+  Terminal(make_phonetic n,make_ground "phone",Obj.magic @@ ref @@ Vowel(v))
 
 (* library entries *)
 let c_s = make_consonant "s" (Alveolar,Fricative,Unvoiced);;
@@ -54,6 +54,21 @@ let v_ae = make_vowel "ae" V_ae;;
 
 let phones = [c_s;c_z;c_t;c_d;
               v_i;v_ae;]
+
+let l_transfer_voice = Terminal("transfer-voice",
+                                make_arrow (make_ground "phone")
+                                  (make_arrow (make_ground "phone") (make_ground "phone")),
+                                Obj.magic @@ ref @@ 
+                                fun p1 p2 ->
+                                match (p1,p2) with
+                                | (Consonant(p,m,_), Consonant(_,_,v)) -> Consonant(p,m,v)
+                                | _ -> p1
+                               )
+
+let phonetic_terminals = [c_S;c_B;c_C;c_I;
+                         c_null;c_append;c_cons;c_last_one;
+                         l_transfer_voice;]
+                         @ phones
 
 (* creates a constant string of phonemes *)
 let make_phonetic (s : string) : expression = 
@@ -82,4 +97,4 @@ let test_phonetics () =
   Printf.printf "%s\n" (string_of_expression @@ make_phonetic "z");
   Printf.printf "%s\n" (string_of_expression @@ make_phonetic "ae");;
 
-test_phonetics ();;
+(* test_phonetics ();; *)

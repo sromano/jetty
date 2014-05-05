@@ -11,11 +11,20 @@ type tContext = int * tp TypeMap.t
 let empty_context = (0,TypeMap.empty);;
 let make_arrow t q = TCon("->", [t;q]);;
 
+
+let rec string_of_type t = 
+  match t with
+    TID(i) -> string_of_int i
+  | TCon(k,[]) -> k
+  | TCon(k,[p;q]) when k = "->" -> "("^(string_of_type p)^" -> "^(string_of_type q)^")"
+  | TCon(k,a) -> "("^k^" "^(String.concat " " (List.map string_of_type a))^")"
+
+
 let makeTID context = 
-    (TID(fst context), (fst context+1, snd context));;
+    (TID(fst context), (fst context+1, snd context))
 
 let bindTID i t context = 
-  (fst context, TypeMap.add i t (snd context));;
+  (fst context, TypeMap.add i t (snd context))
 
 let rec chaseType (context : tContext) (t : tp) : tp*tContext = 
     match t with
@@ -30,15 +39,15 @@ let rec chaseType (context : tContext) (t : tp) : tp*tContext =
 	  let (t_, context_) = chaseType context (TypeMap.find i (snd context)) in
 	  let substitution = TypeMap.add i t_ (snd context_) in
 	  (t_, (fst context_, substitution))
-        with Not_found -> (t,context);;
+        with Not_found -> (t,context)
 
 let rec occurs (i : int) (t : tp) : bool = 
   match t with
     TID(j) -> j == i
   | TCon(_,ts) -> 
-      List.exists (occurs i) ts;;
+      List.exists (occurs i) ts
 
-let occursCheck = true;;
+let occursCheck = true
 
 let rec unify context t1 t2 : tContext = 
   let (t1_, context_) = chaseType context t1 in
@@ -153,7 +162,7 @@ let argument_request request left =
     TCon(_,[right;result]) -> 
       let c3 = unify c2 request result in
       canonical_type (fst (chaseType c3 right))
-  | _ -> raise (Failure "invalid function type")
+  | _ -> raise (Failure ("invalid function type: "^(string_of_type left)))
 
 let function_request request = 
   canonical_type (make_arrow (TID(next_type_variable request)) request)
@@ -167,16 +176,6 @@ let t1 = TID(1);;
 let t2 = TID(2);;
 let t3 = TID(3);;
 let t4 = TID(4);;
-
-
-
-let rec string_of_type t = 
-  match t with
-    TID(i) -> string_of_int i
-  | TCon(k,[]) -> k
-  | TCon(k,[p;q]) when k = "->" -> "("^(string_of_type p)^" -> "^(string_of_type q)^")"
-  | TCon(k,a) -> "("^k^" "^(String.concat " " (List.map string_of_type a))^")"
-
 
 
 let test_type () = 
