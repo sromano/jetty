@@ -57,9 +57,10 @@ let enumerate_ID dagger library t frontier_size =
     if (IntMap.cardinal indices) < frontier_size
     then iterate (bound+.0.5)
     else
-      (Printf.printf "Type %s \t Bound %f \t  => %i / %i programs \n" (string_of_type t) bound (IntMap.cardinal indices) frontier_size;
+      (Printf.printf "Type %s \t Bound %f \t  => %i / %i programs" (string_of_type t) bound (IntMap.cardinal indices) frontier_size;
+       print_newline ();
        indices)
-  in iterate (2.0 *. log (float_of_int frontier_size))
+  in iterate (1.3 *. log (float_of_int frontier_size))
 
 
 let enumerate_frontiers_for_tasks grammar frontier_size tasks 
@@ -76,20 +77,27 @@ let enumerate_frontiers_for_tasks grammar frontier_size tasks
         ExpressionMap.mapi (fun e (w,ty) -> (get_some t.proposal e w,ty)) (snd grammar) in
       let special_grammar = (fst grammar,special_weights) in
       let special_indices = enumerate_ID dagger special_grammar t.task_type frontier_size in
-      (t.task_type, List.map fst @@ IntMap.bindings special_indices)) in
+      (t.task_type, List.fold_left (fun s i -> IntSet.add i s) IntSet.empty @@ 
+       List.map fst @@ IntMap.bindings special_indices)) in
+  let end_time = Sys.time() in
+  Printf.printf "Enumerated all programs in %f seconds." (end_time-.start_time);
+  print_newline ();
+  let start_time = Sys.time() in
   let indices = List.combine types @@ 
-    List.map (compose (List.map fst) IntMap.bindings) indices in
+    List.map (fun iDs -> List.fold_left (fun s i -> IntSet.add i s) IntSet.empty @@ 
+               List.map fst @@ IntMap.bindings iDs) indices in
   (* combines special indices with normal indices *)
   let indices = special_indices |> List.fold_left (fun i (ty,j) -> 
       i |> List.map (fun (ty2,j2) -> if ty = ty2
-                    then (ty2,remove_duplicates @@ j@j2)
+                    then (ty2,IntSet.union j j2)
                     else (ty2,j2))
     ) indices in
+  let number_of_programs = indices |> List.map snd |> List.fold_left IntSet.union IntSet.empty |> 
+                           IntSet.cardinal in
   let end_time = Sys.time() in
-  Printf.printf "Enumerated %i programs in %f seconds."
-    (List.length @@ remove_duplicates @@ List.flatten @@ List.map snd indices)
-    (end_time-.start_time); print_newline ();
-  (indices, dagger)
+  Printf.printf "Coalesced %i programs in %f seconds." number_of_programs (end_time-.start_time);
+  print_newline ();
+  (indices |> List.map (fun (t,s) -> (t,IntSet.elements s)), dagger)
 
 
 
