@@ -55,15 +55,16 @@ let enumerate_ID dagger library t frontier_size =
   let rec iterate bound = 
     let indices = enumerate_bounded dagger library t bound in
     if (IntMap.cardinal indices) < frontier_size
-    then iterate (bound+.0.4)
+    then iterate (bound+.0.5)
     else
       (Printf.printf "Type %s \t Bound %f \t  => %i / %i programs \n" (string_of_type t) bound (IntMap.cardinal indices) frontier_size;
        indices)
-  in iterate (log (float_of_int frontier_size))
+  in iterate (2.0 *. log (float_of_int frontier_size))
 
 
 let enumerate_frontiers_for_tasks grammar frontier_size tasks 
     : (tp*int list) list*expressionGraph = 
+  let start_time = Sys.time() in
   let (special_tasks,normal_tasks) = List.partition (fun t -> is_some @@ t.proposal) tasks in
   let types = remove_duplicates (List.map (fun t -> t.task_type) tasks) in
   Printf.printf "number of (normal) types: %i \n" (List.length types);
@@ -84,6 +85,10 @@ let enumerate_frontiers_for_tasks grammar frontier_size tasks
                     then (ty2,remove_duplicates @@ j@j2)
                     else (ty2,j2))
     ) indices in
+  let end_time = Sys.time() in
+  Printf.printf "Enumerated %i programs in %f seconds."
+    (List.length @@ remove_duplicates @@ List.flatten @@ List.map snd indices)
+    (end_time-.start_time); print_newline ();
   (indices, dagger)
 
 

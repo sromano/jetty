@@ -9,13 +9,17 @@ type task =
 
 
 let score_programs dagger frontiers tasks = 
-  List.map (fun task -> 
-    List.filter (compose is_valid snd)
-      (List.map (fun i -> 
-        let e = extract_expression dagger i in
-        (i,task.score e)
-                ) (List.assoc task.task_type frontiers))
-           ) tasks
+  let start_time = Sys.time() in
+  let scores = List.map (fun task -> 
+      List.filter (compose is_valid snd)
+        (List.map (fun i -> 
+             let e = extract_expression dagger i in
+             (i,task.score e)
+           ) (List.assoc task.task_type frontiers))
+    ) tasks in
+  let end_time = Sys.time() in
+  Printf.printf "Scored programs in %f seconds." (end_time-.start_time); print_newline ();
+  scores
 
 let save_best_programs f dagger task_solutions = 
   let task_solutions = task_solutions |> List.filter (fun (_,s) -> List.length s > 0) in
