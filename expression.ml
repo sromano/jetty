@@ -104,7 +104,12 @@ let rec extract_expression g i =
   | ExpressionBranch(f,x) -> 
       Application(extract_expression g f, extract_expression g x)
 
-let expression_graph_size (_,_,s) = !s;;
+let extract_node (i2n,_,_) i = 
+  try
+    Hashtbl.find i2n i
+  with Not_found -> raise (Failure "extract_node: ID not in graph")
+    
+let expression_graph_size (_,_,s) = !s
 
 let is_leaf_ID (g,_,_) i = 
   match Hashtbl.find g i with
