@@ -41,7 +41,13 @@ let lower_bound_refinement_iteration
       (List.combine tasks @@ List.map (List.filter (fun (_,s) -> is_valid s)) program_scores)
   in
   let g = compress lambda smoothing dagger type_array requests task_solutions in
+  (* save the grammar *)
   let c = open_out (prefix^"_grammar") in
   Printf.fprintf c "%s" (string_of_library g);
   close_out c;
+  (* save the best programs *)
+  let task_solutions = List.combine tasks program_scores |> List.map (fun (t,solutions) ->
+    (t, solutions |> List.map (fun (i,s) -> 
+          (i,s+. (get_some @@ likelihood_option g t.task_type (extract_expression dagger i)))))) in
+  save_best_programs (prefix^"_programs") dagger task_solutions;
   g

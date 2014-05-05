@@ -20,7 +20,7 @@ let make_polynomial_task a b c =
 	    Some(r) when r = a*x*x+b*x+c -> t xs
 	  | _ -> neg_infinity
     in t test_cases)
-  in { name = n; task_type = make_arrow tint tint; score = scoring_function; }
+  in { name = n; task_type = make_arrow tint tint; score = scoring_function; proposal = None; }
 
 
 

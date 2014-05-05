@@ -2,10 +2,10 @@ open Expression
 open Type
 open Utils
 
-
 type task = 
     { name : string; task_type : tp;
-    score : expression -> float; }
+    score : expression -> float;
+    proposal : (expression -> float -> float) option; }
 
 
 let score_programs dagger frontiers tasks = 
@@ -18,6 +18,7 @@ let score_programs dagger frontiers tasks =
            ) tasks
 
 let save_best_programs f dagger task_solutions = 
+  let task_solutions = task_solutions |> List.filter (fun (_,s) -> List.length s > 0) in
   let s = String.concat "\n" @@ List.map
           (fun (t,s) -> let (e,p) = List.tl s |> List.fold_left (fun (f,p) (g,q) -> 
                 if p > q then (f,p) else (g,q)) (List.hd s) in

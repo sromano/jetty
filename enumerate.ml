@@ -64,13 +64,27 @@ let enumerate_ID dagger library t frontier_size =
 
 let enumerate_frontiers_for_tasks grammar frontier_size tasks 
     : (tp*int list) list*expressionGraph = 
+  let (special_tasks,normal_tasks) = List.partition (fun t -> is_some @@ t.proposal) tasks in
   let types = remove_duplicates (List.map (fun t -> t.task_type) tasks) in
-  Printf.printf "number of types: %i \n" (List.length types);
+  Printf.printf "number of (normal) types: %i \n" (List.length types);
   let dagger = make_expression_graph 100000 in
   let indices = List.map (fun t -> enumerate_ID dagger grammar t frontier_size) types in
-  (List.combine types 
-  (List.map (compose (List.map fst) IntMap.bindings) indices),
-   dagger)
+  let special_indices = special_tasks |> List.map (fun t -> 
+      Printf.printf "Enumerating for task \"%s\"" t.name; print_newline ();
+      let special_weights =
+        ExpressionMap.mapi (fun e (w,ty) -> (get_some t.proposal e w,ty)) (snd grammar) in
+      let special_grammar = (fst grammar,special_weights) in
+      let special_indices = enumerate_ID dagger special_grammar t.task_type frontier_size in
+      (t.task_type, List.map fst @@ IntMap.bindings special_indices)) in
+  let indices = List.combine types @@ 
+    List.map (compose (List.map fst) IntMap.bindings) indices in
+  (* combines special indices with normal indices *)
+  let indices = special_indices |> List.fold_left (fun i (ty,j) -> 
+      i |> List.map (fun (ty2,j2) -> if ty = ty2
+                    then (ty2,remove_duplicates @@ j@j2)
+                    else (ty2,j2))
+    ) indices in
+  (indices, dagger)
 
 
 
