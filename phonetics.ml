@@ -81,7 +81,7 @@ let phonetic_neighbors p1 p2 =
   match (p1,p2) with
   | (Consonant(x1,y1,_),Consonant(x2,y2,_)) when x1 = x2 && y1 = y2 -> true
   | (Vowel(v1),Vowel(v2)) when v1 = v2 -> true
-  | _ -> true
+  | _ -> false
 
 (* creates a constant string of phonemes *)
 let make_phonetic (s : string) : expression = 
