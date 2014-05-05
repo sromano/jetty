@@ -31,7 +31,7 @@ type consonant = place * manner * voice
 
 (* vowels *)
 type vowel = 
-  V_i | V_I | V_ej | V_e | V_ae | V_ue | V_v | V_aj | V_aw | V_a | V_u | V_uu | V_ow | V_c | V_cj
+  V_i | V_I | V_ej | V_ae | V_ue | V_v | V_aj | V_aw | V_a | V_u | V_uu | V_ow | V_c | V_cj
 
 (* phonemes *)
 type phone = Vowel of vowel | Consonant of consonant
@@ -45,21 +45,49 @@ let make_vowel (n : string) (v : vowel) : expression =
   Terminal(make_phonetic n,make_ground "phone",Obj.magic @@ ref @@ Vowel(v))
 
 (* library entries *)
+let c_p = make_consonant "p" (Bilabial,Stop,Unvoiced);;
+let c_b = make_consonant "b" (Bilabial,Stop,Voiced);;
+let c_f = make_consonant "f" (LabialDental,Fricative,Unvoiced);;
+let c_v = make_consonant "v" (LabialDental,Fricative,Voiced);;
+let c_th = make_consonant "th" (Interdental,Fricative,Unvoiced);;
+let c_Th = make_consonant "Th" (Interdental,Fricative,Voiced);;
+let c_ut = make_consonant "ut" (Alveolar,Approximant,Voiced);;
+let c_q = make_consonant "?" (Glottal,Stop,Unvoiced);;
+let c_h = make_consonant "h" (Glottal,Fricative,Unvoiced);;
 let c_s = make_consonant "s" (Alveolar,Fricative,Unvoiced);;
 let c_z = make_consonant "z" (Alveolar,Fricative,Voiced);;
+let c_sh = make_consonant "sh" (AlveolarPalatal,Fricative,Unvoiced);;
+let c_zh = make_consonant "zh" (AlveolarPalatal,Fricative,Voiced);;
+let c_j = make_consonant "j" (Palatal,Approximant,Voiced);;
 let c_t = make_consonant "t" (Alveolar,Stop,Unvoiced);;
 let c_d = make_consonant "d" (Alveolar,Stop,Voiced);;
 let c_r = make_consonant "r" (Alveolar,Approximant,Voiced);;
+let c_ng = make_consonant "ng" (Velar,Nasal,Voiced);;
 let c_n = make_consonant "n" (Alveolar,Nasal,Voiced);;
+let c_m = make_consonant "m" (Bilabial,Nasal,Voiced);;
 let c_k = make_consonant "k" (Velar,Stop,Unvoiced);;
+let c_g = make_consonant "g" (Velar,Stop,Voiced);;
+let c_uw = make_consonant "uw" (Bilabial,Approximant,Unvoiced);;
 let c_w = make_consonant "w" (Bilabial,Approximant,Voiced);;
-let v_a = make_vowel "a" V_a;;
+let c_lo = make_consonant "lo" (Alveolar,LateralApproximate,Unvoiced);;
+let c_l = make_consonant "l" (Alveolar,LateralApproximate,Voiced);;
+let v_ej = make_vowel "ej" V_ej;;
 let v_ue = make_vowel "ue" V_ue;;
 let v_i = make_vowel "i" V_i;;
+let v_I = make_vowel "I" V_I;;
+let v_v = make_vowel "v" V_v;;
 let v_ae = make_vowel "ae" V_ae;;
+let v_ow = make_vowel "ow" V_ow;;
+let v_a = make_vowel "a" V_a;;
+let v_aj = make_vowel "aj" V_aj;;
+let v_aw = make_vowel "aw" V_aw;;
+let v_c = make_vowel "c" V_c;;
+let v_cj = make_vowel "cj" V_cj;;
+let v_u = make_vowel "u" V_u;;
+let v_uu = make_vowel "uu" V_uu;;
 
-let phones = [c_s;c_z;c_t;c_d;c_r;c_n;c_k;c_w;
-              v_a;v_ue;v_i;v_ae;]
+let phones = [c_s;c_z;c_t;c_d;c_r;c_n;c_m;c_k;c_g;c_w;c_l;
+              v_a;v_ej;v_ue;v_i;v_ae;v_ow;]
 
 let l_transfer_voice = Terminal("transfer-voice",
                                 make_arrow (make_ground "phone")
