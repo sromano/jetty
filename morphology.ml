@@ -5,6 +5,8 @@ open Library
 open Expression
 open Type
 open Utils
+open Symbolic_dimensionality_reduction
+
 
 let make_word_task word = 
   let correct_phones : phone list = run_expression @@ make_phonetic word in
@@ -25,22 +27,32 @@ let make_word_task word =
 
 
 let morphology () = 
-  let g = ref @@ make_flat_library @@ phonetic_terminals in
+  let lambda = 2.0 in
+  let alpha = 1. in
+  let frontier_size = 20000 in
+(*   let g = ref @@ make_flat_library @@ phonetic_terminals in *)
+  let g = ref @@ load_library "log/iter_5_grammar" in
   let tasks = 
-    ["i t";"i t s";
-     "ej m";"ej m z";
-     "ej k";"ej k s";
-     "ej g";"ej g z";
-     "ow t";"ow t s";
-     "i l";"i l z";
+    [(* "i t"; *)"i t s";
+     (* "ej m"; *)"ej m z";
+     (* "ej k"; *)"ej k s";
+     (* "ej g"; *)"ej g z";
+     (* "ow t"; *)"ow t s";
+     (* "ow d"; *)"ow d z";
+     (* "i l"; *)"i l z";
 (* "d ae d";"d ae d z";
      "r ue n";"r ue n z";"w a k";"w a k s"; *)
     ] |> List.map make_word_task in
-  for i = 1 to 15 do
+(*   for i = 1 to 5 do
     Printf.printf "\n \n \n Iteration %i \n" i;
-    let g1 = lower_bound_refinement_iteration ("log/iter_"^string_of_int i) 0.15 1.0 20000 tasks (!g) in
+    let g1 = lower_bound_refinement_iteration ("log/iter_"^string_of_int i)
+        lambda alpha frontier_size tasks (!g) in
     g := g1
-  done
+  done;
+ *)
+  let decoder =
+    reduce_symbolically (make_flat_library @@ phonetic_terminals) !g frontier_size tasks in
+  Printf.printf "Decoder: %s\n" (string_of_expression decoder)
 ;;
 
 

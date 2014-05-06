@@ -91,18 +91,20 @@ let phones = [c_s;c_z;c_t;c_d;c_r;c_n;c_m;c_k;c_g;c_w;c_l;
 
 let l_transfer_voice = Terminal("transfer-voice",
                                 make_arrow (make_ground "phone")
-                                  (make_arrow (make_ground "phone") (make_ground "phone")),
+                                  (make_arrow (make_ground "phone") (TCon("list",[(make_ground "phone")]))),
                                 Obj.magic @@ ref @@ 
                                 fun p1 p2 ->
                                 match (p1,p2) with
-                                | (Consonant(p,m,_), Consonant(_,_,v)) -> Consonant(p,m,v)
-                                | _ -> p1
-                               )
+                                | (Consonant(p,m,_), Consonant(_,_,v)) -> [Consonant(p,m,v)]
+                                | _ -> [p2]
+                               );;
 
 let phonetic_terminals = [c_S;c_B;c_C;c_I;
                          c_null;c_append;c_cons;c_last_one;
                          l_transfer_voice;]
-                         @ phones
+                         @ phones;;
+register_terminals phonetic_terminals;;
+
 
 (* are 2 phonemes similar enough that we should consider using one to search for the other? *)
 let phonetic_neighbors p1 p2 = 

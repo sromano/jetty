@@ -10,6 +10,9 @@ let is_some = function
 let get_some = function
   | Some(x) -> x
   | _ -> raise (Failure "get_some");;
+let safe_get_some message = function
+  | Some(x) -> x
+  | _ -> raise (Failure message);;
 
 
 let hash_bindings h = 
@@ -80,4 +83,10 @@ let hash_bindings h =
 let (--) i j = 
   let rec aux n acc =
     if n < i then acc else aux (n-1) (n :: acc)
-  in aux j [] ;;
+  in aux j []
+
+let time_it description callback = 
+  let start_time = Sys.time () in
+  let return_value = callback () in
+  Printf.printf "%s in %f seconds." description (Sys.time () -. start_time); print_newline ();
+  return_value

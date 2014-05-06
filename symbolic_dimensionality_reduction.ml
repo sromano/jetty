@@ -2,6 +2,9 @@ open Expression
 open Type
 open Library
 open Utils
+open Task
+open Enumerate
+
 
 let get_decoders dagger i : (int * int list) list = 
   let rec decoders arguments j = 
@@ -16,11 +19,17 @@ let decoder_argument_likelihood grammar decoder decoder_type requested_type argu
     match a with
     | [] -> raise (Failure "decoder_argument_likelihood: no arguments")
     | [b] -> (* WARNING: assumes that requested_type has no type variables *)
-      get_some @@ likelihood_option grammar (make_arrow dt requested_type) b
+      let r = argument_request requested_type dt in
+      safe_get_some ("decoder_argument_likelihood: base case "^(string_of_expression b)^
+                     " : "^(string_of_type r)) @@ 
+      likelihood_option grammar r b
     | b::bs -> 
       let b_type = infer_type b in
-      let request = make_arrow dt @@ TID(next_type_variable dt) in
-      let b_likelihood = get_some @@ likelihood_option grammar request b in
+      let next_type = next_type_variable dt in
+      let request = argument_request (make_arrow (TID(next_type)) (TID(next_type+1))) dt in
+      let b_likelihood = safe_get_some ("decoder_argument_likelyhood: inductive step "^
+                                        (string_of_expression b)^" : "^(string_of_type request)) @@
+        likelihood_option grammar request b in
       let bs_likelihood = argument_likelihood (application_type dt b_type) bs in
       b_likelihood+.bs_likelihood
   in argument_likelihood decoder_type arguments
@@ -29,7 +38,8 @@ let decoder_posterior dagger grammar solutions decoder =
   let decoder = extract_expression dagger decoder in
   let decoder_type = infer_type decoder in
   let prior =
-    get_some @@ likelihood_option grammar (make_arrow t1 t2) decoder in
+    safe_get_some "decoder_posterior: prior" @@ 
+    likelihood_option grammar (make_arrow t1 t2) decoder in
   let likelihood = solutions |> List.fold_left (fun l (t,arguments) -> 
       let a = List.map (List.map (extract_expression dagger)) arguments in
       let a_likes = a |> List.map (decoder_argument_likelihood grammar decoder decoder_type t) in
@@ -50,3 +60,15 @@ let best_decoder dagger grammar (solutions : (tp * int list) list) : int =
   List.map (fun d -> let solutions = decoders |> List.map (fun (t,s) -> 
     (t,s |> List.filter (fun (f,_) -> f = d) |> List.map snd)) in
              (decoder_posterior dagger grammar solutions d,d)) final_decoders
+
+let reduce_symbolically base_grammar posterior_grammar frontier_size tasks = 
+  let (frontiers,dagger) = enumerate_frontiers_for_tasks posterior_grammar frontier_size tasks in
+  print_string "Scoring programs...";
+  print_newline ();
+  let program_scores = score_programs dagger frontiers tasks in
+  let task_solutions = List.filter (fun (_,s) -> List.length s > 0)
+      (List.combine (tasks |> List.map (fun t -> t.task_type)) @@ 
+       List.map (compose (List.map fst) @@ List.filter (fun (_,s) -> is_valid s)) program_scores)
+  in 
+  let d = time_it "Found decoder" (fun () -> best_decoder dagger base_grammar task_solutions) in
+  extract_expression dagger d

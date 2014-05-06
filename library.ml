@@ -78,7 +78,9 @@ let likelihood_option (log_application,library) request e =
       with Not_found -> (application_likelihood, application_type f_type x_type)
   in try
     Some(fst @@ l e request)
-  with _ -> None
+  with Not_found -> 
+    raise (Failure ("likelihood_option: unknown terminal in "^(string_of_expression e)))
+  | _ -> None
     
         
 
@@ -252,9 +254,13 @@ let string_of_library (log_application,distribution) =
      (List.map (fun (e,(w,_)) -> Printf.sprintf "\t %f \t %s " w (string_of_expression e)) 
         bindings));;
 
-let all_terminals = [c_K;c_S;c_B;c_C;c_I;c_one;c_zero;c_plus;c_times;
-                     c_null;c_append;c_cons;c_last_one] |> 
-                    List.map (fun e -> (string_of_expression e,e))
+let all_terminals = ref ([c_K;c_S;c_B;c_C;c_I;c_one;c_zero;c_plus;c_times;
+                          c_null;c_append;c_cons;c_last_one] |> 
+                         List.map (fun e -> (string_of_expression e,e)));;
+let register_terminal t = 
+  all_terminals := (string_of_expression t,t) :: !all_terminals;;
+let register_terminals = List.iter register_terminal;;
+
 
 (* parses an expression. has to be in library because needs definitions of terminals *)
 let expression_of_string s = 
@@ -277,10 +283,29 @@ let expression_of_string s =
                 if name.[0] = '?'
                 then Terminal(name,t1,ref ())
                 else try
-                  List.assoc name all_terminals
+                  List.assoc name !all_terminals
                 with Not_found -> raise (Failure ("not in all_terminals: "^name))))
     else raise (Failure ("expression_of_string: "^s))
   in read ()
+
+let load_library f = 
+  let i = open_in f in
+  let log_application = float_of_string @@ input_line i in
+  let productions = ref [] in
+  try
+    while true do
+      let l = String.trim @@ input_line i in
+      let weight_index = String.index l ' ' in
+      let w = float_of_string @@ String.sub l 0 weight_index in
+      let e = expression_of_string @@ String.trim @@ 
+        String.sub l weight_index (String.length l - weight_index) in
+      productions := (e,w) :: !productions
+    done; (0.,ExpressionMap.empty)
+  with End_of_file -> 
+    (log log_application, !productions |> 
+    List.fold_left (fun a (e,w) -> ExpressionMap.add e (w,infer_type e) a) ExpressionMap.empty)
+
+
 
 let test_library () = 
   ["I";"((C +) 1)";"(K (+ (0 S)))"] |> List.map 
