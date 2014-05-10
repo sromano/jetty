@@ -55,23 +55,27 @@ let lse x y =
   if x > y
   then x +. log (1.0 +. exp (y-.x))
   else y +. log (1.0 +. exp (x-.y))
-;;
+
 
 let lse_list l = 
-  List.fold_left lse neg_infinity l;;
+  List.fold_left lse neg_infinity l
 
+(* log difference exponential: log(e^x - e^y) = x+log(1-e^(y-x)) *)
+let lde x y = 
+  assert(x >= y);
+  x +. log (1. -. exp (y-.x))
 
 let rec remove_duplicates l = 
   match l with
     [] -> []
-  | (x::y) -> x::(List.filter (fun z -> not (z = x)) (remove_duplicates y));;
+  | (x::y) -> x::(List.filter (fun z -> not (z = x)) (remove_duplicates y))
 
 
 let combine_with f _ a b = 
   match (a,b) with
     (None,_) -> b
   | (_,None) -> a
-  | (Some(x),Some(y)) -> Some(f x y);;
+  | (Some(x),Some(y)) -> Some(f x y)
 
 
 let hash_bindings h = 

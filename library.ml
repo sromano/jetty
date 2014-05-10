@@ -86,7 +86,7 @@ let likelihood_option (log_application,library) request e =
 
 (* tracks the number of times that each production has been used, or could have been used *)
 type useCounts = { 
-    application_counts : float; terminal_counts : float;
+    mutable application_counts : float; mutable terminal_counts : float;
     use_counts : float array; possible_counts : float array;
   }
 
