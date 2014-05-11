@@ -86,8 +86,9 @@ let v_cj = make_vowel "cj" V_cj;;
 let v_u = make_vowel "u" V_u;;
 let v_uu = make_vowel "uu" V_uu;;
 
-let phones = [c_s;c_z;c_t;c_d;c_r;c_n;c_m;c_k;c_g;c_w;c_l;
-              v_a;v_ej;v_ue;v_i;v_ae;v_ow;]
+let phones = [c_s;c_z;c_t;c_d;c_r;c_n;c_m;c_k;c_g;c_w;c_l;c_p;c_b;c_f;c_v;c_th;c_Th;c_ut;c_q;c_h;
+              c_sh;c_zh;c_j;c_ng;c_uw;c_lo;
+              v_a;v_ej;v_ue;v_i;v_ae;v_ow;v_I;v_v;v_aj;v_aw;v_c;v_u;v_uu;]
 
 let l_transfer_voice = Terminal("transfer-voice",
                                 make_arrow (make_ground "phone")
