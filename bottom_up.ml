@@ -9,8 +9,28 @@ module PQ = Set.Make
      let compare = compare
    end)
 
+let rec combine_wildcards dagger i j = 
+  if i = j then Some(j) else
+  match extract_node dagger i with
+  | ExpressionLeaf(Terminal("?",_,_)) -> Some(j)
+  | ExpressionLeaf(Terminal(n,_,_)) -> (
+    match extract_node dagger j with
+    | ExpressionLeaf(Terminal("?",_,_)) -> Some(i)
+    | _ -> None)
+  | ExpressionBranch(l,r) -> (
+    match extract_node dagger j with
+    | ExpressionBranch(m,n) -> (
+        match combine_wildcards dagger m l with
+        | None -> None
+        | Some(a) -> (
+          match combine_wildcards dagger r n with
+          | None -> None
+          | Some(b) -> Some(insert_expression_node dagger (ExpressionBranch(a,b)))))
+    | ExpressionLeaf(Terminal("?",_,_)) -> Some(i)
+    | _ -> None)
+  | ExpressionLeaf(_) -> raise (Failure "leaf not terminal in wildcards")
 
-let match_template (i2n,_,_) template i = 
+let match_template dagger template i = 
   let bindings = ref [] in
   let rec m t j = 
     match t with
@@ -19,19 +39,25 @@ let match_template (i2n,_,_) template i =
         let name_ID = int_of_string @@ String.sub name 1 (String.length name - 1) in
         try
           let k = List.assoc name_ID !bindings in
-          k = j
+          match combine_wildcards dagger j k with
+          | None -> false
+          | Some(c) -> begin
+            bindings := !bindings |> List.map (fun (i,l) -> 
+                (i, if i = name_ID then c else l));
+            true
+          end
         with _ -> (bindings := (name_ID,j) :: !bindings; true)
       end
     | Application(f,x) -> begin
         try
-          match Hashtbl.find i2n j with
+          match extract_node dagger j with
           | ExpressionLeaf(_) -> false
           | ExpressionBranch(f_,x_) -> m f f_ && m x x_
         with _ -> raise (Failure "match_template, ID not in graph")
       end
     | Terminal(name,_,_) -> begin
         try
-          match Hashtbl.find i2n j with
+          match extract_node dagger j with
           | ExpressionLeaf(Terminal(name_,_,_)) -> name == name_
           | _ -> false
         with _ -> raise (Failure "match_template, ID not in graph")
