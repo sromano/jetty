@@ -14,6 +14,7 @@ let match_template (i2n,_,_) template i =
   let bindings = ref [] in
   let rec m t j = 
     match t with
+    | Terminal("?",_,_) -> true
     | Terminal(name,_,_) when name.[0] = '?' -> begin
         let name_ID = int_of_string @@ String.sub name 1 (String.length name - 1) in
         try
@@ -42,7 +43,7 @@ let match_template (i2n,_,_) template i =
 let apply_template template bindings = 
   let rec apply t = 
     match t with
-    | Terminal(name,_,_) when name.[0] = '?' -> begin
+    | Terminal(name,_,_) when name.[0] = '?' && String.length name > 1 -> begin
         let name_ID = int_of_string @@ String.sub name 1 (String.length name - 1) in
         try
           List.nth bindings name_ID
@@ -100,6 +101,8 @@ let c_rewrite = (expression_of_string "((?0 ?1) ?2)",
                  apply_template (expression_of_string "(((C ?0) ?2) ?1)"));;
 let s_rewrite = (expression_of_string "((?0 ?2) (?1 ?2))",
                  apply_template (expression_of_string "(((S ?0) ?1) ?2)"));;
+let k_rewrite = (expression_of_string "?0",
+                 apply_template (expression_of_string "((K ?0) ?)"));;
 let append_rewrite1 = (expression_of_string "?0",
                        apply_template @@ expression_of_string "((@ null) ?0)");;
 let append_rewrite2 = (expression_of_string "((cons ?0) ((@ ?1) ?2))",
@@ -107,14 +110,15 @@ let append_rewrite2 = (expression_of_string "((cons ?0) ((@ ?1) ?2))",
 
 let test_backwards () = 
   let dagger = make_expression_graph 1000 in
-  snd polynomial_library |> ExpressionMap.bindings |> List.iter (fun (e,_) -> 
+  let l = make_flat_library [c_S;c_B;c_C;c_I;c_K;c_append;c_cons;c_null;c_one;] in
+  snd l |> ExpressionMap.bindings |> List.iter (fun (e,_) -> 
     ignore(insert_expression dagger e));
   let rewrites = 
-    [i_rewrite; b_rewrite;c_rewrite;s_rewrite;append_rewrite1;append_rewrite2;]
+    [i_rewrite; b_rewrite;c_rewrite;s_rewrite;append_rewrite1;append_rewrite2;k_rewrite;]
   in
-  backward_enumerate dagger polynomial_library rewrites 1000 t1
+  backward_enumerate dagger l rewrites 1000 t1
     (insert_expression dagger @@ expression_of_string "1") |> List.iter (fun (_,e) -> 
     Printf.printf "%s\n" @@ string_of_expression @@ extract_expression dagger e);;
 
 
-(* test_backwards ();; *)
+test_backwards ();;

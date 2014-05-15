@@ -24,7 +24,7 @@ let top_nouns = [
   "w a t ue r";
   "s ow p";
   "d c r";
-  "b e b i";
+  "b ej b i";
   "b ae th";
   "b ue r d";
   "h c r s";

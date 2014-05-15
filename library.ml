@@ -61,6 +61,7 @@ let likelihood_option (log_application,library) request e =
     List.map (fun (_,(l,t)) -> (t,l)) (ExpressionMap.bindings library) in
   let rec l q r = 
     match q with
+    | Terminal(n,t,_) when n.[0] = '?' -> (0.,t) (* wildcard *)
     | Terminal(_,t,_) -> 
       let log_probability = fst @@ ExpressionMap.find q library in
       let z = lse_list @@ List.map snd @@ 
