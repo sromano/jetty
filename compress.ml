@@ -43,7 +43,7 @@ let candidate_fragments dagger solutions =
     with _ -> () (* no more tasks *)
   in 
   get_fragments (List.hd fragments) (List.tl fragments);
-  hash_bindings candidates |> List.map fst
+  hash_bindings candidates |> List.map fst |> List.filter (compose not @@ is_leaf_ID dagger)
 
 (* equivalent of a null pointer *)
 let no_job_ID = -1    
@@ -81,7 +81,7 @@ let compute_job_IDs dagger type_array terminals candidates requests =
           left_child := !left_child @ [left_job];
           right_child := !right_child @ [right_job]);
       candidate_index := !candidate_index @
-        [List.map snd @@ List.filter (fun (c,j) -> can_match_wildcards dagger i j) candidates];
+        [List.map snd @@ List.filter (fun (c,_) -> can_match_wildcards dagger i c) candidates];
       terminal_conflicts := !terminal_conflicts @
         [float_of_int @@ List.length @@ (terminals |> 
         List.filter (fun t -> can_unify type_array.(t) request))];
@@ -152,9 +152,9 @@ let compress lambda smoothing dagger type_array requests (task_solutions : (task
         else neg_infinity
       in let terminal =
         let number_library_hits = candidate_index.(j) |> List.fold_left (fun a h -> 
-          if productions.(h) then 1.+.a else a) 0. in
-        if not has_children.(j) || number_library_hits > 0.
-        then number_library_hits -. log2 -.
+          if productions.(h) then 1.+.a else a) (if has_children.(j) then 0. else 1.) in
+        if number_library_hits > 0.
+        then log number_library_hits -. log2 -.
             log (List.fold_left (fun a k -> 
               if productions.(k) then a+.1. else a
                                 ) terminal_conflicts.(j) candidate_conflicts.(j))
