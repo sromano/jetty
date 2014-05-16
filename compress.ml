@@ -3,6 +3,48 @@ open Type
 open Library
 open Utils
 open Task
+open Bottom_up
+
+
+(* finds all of the fragments we might consider adding to the grammar
+this can handle the case when the programs have wildcards in them 
+the fragments we consider adding should never have wildcards in them
+a fragment without wildcards is included when it occurs in a different task,
+possibly with wildcards.
+if 2 fragments from different tasks unify to a grounded expression,
+that grounded expression gets included as a fragment.
+*)
+let candidate_fragments dagger solutions = 
+  (* for each task, collect up all the fragments into a set *)
+  let fragments = solutions |> List.map (IntSet.empty |> List.fold_left (fun a i -> 
+    IntSet.union a @@ get_sub_IDs dagger i)) in
+  (* record candidates in place *)
+  let candidates = Hashtbl.create 10000 in
+  let rec get_fragments head_task other_tasks = 
+    try (* next 2 lines will throw exception once we're done *)
+      let next_head = List.hd other_tasks
+      and next_tail = List.tl other_tasks in
+      (* loop over every solution to the head task;
+         collect up the fragments and check to see if they should be included *)
+      head_task |> IntSet.iter (fun fragment -> 
+          if Hashtbl.mem candidates fragment then () else 
+          let wild = has_wildcards dagger fragment in
+          other_tasks |> List.iter (IntSet.iter (fun other_fragment -> 
+              if wild || has_wildcards dagger other_fragment
+              then match combine_wildcards dagger fragment other_fragment with
+                | Some(union_fragment) when (not (Hashtbl.mem candidates union_fragment)
+                                             && not (has_wildcards dagger union_fragment)) -> 
+                  Hashtbl.add candidates union_fragment true
+                | _ -> ()
+              else if fragment = other_fragment && not (Hashtbl.mem candidates fragment)
+                        then Hashtbl.add candidates fragment true
+            )));
+      get_fragments next_head next_tail
+    with _ -> () (* no more tasks *)
+  in 
+  get_fragments (List.hd fragments) (List.tl fragments);
+  hash_bindings candidates |> List.map fst
+    
 
 let compute_job_IDs dagger type_array terminals candidates requests =
   let (i2n,_,_) = dagger in

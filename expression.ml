@@ -123,6 +123,12 @@ let rec get_sub_IDs g i =
   | ExpressionBranch(f,x) -> 
       IntSet.add i (IntSet.union (get_sub_IDs g f) (get_sub_IDs g x))
 
+let rec has_wildcards dagger i = 
+  match extract_node dagger i with
+  | ExpressionBranch(f,x) -> has_wildcards dagger f || has_wildcards dagger x
+  | ExpressionLeaf(Terminal("?",_,_)) -> true
+  | _ -> false
+
 (* performs type inference upon the entire graph of expressions *)
 (* returns an array whose ith element is the type of the ith expression *)
 let infer_graph_types dagger = 
