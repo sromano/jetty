@@ -9,26 +9,6 @@ module PQ = Set.Make
      let compare = compare
    end)
 
-let rec combine_wildcards dagger i j = 
-  if i = j then Some(j) else
-  match extract_node dagger i with
-  | ExpressionLeaf(Terminal("?",_,_)) -> Some(j)
-  | ExpressionLeaf(Terminal(n,_,_)) -> (
-    match extract_node dagger j with
-    | ExpressionLeaf(Terminal("?",_,_)) -> Some(i)
-    | _ -> None)
-  | ExpressionBranch(l,r) -> (
-    match extract_node dagger j with
-    | ExpressionBranch(m,n) -> (
-        match combine_wildcards dagger m l with
-        | None -> None
-        | Some(a) -> (
-          match combine_wildcards dagger r n with
-          | None -> None
-          | Some(b) -> Some(insert_expression_node dagger (ExpressionBranch(a,b)))))
-    | ExpressionLeaf(Terminal("?",_,_)) -> Some(i)
-    | _ -> None)
-  | ExpressionLeaf(_) -> raise (Failure "leaf not terminal in wildcards")
 
 let match_template dagger template i = 
   let bindings = ref [] in

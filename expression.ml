@@ -123,11 +123,52 @@ let rec get_sub_IDs g i =
   | ExpressionBranch(f,x) -> 
       IntSet.add i (IntSet.union (get_sub_IDs g f) (get_sub_IDs g x))
 
+let is_wildcard dagger i = 
+  match extract_node dagger i with
+  | ExpressionLeaf(Terminal(n,_,_)) when n.[0] = '?' -> true
+  | _ -> false
+
 let rec has_wildcards dagger i = 
   match extract_node dagger i with
   | ExpressionBranch(f,x) -> has_wildcards dagger f || has_wildcards dagger x
   | ExpressionLeaf(Terminal("?",_,_)) -> true
   | _ -> false
+
+(* checks to see if the target could be matched to the template *)
+let rec can_match_wildcards dagger template target = 
+  if template = target then true else 
+  match extract_node dagger template with
+  | ExpressionLeaf(Terminal(n,_,_)) when n.[0] = '?' -> true
+  | ExpressionLeaf(_) -> false
+  | ExpressionBranch(template_function,template_argument) -> begin
+    match extract_node dagger target with
+    | ExpressionBranch(target_function,target_argument) -> 
+      can_match_wildcards dagger template_function target_function && 
+      can_match_wildcards dagger template_argument target_argument
+    | _ -> false
+  end
+
+let rec combine_wildcards dagger i j = 
+  if i = j then Some(j) else
+  match extract_node dagger i with
+  | ExpressionLeaf(Terminal("?",_,_)) -> Some(j)
+  | ExpressionLeaf(Terminal(n,_,_)) -> (
+    match extract_node dagger j with
+    | ExpressionLeaf(Terminal("?",_,_)) -> Some(i)
+    | _ -> None)
+  | ExpressionBranch(l,r) -> (
+    match extract_node dagger j with
+    | ExpressionBranch(m,n) -> (
+        match combine_wildcards dagger m l with
+        | None -> None
+        | Some(a) -> (
+          match combine_wildcards dagger r n with
+          | None -> None
+          | Some(b) -> Some(insert_expression_node dagger (ExpressionBranch(a,b)))))
+    | ExpressionLeaf(Terminal("?",_,_)) -> Some(i)
+    | _ -> None)
+  | ExpressionLeaf(_) -> raise (Failure "leaf not terminal in wildcards")
+  
 
 (* performs type inference upon the entire graph of expressions *)
 (* returns an array whose ith element is the type of the ith expression *)

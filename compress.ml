@@ -3,7 +3,7 @@ open Type
 open Library
 open Utils
 open Task
-open Bottom_up
+
 
 
 (* finds all of the fragments we might consider adding to the grammar
@@ -44,7 +44,9 @@ let candidate_fragments dagger solutions =
   in 
   get_fragments (List.hd fragments) (List.tl fragments);
   hash_bindings candidates |> List.map fst
-    
+
+(* equivalent of a null pointer *)
+let no_job_ID = -1    
 
 let compute_job_IDs dagger type_array terminals candidates requests =
   let (i2n,_,_) = dagger in
@@ -60,14 +62,15 @@ let compute_job_IDs dagger type_array terminals candidates requests =
   let terminal_conflicts = ref [] in
   let candidate_conflicts = ref [] in
   let rec make_job i request = 
+    if is_wildcard dagger i then no_job_ID else
     try
       Hashtbl.find jobs (i,request) 
     with Not_found -> 
       (match Hashtbl.find i2n i with
         ExpressionLeaf(Terminal(_,_,_)) -> 
           has_children := !has_children @ [false];
-          left_child := !left_child @ [0];
-          right_child := !right_child @ [0]
+          left_child := !left_child @ [no_job_ID];
+          right_child := !right_child @ [no_job_ID]
       | ExpressionLeaf(_) -> raise (Failure "leaf not terminal")
       | ExpressionBranch(l,r) -> 
           let left_request = canonical_type (make_arrow (TID(next_type_variable request)) request) in
@@ -78,7 +81,7 @@ let compute_job_IDs dagger type_array terminals candidates requests =
           left_child := !left_child @ [left_job];
           right_child := !right_child @ [right_job]);
       candidate_index := !candidate_index @
-        [try List.assoc i candidates with _ -> -1];
+        [List.map snd @@ List.filter (fun (c,j) -> can_match_wildcards dagger i j) candidates];
       terminal_conflicts := !terminal_conflicts @
         [float_of_int @@ List.length @@ (terminals |> 
         List.filter (fun t -> can_unify type_array.(t) request))];
@@ -110,21 +113,8 @@ let compress lambda smoothing dagger type_array requests (task_solutions : (task
   (* request might have spurious request for programs that don't solve any tasks *)
   let requests = requests |> IntMap.filter (fun i _ -> task_solutions |> 
   List.exists (fun (_,s) -> s |> List.exists (fun (j,_) -> j = i))) in
-  (* find the productions that are used in more than one task *)
-  let task_uses = task_solutions |> List.map (fun (_,solutions) -> 
-    solutions |> List.fold_left (fun a (i,_) -> 
-      IntSet.union a @@ get_sub_IDs dagger i
-                                ) IntSet.empty 
-                                             ) in
-  let task_counts = List.fold_left (fun counts uses -> 
-    IntSet.fold (fun i a -> 
-      try
-        let old_count = IntMap.find i a in
-        IntMap.add i (old_count+1) a
-      with Not_found -> IntMap.add i 1 a
-                ) uses counts
-                                   ) IntMap.empty task_uses in
-  let candidates = List.map fst (IntMap.bindings task_counts |> List.filter (fun (i,c) -> c > 1 && not (is_leaf_ID dagger i))) in
+  let candidates = task_solutions |> List.map (compose (List.map fst) snd) |>
+                   candidate_fragments dagger in
   Printf.printf "Found %i candidate productions \n" (List.length candidates);
   (* compute the dependencies of each candidate *)
   let dependencies =
@@ -152,14 +142,19 @@ let compress lambda smoothing dagger type_array requests (task_solutions : (task
     for j = 0 to (number_jobs-1) do
       let application = 
         if has_children.(j)
-        then -.log2 +. 
-            job_likelihoods.(left_child.(j)) +.
-            job_likelihoods.(right_child.(j))
+        then let left_index = left_child.(j)
+             and right_index = right_child.(j) in
+             let left_likelihood = 
+               if left_index = no_job_ID then 0. else job_likelihoods.(left_index)
+             and right_likelihood = 
+               if right_index = no_job_ID then 0. else job_likelihoods.(right_index) in
+             -.log2 +. left_likelihood +. right_likelihood
         else neg_infinity
       in let terminal =
-        if not has_children.(j) || 
-            (candidate_index.(j) > -1 && productions.(candidate_index.(j)))
-        then -.log2 -.
+        let number_library_hits = candidate_index.(j) |> List.fold_left (fun a h -> 
+          if productions.(h) then 1.+.a else a) 0. in
+        if not has_children.(j) || number_library_hits > 0.
+        then number_library_hits -. log2 -.
             log (List.fold_left (fun a k -> 
               if productions.(k) then a+.1. else a
                                 ) terminal_conflicts.(j) candidate_conflicts.(j))
