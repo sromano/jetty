@@ -1,6 +1,8 @@
 open Expression
 open Type
 open Library
+open Bottom_up
+
 
 (* consonants *)
 
@@ -97,6 +99,7 @@ let l_transfer_voice = Terminal("transfer-voice",
                                 fun p1 p2 ->
                                 match (p1,p2) with
                                 | (Consonant(p,m,_), Consonant(_,_,v)) -> [Consonant(p,m,v)]
+                                | (Consonant(p,m,_), Vowel(_)) -> [Consonant(p,m,Voiced)]
                                 | _ -> [p2]
                                );;
 
@@ -105,6 +108,32 @@ let phonetic_terminals = [c_S;c_B;c_C;c_I;
                          l_transfer_voice;]
                          @ phones;;
 register_terminals phonetic_terminals;;
+
+let terminal_phone (p : phone) = 
+  try
+    phones |> List.find (fun q -> p = !(Obj.magic @@ terminal_thing q))
+  with _ -> raise (Failure "terminal_phone: unknown phone")
+  
+
+(* bottom-up rewrite rules *)
+let transfer_voice_rewrites = 
+  let transfer : phone -> phone -> phone list =
+    !(Obj.magic @@ terminal_thing @@ l_transfer_voice) in
+  (* target will lose its voice *)
+  let target = phones |> List.filter (fun phone -> 
+      match !(Obj.magic @@ terminal_thing phone) with
+      | Consonant(_) -> true
+      | Vowel(_) -> false) in
+  (* exemplars are of the form (target,voice,output) *)
+  let exemplars = List.flatten @@ List.map (fun t -> 
+      phones |> List.map (fun v -> (t,v,transfer !(Obj.magic t) !(Obj.magic v)))) target in
+  (* only keep the ones that include legal phones; then it makes rewrite rules *)
+  exemplars |> List.filter (fun (t,v,o) -> phones |> List.exists (fun p -> 
+    List.hd o = !(Obj.magic @@ terminal_thing p))) |> 
+  List.map (fun (t,v,o) -> (Application(Application(c_cons,terminal_phone @@ List.hd o),c_null),
+                           apply_template (Application(Application(l_transfer_voice,
+                                                                   t),
+                                                       v))))
 
 
 (* are 2 phonemes similar enough that we should consider using one to search for the other? *)

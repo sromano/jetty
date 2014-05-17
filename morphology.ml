@@ -32,11 +32,8 @@ let top_nouns = [
 ]
 
 let make_word_task word = 
-  let correct_phones : phone list = run_expression @@ make_phonetic word in
-  let scoring_function = (fun e -> 
-    match run_expression_for_interval 0.03 e with
-    | Some(phones) when phones = correct_phones -> 0.0
-    | _ -> neg_infinity) in
+  let e = make_phonetic word in
+  let correct_phones : phone list = run_expression e in
   let prop = (fun e w -> 
     match e with
     | Terminal(_,TCon("phone",[]),p) -> 
@@ -46,7 +43,7 @@ let make_word_task word =
     else w-.10000.
     | _ -> w) in  
   { name = word; task_type = TCon("list",[make_ground "phone"]); 
-    score = scoring_function; proposal = Some(prop); }
+    score = Seed(e); proposal = Some(prop); }
 
 
 let morphology () = 

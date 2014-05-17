@@ -27,6 +27,10 @@ let terminal_type e =
   | Terminal(_,t,_) -> t
   | _ -> raise (Failure "terminal_type: not a terminal")
 
+let terminal_thing e = 
+  match e with
+  | Terminal(_,_,t) -> t
+  | _ -> raise (Failure "terminal_thing: not a terminal")
 
 let rec run_expression (e:expression) : 'a = 
   match e with

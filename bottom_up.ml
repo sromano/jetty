@@ -2,6 +2,8 @@ open Expression
 open Type
 open Utils
 open Library
+open Task
+open Compress
 
 module PQ = Set.Make
   (struct
@@ -92,8 +94,8 @@ let backward_enumerate dagger grammar rewrites size request i =
          opened := PQ.remove next !opened;
          backward_children dagger grammar request rewrites (snd next) |> 
          List.iter (fun (j,l) -> let c = (l,j) in
-                   if PQ.mem c !closed then ()
-                   else begin
+                   if not (PQ.mem c !closed)
+                   then begin
                      closed := PQ.add c !closed;
                      opened := PQ.add c !opened
                    end);
@@ -114,6 +116,45 @@ let append_rewrite1 = (expression_of_string "?0",
 let append_rewrite2 = (expression_of_string "((cons ?0) ((@ ?1) ?2))",
                       apply_template @@ expression_of_string "((@ ((cons ?0) ?1)) ?2)");;
 
+let backward_iteration
+    prefix lambda smoothing frontier_size rewrites
+    tasks grammar = 
+  let dagger = make_expression_graph 100000 in
+  let frontiers = tasks |> List.map (fun t -> 
+    Printf.printf "Enumerating (backwards) for %s..." t.name;
+    print_newline ();
+    let i = insert_expression dagger @@ match t.score with
+      | Seed(s) -> s
+      | LogLikelihood(_) -> raise (Failure "backward_iteration: task has no seed") in
+    backward_enumerate dagger grammar rewrites frontier_size t.task_type i) in
+  let type_array = infer_graph_types dagger in  
+  let requests = List.fold_left2 (fun requests frontier t -> 
+      let requested_type = t.task_type in
+      List.fold_left (fun (a : (tp list) IntMap.t) (i : int) -> 
+          try
+	    let old = IntMap.find i a in
+	    if List.mem requested_type old
+	    then a else IntMap.add i (requested_type::old) a
+          with Not_found -> IntMap.add i [requested_type] a
+	) requests frontier
+    ) IntMap.empty (List.map (List.map snd) frontiers) tasks
+  in
+  let task_solutions = List.combine tasks @@ 
+    List.map (List.map (fun (_,i) -> (i,0.))) frontiers
+  in
+  let g = compress lambda smoothing dagger type_array requests task_solutions in
+  (* save the grammar *)
+  let c = open_out (prefix^"_grammar") in
+  Printf.fprintf c "%s" (string_of_library g);
+  close_out c;
+  (* save the best programs *)
+(*   let task_solutions = List.combine tasks program_scores |> List.map (fun (t,solutions) ->
+    (t, solutions |> List.map (fun (i,s) -> 
+          (i,s+. (get_some @@ likelihood_option g t.task_type (extract_expression dagger i)))))) in
+  save_best_programs (prefix^"_programs") dagger task_solutions;
+ *)  g
+
+
 let test_backwards () = 
   let dagger = make_expression_graph 1000 in
   let l = make_flat_library [c_S;c_B;c_C;c_I;c_K;c_append;c_cons;c_null;c_one;] in
@@ -127,4 +168,4 @@ let test_backwards () =
     Printf.printf "%s\n" @@ string_of_expression @@ extract_expression dagger e);;
 
 
-test_backwards ();;
+(* test_backwards ();; *)

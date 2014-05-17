@@ -2,19 +2,26 @@ open Expression
 open Type
 open Utils
 
+type task_objective = 
+  | LogLikelihood of (expression -> float)
+  | Seed of expression
+
 type task = 
     { name : string; task_type : tp;
-    score : expression -> float;
+    score : task_objective;
     proposal : (expression -> float -> float) option; }
 
 
 let score_programs dagger frontiers tasks = 
   let start_time = Sys.time() in
   let scores = List.map (fun task -> 
+      let ll = match task.score with
+      | Seed(_) -> raise (Failure "score_programs: task has seed")
+      | LogLikelihood(ll) -> ll in
       List.filter (compose is_valid snd)
         (List.map (fun i -> 
              let e = extract_expression dagger i in
-             (i,task.score e)
+             (i,ll e)
            ) (List.assoc task.task_type frontiers))
     ) tasks in
   let end_time = Sys.time() in
