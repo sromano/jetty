@@ -172,7 +172,26 @@ let rec combine_wildcards dagger i j =
     | ExpressionLeaf(Terminal("?",_,_)) -> Some(i)
     | _ -> None)
   | ExpressionLeaf(_) -> raise (Failure "leaf not terminal in wildcards")
-  
+
+let make_wildcard w = 
+  Terminal("?" ^ string_of_int w,t1, ref ())
+
+let rec maximum_wildcard = function
+  | Application(f,x) -> max (maximum_wildcard f) (maximum_wildcard x)
+  | Terminal(n,_,_) when n.[0] = '?' -> int_of_string @@ String.sub n 1 @@ String.length n - 1
+  | _ -> -1
+
+let rec map_wildcard f = function
+  | Application(m,n) -> Application(map_wildcard f m,map_wildcard f n)
+  | Terminal(n,_,_) when n.[0] = '?' -> 
+    f @@ int_of_string @@ String.sub n 1 @@ String.length n - 1
+  | e -> e
+
+let substitute_wildcard original w new_W = 
+  let offset = maximum_wildcard original in
+  let new_W = map_wildcard (fun w -> make_wildcard @@ w+offset) new_W in
+  map_wildcard (fun q -> if q = w then new_W else make_wildcard q) original
+
 
 (* performs type inference upon the entire graph of expressions *)
 (* returns an array whose ith element is the type of the ith expression *)

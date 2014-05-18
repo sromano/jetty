@@ -167,7 +167,9 @@ let argument_request request left =
 let function_request request = 
   canonical_type (make_arrow (TID(next_type_variable request)) request)
 
-
+let rec get_arity = function
+  | TCon(a,[_;r]) when a = "->" -> 1+get_arity r
+  | _ -> 0
 
 
 let make_ground g = TCon(g,[]);;

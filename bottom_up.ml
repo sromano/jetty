@@ -4,6 +4,8 @@ open Utils
 open Library
 open Task
 open Compress
+open Partial_evaluation
+
 
 module PQ = Set.Make
   (struct
@@ -11,6 +13,28 @@ module PQ = Set.Make
      let compare = compare
    end)
 
+(* generation of bottom-up templates *)
+let get_templates e t = 
+  (* maximum number of times we can make up a value for a wildcard *)
+  let maximum_barriers = 10 in
+  (* uses partial evaluation to get templates *)
+  let rec collect_templates barriers target template = 
+    if barriers > maximum_barriers then [] else
+    match reduce_expression template with
+    | Stepped(new_template) -> 
+      (target,new_template) :: collect_templates barriers target new_template
+    | NormalForm -> []
+    | Blocked(w,instantiations) -> 
+      let new_targets = instantiations |> List.map (substitute_wildcard target w) in
+      let new_templates = instantiations |> List.map (substitute_wildcard template w) in
+      List.map2 (collect_templates @@ barriers+1) new_targets new_templates |> List.concat
+  in
+  let arity = get_arity t in
+  0--arity |> List.map (fun number_arguments -> 
+    let arguments = 1--number_arguments |> List.map (fun a -> make_wildcard @@ a+1) in
+    let target = arguments |> List.fold_left (fun f x -> Application(f,x)) e in
+    collect_templates 0 target target) 
+  |> List.concat
 
 let match_template dagger template i = 
   let bindings = ref [] in
@@ -102,20 +126,6 @@ let backward_enumerate dagger grammar rewrites size request i =
          search ()
   in search ()
 
-let i_rewrite = (expression_of_string "?0", fun e -> Application(c_I,List.hd e));;
-let b_rewrite = (expression_of_string "(?0 (?1 ?2))",
-                 apply_template (expression_of_string "(((B ?0) ?1) ?2)"));;
-let c_rewrite = (expression_of_string "((?0 ?1) ?2)",
-                 apply_template (expression_of_string "(((C ?0) ?2) ?1)"));;
-let s_rewrite = (expression_of_string "((?0 ?2) (?1 ?2))",
-                 apply_template (expression_of_string "(((S ?0) ?1) ?2)"));;
-let k_rewrite = (expression_of_string "?0",
-                 apply_template (expression_of_string "((K ?0) ?)"));;
-let append_rewrite1 = (expression_of_string "?0",
-                       apply_template @@ expression_of_string "((@ null) ?0)");;
-let append_rewrite2 = (expression_of_string "((cons ?0) ((@ ?1) ?2))",
-                      apply_template @@ expression_of_string "((@ ((cons ?0) ?1)) ?2)");;
-
 let backward_iteration
     prefix lambda smoothing frontier_size rewrites
     tasks grammar = 
@@ -154,7 +164,7 @@ let backward_iteration
   save_best_programs (prefix^"_programs") dagger task_solutions;
  *)  g
 
-
+(* 
 let test_backwards () = 
   let dagger = make_expression_graph 1000 in
   let l = make_flat_library [c_S;c_B;c_C;c_I;c_K;c_append;c_cons;c_null;c_one;] in
@@ -166,6 +176,16 @@ let test_backwards () =
   backward_enumerate dagger l rewrites 1000 t1
     (insert_expression dagger @@ expression_of_string "1") |> List.iter (fun (_,e) -> 
     Printf.printf "%s\n" @@ string_of_expression @@ extract_expression dagger e);;
+ *)
 
+
+let test_templates () = 
+  [c_I; c_K;c_C;c_S;c_B;c_append;c_last_one;] |> List.iter (fun c -> 
+    get_templates c (infer_type c) |> List.iter (fun (target,template) -> 
+        Printf.printf "%s ---> %s" (string_of_expression target) (string_of_expression template);
+        print_newline ()));;
+
+
+test_templates ();;
 
 (* test_backwards ();; *)

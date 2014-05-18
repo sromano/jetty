@@ -53,10 +53,13 @@ let morphology () =
   let g = ref @@ make_flat_library @@ phonetic_terminals in 
   let tasks = 
     top_nouns |> List.map make_word_task in
+  let rewrites = combinatorial_rewrites @ append_rewrites @  in
   for i = 1 to 9 do
     Printf.printf "\n \n \n Iteration %i \n" i;
-    let g1 = lower_bound_refinement_iteration ("log/iter_"^string_of_int i)
-        lambda alpha frontier_size tasks (!g) in
+(*     let g1 = lower_bound_refinement_iteration ("log/iter_"^string_of_int i)
+        lambda alpha frontier_size tasks (!g) in *)
+    let g1 = backward_iteration ("log/iter_"^string_of_int i)
+        lambda alpha frontier_size rewrites tasks (!g) in
     g := g1
   done;
   let decoder =

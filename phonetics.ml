@@ -115,27 +115,6 @@ let terminal_phone (p : phone) =
   with _ -> raise (Failure "terminal_phone: unknown phone")
   
 
-(* bottom-up rewrite rules *)
-let transfer_voice_rewrites = 
-  let transfer : phone -> phone -> phone list =
-    !(Obj.magic @@ terminal_thing @@ l_transfer_voice) in
-  (* target will lose its voice *)
-  let target = phones |> List.filter (fun phone -> 
-      match !(Obj.magic @@ terminal_thing phone) with
-      | Consonant(_) -> true
-      | Vowel(_) -> false) in
-  (* exemplars are of the form (target,voice,output) *)
-  let exemplars = List.flatten @@ List.map (fun t -> 
-      phones |> List.map (fun v -> (t,v,transfer !(Obj.magic t) !(Obj.magic v)))) target in
-  (* only keep the ones that include legal phones; then it makes rewrite rules *)
-  exemplars |> List.filter (fun (t,v,o) -> phones |> List.exists (fun p -> 
-    List.hd o = !(Obj.magic @@ terminal_thing p))) |> 
-  List.map (fun (t,v,o) -> (Application(Application(c_cons,terminal_phone @@ List.hd o),c_null),
-                           apply_template (Application(Application(l_transfer_voice,
-                                                                   t),
-                                                       v))))
-
-
 (* are 2 phonemes similar enough that we should consider using one to search for the other? *)
 let phonetic_neighbors p1 p2 = 
   match (p1,p2) with
