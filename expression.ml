@@ -138,6 +138,10 @@ let rec has_wildcards dagger i =
   | ExpressionLeaf(Terminal("?",_,_)) -> true
   | _ -> false
 
+let terminal_wildcard = function
+  | Terminal(n,_,_) when n.[0] = '?' -> true
+  | _ -> false
+
 (* checks to see if the target could be matched to the template *)
 let rec can_match_wildcards dagger template target = 
   if template = target then true else 

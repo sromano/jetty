@@ -180,7 +180,11 @@ let test_backwards () =
 
 
 let test_templates () = 
-  [c_I; c_K;c_C;c_S;c_B;c_append;c_last_one;] |> List.iter (fun c -> 
+  register_primitive "*" [[c_one;c_zero;];[c_one;c_zero;];] (fun arguments -> 
+    if c_one = (List.nth arguments 0) && c_one = (List.nth arguments 1)
+    then c_one
+    else c_zero);
+  [c_times;(* c_I; c_K;c_C;c_S;c_B;c_append;c_last_one; *)] |> List.iter (fun c -> 
     get_templates c (infer_type c) |> List.iter (fun (target,template) -> 
         Printf.printf "%s ---> %s" (string_of_expression target) (string_of_expression template);
         print_newline ()));;

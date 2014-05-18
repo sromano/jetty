@@ -15,8 +15,8 @@ let safe_get_some message = function
   | _ -> raise (Failure message);;
 
 let null = function
-  | [] -> false
-  | _ -> true
+  | [] -> true
+  | _ -> false
 
 let hash_bindings h = 
   let b = ref [] in

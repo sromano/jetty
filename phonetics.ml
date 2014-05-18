@@ -92,15 +92,18 @@ let phones = [c_s;c_z;c_t;c_d;c_r;c_n;c_m;c_k;c_g;c_w;c_l;c_p;c_b;c_f;c_v;c_th;c
               c_sh;c_zh;c_j;c_ng;c_uw;c_lo;
               v_a;v_ej;v_ue;v_i;v_ae;v_ow;v_I;v_v;v_aj;v_aw;v_c;v_u;v_uu;]
 
+
+let transfer_voice p1 p2 = 
+  match (p1,p2) with
+  | (Consonant(p,m,_), Consonant(_,_,v)) -> [Consonant(p,m,v)]
+  | (Consonant(p,m,_), Vowel(_)) -> [Consonant(p,m,Voiced)]
+  | _ -> [p2]
+
+
 let l_transfer_voice = Terminal("transfer-voice",
                                 make_arrow (make_ground "phone")
                                   (make_arrow (make_ground "phone") (TCon("list",[(make_ground "phone")]))),
-                                Obj.magic @@ ref @@ 
-                                fun p1 p2 ->
-                                match (p1,p2) with
-                                | (Consonant(p,m,_), Consonant(_,_,v)) -> [Consonant(p,m,v)]
-                                | (Consonant(p,m,_), Vowel(_)) -> [Consonant(p,m,Voiced)]
-                                | _ -> [p2]
+                                Obj.magic @@ ref transfer_voice 
                                );;
 
 let phonetic_terminals = [c_S;c_B;c_C;c_I;

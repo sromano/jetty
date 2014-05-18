@@ -1,5 +1,10 @@
 open Expression
 open Library
+open Utils
+
+let extra_primitives = ref [];;
+let register_primitive name arguments callback = 
+  extra_primitives := (name,(arguments,callback)) :: !extra_primitives;;
 
 
 type reduce_result = 
@@ -13,6 +18,34 @@ let merge_blocks b b_ =
   | (Blocked(_,[]),_) -> b_
   | (_,Blocked(_,[])) -> b
   | _ -> b
+
+
+let try_primitive e = 
+  let rec walk_left name arity arguments = function
+    | Terminal(n,_,_) when arity = 0 && n = name -> Some(arguments)
+    | Application(f,x) when arity > 0 -> walk_left name (arity-1) (x::arguments) f
+    | _ -> None
+  in
+  let try_application callback arguments actual_arguments = 
+    let rec walk_arguments argument actual = 
+      if null argument
+      then Stepped(callback actual_arguments)
+      else match List.hd actual with
+      | Terminal(n,_,_) when n.[0] = '?' -> 
+        Blocked(int_of_string @@ String.sub n 1 (String.length n - 1),
+               List.hd argument)
+      | _ -> walk_arguments (List.tl argument) (List.tl actual)
+    in walk_arguments arguments actual_arguments
+  in
+  let rec try_primitives = function
+    | [] -> NormalForm
+    | (name,(arguments,callback))::prims -> 
+      match walk_left name (List.length arguments) [] e with
+      | None -> try_primitives prims
+      | Some(actual_arguments) -> 
+        try_application callback arguments actual_arguments
+  in try_primitives !extra_primitives        
+      
 
 let rec reduce_expression = function
   | Terminal(_,_,_) -> NormalForm
@@ -67,15 +100,18 @@ let rec reduce_expression = function
           | _ -> raise (Failure ("last-one: invalid normal form(2): "^string_of_expression argument))
         end
       | block -> block
-    end
-  (* inductive case *)
-  | Application(f,x) -> begin
+    end    
+  | Application(f,x) -> 
+    begin  (* inductive case *)
       match reduce_expression f with
       | Stepped(f_) -> Stepped(Application(f_,x))
       | normal_or_block -> begin
           match reduce_expression x with
           | Stepped(x_) -> Stepped(Application(f,x_))
-          | NormalForm -> if normal_or_block = NormalForm then NormalForm else normal_or_block
+          | NormalForm ->
+            if normal_or_block = NormalForm
+            then try_primitive (Application(f,x)) (* see if some other primitive applies *)
+            else normal_or_block
           | block -> 
             if normal_or_block = NormalForm then block else merge_blocks normal_or_block block 
         end
