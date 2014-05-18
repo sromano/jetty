@@ -167,4 +167,4 @@ let test_templates () =
         print_newline ()));;
 
 
-test_templates ();;
+(* test_templates ();; *)
