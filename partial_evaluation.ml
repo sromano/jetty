@@ -4,7 +4,9 @@ open Utils
 
 let extra_primitives = ref [];;
 let register_primitive name arguments callback = 
-  extra_primitives := (name,(arguments,callback)) :: !extra_primitives;;
+  let callback = fun terms -> 
+  terms |> List.map (fun t -> if t = c_bottom then None else Some(terminal_thing t)) |> callback
+  in extra_primitives := (name,(arguments,callback)) :: !extra_primitives;;
 
 
 type reduce_result = 
@@ -29,7 +31,9 @@ let try_primitive e =
   let try_application callback arguments actual_arguments = 
     let rec walk_arguments argument actual = 
       if null argument
-      then Stepped(callback actual_arguments)
+      then Stepped(match callback actual_arguments with
+      | None -> c_bottom
+      | Some(r) -> r)
       else match List.hd actual with
       | Terminal(n,_,_) when n.[0] = '?' -> 
         Blocked(int_of_string @@ String.sub n 1 (String.length n - 1),

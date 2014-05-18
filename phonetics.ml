@@ -1,6 +1,7 @@
 open Expression
 open Type
 open Library
+open Partial_evaluation
 open Bottom_up
 
 
@@ -90,21 +91,32 @@ let v_uu = make_vowel "uu" V_uu;;
 
 let phones = [c_s;c_z;c_t;c_d;c_r;c_n;c_m;c_k;c_g;c_w;c_l;c_p;c_b;c_f;c_v;c_th;c_Th;c_ut;c_q;c_h;
               c_sh;c_zh;c_j;c_ng;c_uw;c_lo;
-              v_a;v_ej;v_ue;v_i;v_ae;v_ow;v_I;v_v;v_aj;v_aw;v_c;v_u;v_uu;]
+              v_a;v_ej;v_ue;v_i;v_ae;v_ow;v_I;v_v;v_aj;v_aw;v_c;v_u;v_uu;];;
+let terminal_phone (p : phone) = 
+  try
+    phones |> List.find (fun q -> p = !(Obj.magic @@ terminal_thing q))
+  with _ -> raise (Failure "terminal_phone: unknown phone");;
 
 
 let transfer_voice p1 p2 = 
   match (p1,p2) with
-  | (Consonant(p,m,_), Consonant(_,_,v)) -> [Consonant(p,m,v)]
-  | (Consonant(p,m,_), Vowel(_)) -> [Consonant(p,m,Voiced)]
-  | _ -> [p2]
+  | (Consonant(p,m,_), Consonant(_,_,v)) -> Consonant(p,m,v)
+  | (Consonant(p,m,_), Vowel(_)) -> Consonant(p,m,Voiced)
+  | _ -> p2
 
 
 let l_transfer_voice = Terminal("transfer-voice",
                                 make_arrow (make_ground "phone")
-                                  (make_arrow (make_ground "phone") (TCon("list",[(make_ground "phone")]))),
-                                Obj.magic @@ ref transfer_voice 
+                                  (make_arrow (make_ground "phone") (make_ground "phone")),
+                                lift_binary transfer_voice 
                                );;
+register_primitive "transfer-voice" [phones;phones] (fun arguments -> 
+    try
+      match arguments with
+      | [Some(thing_one);Some(thing_to)] -> 
+        Some(terminal_phone (transfer_voice !(Obj.magic thing_one) !(Obj.magic thing_to)))
+      | _ -> None
+    with _ -> None)
 
 let phonetic_terminals = [c_S;c_B;c_C;c_I;
                          c_null;c_append;c_cons;c_last_one;
@@ -112,11 +124,6 @@ let phonetic_terminals = [c_S;c_B;c_C;c_I;
                          @ phones;;
 register_terminals phonetic_terminals;;
 
-let terminal_phone (p : phone) = 
-  try
-    phones |> List.find (fun q -> p = !(Obj.magic @@ terminal_thing q))
-  with _ -> raise (Failure "terminal_phone: unknown phone")
-  
 
 (* are 2 phonemes similar enough that we should consider using one to search for the other? *)
 let phonetic_neighbors p1 p2 = 
@@ -153,3 +160,11 @@ let test_phonetics () =
   Printf.printf "%s\n" (string_of_expression @@ make_phonetic "ae");;
 
 (* test_phonetics ();; *)
+let test_templates () = 
+  [l_transfer_voice;c_I; c_K;c_C;c_S;c_B;c_append;c_last_one;] |> List.iter (fun c -> 
+    get_templates c (infer_type c) |> List.iter (fun (target,template) -> 
+        Printf.printf "%s ---> %s" (string_of_expression target) (string_of_expression template);
+        print_newline ()));;
+
+
+test_templates ();;

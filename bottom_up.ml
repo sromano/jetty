@@ -34,7 +34,7 @@ let get_templates e t =
     let arguments = 1--number_arguments |> List.map (fun a -> make_wildcard @@ a+1) in
     let target = arguments |> List.fold_left (fun f x -> Application(f,x)) e in
     collect_templates 0 target target) 
-  |> List.concat
+  |> List.concat |> List.filter (compose bottomless snd)
 
 let match_template dagger template i = 
   let bindings = ref [] in
@@ -177,19 +177,5 @@ let test_backwards () =
     (insert_expression dagger @@ expression_of_string "1") |> List.iter (fun (_,e) -> 
     Printf.printf "%s\n" @@ string_of_expression @@ extract_expression dagger e);;
  *)
-
-
-let test_templates () = 
-  register_primitive "*" [[c_one;c_zero;];[c_one;c_zero;];] (fun arguments -> 
-    if c_one = (List.nth arguments 0) && c_one = (List.nth arguments 1)
-    then c_one
-    else c_zero);
-  [c_times;(* c_I; c_K;c_C;c_S;c_B;c_append;c_last_one; *)] |> List.iter (fun c -> 
-    get_templates c (infer_type c) |> List.iter (fun (target,template) -> 
-        Printf.printf "%s ---> %s" (string_of_expression target) (string_of_expression template);
-        print_newline ()));;
-
-
-test_templates ();;
 
 (* test_backwards ();; *)

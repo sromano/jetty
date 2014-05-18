@@ -202,34 +202,63 @@ let c_S = Terminal("S", canonical_type @@
                   make_arrow (make_arrow t1 (make_arrow t2 t3))
                              (make_arrow (make_arrow t1 t2)
                                          (make_arrow t1 t3)),
-                  Obj.magic (ref (fun f g x -> (f x) (g x))));;
+                  Obj.magic (ref (fun f -> 
+                       Some(fun g -> 
+                         Some(fun x ->
+                             match f with
+                             | None -> None
+                             | Some(f) -> 
+                               match f x with
+                               | None -> None
+                               | Some(left) -> 
+                                 left @@ match g with
+                                 | None -> None
+                                 | Some(g) -> g x)))));;
 let c_B = Terminal("B", canonical_type @@ 
                   make_arrow (make_arrow t2 t3)
                              (make_arrow (make_arrow t1 t2)
                                          (make_arrow t1 t3)),
-                  Obj.magic (ref (fun f g x -> f (g x))));;
+                  Obj.magic (ref (fun f  -> 
+                       Some(fun g -> 
+                           Some(fun x -> 
+                             match f with
+                             | None -> None
+                             | Some(f) -> 
+                               f @@ match g with
+                               | None -> None
+                               | Some(g) -> g x)))));;
 let c_C = Terminal("C",  canonical_type @@ 
                   make_arrow (make_arrow t1 (make_arrow t2 t3))
                              (make_arrow t2 (make_arrow t1 t3)),
-                  Obj.magic (ref (fun f g x -> (f x) g)));;
+                  Obj.magic (ref (fun f -> 
+                       Some(fun g -> 
+                         Some(fun x ->
+                             match f with
+                             | None -> None
+                             | Some(f) -> 
+                               match f x with
+                               | None -> None
+                               | Some(left) -> 
+                                 left g)))));;
 let c_K = Terminal("K", canonical_type @@ 
                    make_arrow t1 (make_arrow t2 t1),
-                   Obj.magic (ref (fun x _ -> x)));;
+                   Obj.magic (ref (fun x -> Some(fun _ -> x))));;
 let c_I = Terminal("I", canonical_type @@ 
                    make_arrow t1 t1,
                    Obj.magic (ref (fun x -> x)));;
 let combinatory_library = 
   make_flat_library [c_S;c_B;c_C;c_K;c_I]
 
+let c_bottom = Terminal("bottom",canonical_type t1,Obj.magic @@ ref None)
 
 let c_one = Terminal("1",make_ground "int",Obj.magic (ref 1));;
 let c_zero = Terminal("0",make_ground "int",Obj.magic (ref 0));;
 let c_plus = Terminal("+",
                      make_arrow (make_ground "int") (make_arrow (make_ground "int") (make_ground "int")),
-                     Obj.magic (ref (fun x y ->x+y )));;
+                     lift_binary (+));;
 let c_times = Terminal("*",
                      make_arrow (make_ground "int") (make_arrow (make_ground "int") (make_ground "int")),
-                     Obj.magic (ref (fun x y ->x*y )));;
+                     lift_binary (fun x y ->x*y ));;
 
 let polynomial_library = 
   make_flat_library [c_S;c_B;c_C;c_I;c_one;c_zero;c_plus;c_times;];;
@@ -238,14 +267,14 @@ let c_null = Terminal("null",canonical_type (TCon("list",[t1])),Obj.magic (ref [
 let c_cons = Terminal("cons",
                       canonical_type @@ make_arrow t1 @@ 
                       make_arrow (TCon("list",[t1])) @@ (TCon("list",[t1])),
-                      Obj.magic @@ ref (fun x y -> x::y));;
+                      lift_binary (fun x y -> x::y));;
 let c_append = Terminal("@",
                         canonical_type @@ make_arrow (TCon("list",[t1])) @@ 
                         make_arrow (TCon("list",[t1])) @@ (TCon("list",[t1])),
-                        Obj.magic @@ ref (@));;
+                        lift_binary (@));;
 let c_last_one = Terminal("last-one",
                           canonical_type @@ make_arrow (TCon("list",[t1])) t1,
-                          Obj.magic @@ ref last_one);;
+                          lift_unary last_one);;
 
 
 let string_of_library (log_application,distribution) = 
@@ -255,7 +284,7 @@ let string_of_library (log_application,distribution) =
      (List.map (fun (e,(w,_)) -> Printf.sprintf "\t %f \t %s " w (string_of_expression e)) 
         bindings));;
 
-let all_terminals = ref ([c_K;c_S;c_B;c_C;c_I;c_one;c_zero;c_plus;c_times;
+let all_terminals = ref ([c_K;c_S;c_B;c_C;c_I;c_one;c_zero;c_plus;c_times;c_bottom;
                           c_null;c_append;c_cons;c_last_one] |> 
                          List.map (fun e -> (string_of_expression e,e)));;
 let register_terminal t = 

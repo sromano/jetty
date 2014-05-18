@@ -32,11 +32,15 @@ let terminal_thing e =
   | Terminal(_,_,t) -> t
   | _ -> raise (Failure "terminal_thing: not a terminal")
 
-let rec run_expression (e:expression) : 'a = 
+let rec run_expression (e:expression) : 'a option = 
   match e with
-    Terminal(_,_,thing) -> !(Obj.magic thing)
+  | Terminal(n,_,_) when n = "bottom" -> None
+  | Terminal(_,_,thing) -> Some(!(Obj.magic thing))
   | Application(f,x) -> 
-      (Obj.magic (run_expression f)) (Obj.magic (run_expression x))
+    match run_expression f with
+    | None -> None
+    | Some(left) -> 
+      (Obj.magic left) (Obj.magic (run_expression x))
 
 exception Timeout;;
 let sigalrm_handler = Sys.Signal_handle (fun _ -> raise Timeout) ;;
@@ -47,13 +51,20 @@ let run_expression_for_interval (time : float) (e : expression) : 'a option =
       try
 	let res = run_expression e in 
 	ignore (Unix.setitimer ITIMER_REAL {it_interval = 0.0; it_value = 0.0}) ;
-	reset_sigalrm () ; Some(res)  
+	reset_sigalrm () ; res
       with exc -> begin
         reset_sigalrm ();
  	ignore (Unix.setitimer ITIMER_REAL {it_interval = 0.0; it_value = 0.0}) ; 
         None
       end
 
+let lift_binary k : unit ref = Obj.magic @@ ref (
+  fun x -> Some(fun y -> 
+      match (x,y) with
+      | (Some(a),Some(b)) -> Some(k a b)
+      | _ -> None))
+
+let lift_unary k : unit ref = Obj.magic @@ ref k
 
 let infer_type (e : expression) = 
   let rec infer c r = 
@@ -142,6 +153,7 @@ let terminal_wildcard = function
   | Terminal(n,_,_) when n.[0] = '?' -> true
   | _ -> false
 
+
 (* checks to see if the target could be matched to the template *)
 let rec can_match_wildcards dagger template target = 
   if template = target then true else 
@@ -196,6 +208,10 @@ let substitute_wildcard original w new_W =
   let new_W = map_wildcard (fun w -> make_wildcard @@ w+offset) new_W in
   map_wildcard (fun q -> if q = w then new_W else make_wildcard q) original
 
+let rec bottomless = function
+  | Application(f,x) -> bottomless f && bottomless x
+  | Terminal(n,_,_) -> not (n = "bottom")
+
 
 (* performs type inference upon the entire graph of expressions *)
 (* returns an array whose ith element is the type of the ith expression *)
@@ -223,7 +239,7 @@ let test_expression () =
   let e42 = Terminal("31", t1, Obj.magic (ref 31)) in
   let e2 = Terminal("1", t1, Obj.magic (ref 1)) in
   let e3 = Application(Application(e1,e1),e2) in
-  let e4 = Terminal("+", t1, Obj.magic (ref (fun x -> fun y -> x+y))) in
+  let e4 = Terminal("+", t1, lift_binary (+)) in
   let e5 = Application(Application(e4,e3),e42) in
   let p = Terminal("p",t1,Obj.magic (ref (fun x -> Thread.delay 0.05; x))) in
   let q = Application(p,e5) in
@@ -240,4 +256,4 @@ let test_expression () =
 ;;
 
 
- (* test_expression ();;  *)
+(* test_expression ();;  *)
