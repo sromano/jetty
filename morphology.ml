@@ -6,6 +6,8 @@ open Expression
 open Type
 open Utils
 open Symbolic_dimensionality_reduction
+open Bottom_up
+
 
 (* most common nouns produced by thirty months old *)
 let top_nouns = [
@@ -31,9 +33,12 @@ let top_nouns = [
   "b aj s I k ue l";
 ]
 
+let doubled_words = 
+  top_nouns |> List.map (fun w -> w ^ " " ^ w)
+
 let make_word_task word = 
   let e = make_phonetic word in
-  let correct_phones : phone list = run_expression e in
+  let correct_phones : phone list = safe_get_some "make_work_task: None" @@ run_expression e in
   let prop = (fun e w -> 
     match e with
     | Terminal(_,TCon("phone",[]),p) -> 
@@ -52,19 +57,16 @@ let morphology () =
   let frontier_size = 20000 in
   let g = ref @@ make_flat_library @@ phonetic_terminals in 
   let tasks = 
-    top_nouns |> List.map make_word_task in
-  let rewrites = combinatorial_rewrites @ append_rewrites @  in
+    doubled_words |> List.map make_word_task in
   for i = 1 to 9 do
     Printf.printf "\n \n \n Iteration %i \n" i;
-(*     let g1 = lower_bound_refinement_iteration ("log/iter_"^string_of_int i)
-        lambda alpha frontier_size tasks (!g) in *)
     let g1 = backward_iteration ("log/iter_"^string_of_int i)
-        lambda alpha frontier_size rewrites tasks (!g) in
+        lambda alpha frontier_size tasks (!g) in
     g := g1
   done;
-  let decoder =
+(*  let decoder =
     reduce_symbolically (make_flat_library @@ phonetic_terminals) !g frontier_size tasks in
-  Printf.printf "Decoder: %s\n" (string_of_expression decoder)
+  Printf.printf "Decoder: %s\n" (string_of_expression decoder) *)
 ;;
 
 

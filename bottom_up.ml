@@ -79,7 +79,8 @@ let apply_template template bindings =
         let name_ID = int_of_string @@ String.sub name 1 (String.length name - 1) in
         try
           List.nth bindings name_ID
-        with _ -> raise (Failure "apply_template: unbound")
+        with _ -> 
+          Terminal("?",t1,ref ())  (* raise (Failure "apply_template: unbound") *)
       end
     | Terminal(_,_,_) -> t
     | Application(f,x) -> 
@@ -127,17 +128,25 @@ let backward_enumerate dagger grammar rewrites size request i =
   in search ()
 
 let backward_iteration
-    prefix lambda smoothing frontier_size rewrites
+    prefix lambda smoothing frontier_size 
     tasks grammar = 
   let dagger = make_expression_graph 100000 in
+  print_endline "Generating backward rewrites...";
+  let rewrites = snd grammar |> ExpressionMap.bindings |> List.map (fun (e,(_,t)) -> 
+      (* load primitives into the graph *)
+      ignore(insert_expression dagger e);
+      get_templates e t |> List.map (fun (target,template) -> (template,apply_template target)))
+                 |> List.concat in
   let frontiers = tasks |> List.map (fun t -> 
     Printf.printf "Enumerating (backwards) for %s..." t.name;
     print_newline ();
     let i = insert_expression dagger @@ match t.score with
       | Seed(s) -> s
       | LogLikelihood(_) -> raise (Failure "backward_iteration: task has no seed") in
-    backward_enumerate dagger grammar rewrites frontier_size t.task_type i) in
+    let f = backward_enumerate dagger grammar rewrites frontier_size t.task_type i in
+    print_endline "Finished enumerating."; f) in
   let type_array = infer_graph_types dagger in  
+  print_endline "Done inferring graph types.";
   let requests = List.fold_left2 (fun requests frontier t -> 
       let requested_type = t.task_type in
       List.fold_left (fun (a : (tp list) IntMap.t) (i : int) -> 
@@ -149,6 +158,7 @@ let backward_iteration
 	) requests frontier
     ) IntMap.empty (List.map (List.map snd) frontiers) tasks
   in
+  print_endline "Done getting requests.";
   let task_solutions = List.combine tasks @@ 
     List.map (List.map (fun (_,i) -> (i,0.))) frontiers
   in
