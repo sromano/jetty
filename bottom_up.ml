@@ -125,7 +125,7 @@ let backward_enumerate dagger grammar rewrites size request i =
                      opened := PQ.add c !opened
                    end);
          search ()
-  in search ()
+  in search () |> List.filter (compose not @@ compose (has_trivial_symmetry dagger) snd)
 
 let backward_iteration
     prefix lambda smoothing frontier_size 

@@ -213,6 +213,17 @@ let rec bottomless = function
   | Terminal(n,_,_) -> not (n = "bottom")
 
 
+let rec has_trivial_symmetry dagger i = 
+  match extract_node dagger i with
+  | ExpressionLeaf(_) -> false
+  | ExpressionBranch(f,x) -> 
+    match extract_node dagger f with
+    | ExpressionLeaf(Terminal(t,_,_)) when t = "I" -> true
+    | ExpressionLeaf(_) -> false
+    | ExpressionBranch(a,b) -> 
+      has_trivial_symmetry dagger a || has_trivial_symmetry dagger b 
+      || has_trivial_symmetry dagger x
+
 (* performs type inference upon the entire graph of expressions *)
 (* returns an array whose ith element is the type of the ith expression *)
 let infer_graph_types dagger = 

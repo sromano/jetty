@@ -54,7 +54,7 @@ let make_word_task word =
 let morphology () = 
   let lambda = 2.0 in
   let alpha = 1. in
-  let frontier_size = 20000 in
+  let frontier_size = 2000 in
   let g = ref @@ make_flat_library @@ phonetic_terminals in 
   let tasks = 
     doubled_words |> List.map make_word_task in
