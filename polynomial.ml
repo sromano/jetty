@@ -32,8 +32,8 @@ let super_task =
       match y with
 	[] -> 0.0
       | ((a,b,x)::xs) -> 
-	let q = Application(Application(Application(e,expression_of_int a),
-                                 expression_of_int b),expression_of_int x) in
+	let q = Application(Application(Application(e,expression_of_int b),
+                                 expression_of_int a),expression_of_int x) in
 	match run_expression_for_interval 0.01 q with
 	  Some(r) when r = a*x+b -> t xs
 	| _ -> neg_infinity
@@ -48,12 +48,13 @@ let poly () =
       List.concat (List.map (fun b ->
 	(List.map (fun c -> make_polynomial_task a b c)
 	  interval)) interval)) interval)  in
-  for i = 1 to 15 do
+(*   for i = 1 to 15 do
     Printf.printf "\n \n \n Iteration %i \n" i;
     let g1 = expectation_maximization_iteration ("log/iter_"^string_of_int i) 1.5 1.0 10000 tasks (!g) in
     g := g1
   done;
-(*   let g1 = expectation_maximization_iteration ("log/super") 0.5 0.4 100000 [super_task] (!g) in *)
+ *)  g := load_library "log/iter_15_grammar";
+  let g1 = expectation_maximization_iteration ("log/super") 0.5 0.4 1000 [super_task] (!g) in 
   ()
 (*   let decoder =
     reduce_symbolically (polynomial_library) !g 100000 tasks in

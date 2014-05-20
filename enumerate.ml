@@ -59,7 +59,11 @@ let enumerate_ID dagger library t frontier_size =
   let rec iterate bound = 
     let indices = enumerate_bounded dagger library t bound in
     if (IntMap.cardinal indices) < frontier_size
-    then iterate (bound+.0.5)
+    then begin
+      Printf.printf "Type %s \t Bound %f \t  => %i / %i programs"  (string_of_type t) bound (IntMap.cardinal indices) frontier_size;
+      print_newline ();
+      iterate (bound+.0.5)
+    end
     else
       (Printf.printf "Type %s \t Bound %f \t  => %i / %i programs" (string_of_type t) bound (IntMap.cardinal indices) frontier_size;
        print_newline ();

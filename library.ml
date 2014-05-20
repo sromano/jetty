@@ -291,7 +291,7 @@ let string_of_library (log_application,distribution) =
   let bindings = ExpressionMap.bindings distribution in
   String.concat "\n"
     ((string_of_float (exp log_application))::
-     (List.map (fun (e,(w,_)) -> Printf.sprintf "\t %f \t %s " w (string_of_expression e)) 
+     (List.map (fun (e,(w,t)) -> Printf.sprintf "\t %f \t %s : %s " w (string_of_expression e) (string_of_type t)) 
         bindings));;
 
 let all_terminals = ref ([c_K;c_S;c_B;c_C;c_I;c_one;c_zero;c_plus;c_times;c_bottom;
