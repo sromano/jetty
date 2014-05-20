@@ -18,11 +18,21 @@ let null = function
   | [] -> true
   | _ -> false
 
+let rec take n = function
+  | h::t when n > 0 -> h::(take (n-1) t)
+  | _ -> []
+
+
 let hash_bindings h = 
   let b = ref [] in
   Hashtbl.iter (fun k v -> b := (k,v)::(!b)) h;
   !b
 
+let rec list_equal c x y = 
+  match (x,y) with
+  | ([],_) -> null y
+  | (_,[]) -> false
+  | (a::b,p::q) -> c a p = 0 && list_equal c b q
 
 let merge_a_list c ls = 
   let merged = Hashtbl.create 100000 in

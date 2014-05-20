@@ -20,6 +20,16 @@ let candidate_fragments dagger solutions =
     IntSet.union a @@ get_sub_IDs dagger i)) in
   (* record candidates in place *)
   let candidates = Hashtbl.create 10000 in
+  fragments |> List.iter (fun task_fragments ->
+    task_fragments |> IntSet.iter (fun i -> 
+        try
+          let old = Hashtbl.find candidates i in
+          Hashtbl.replace candidates i @@ old+1
+        with _ -> Hashtbl.add candidates i 1
+          ));
+  hash_bindings candidates |> List.filter (fun (_,c) -> c > 1) |> 
+  List.map fst |> List.filter (compose not @@ is_leaf_ID dagger)
+(* 
   let rec get_fragments head_task other_tasks = 
     try (* next 2 lines will throw exception once we're done *)
       let next_head = List.hd other_tasks
@@ -44,6 +54,9 @@ let candidate_fragments dagger solutions =
   in 
   get_fragments (List.hd fragments) (List.tl fragments);
   hash_bindings candidates |> List.map fst |> List.filter (compose not @@ is_leaf_ID dagger)
+ *)
+
+
 
 (* equivalent of a null pointer *)
 let no_job_ID = -1    

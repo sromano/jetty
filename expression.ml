@@ -21,6 +21,9 @@ let rec compare_expression e1 e2 =
 module ExpressionMap = Map.Make(struct type t =expression let compare = compare_expression end)
 module ExpressionSet = Set.Make(struct type t =expression let compare = compare_expression end)
 
+let is_terminal = function
+  | Terminal(_,_,_) -> true
+  | _ -> false
 
 let terminal_type e = 
   match e with
@@ -243,6 +246,9 @@ let infer_graph_types dagger =
   in for i = 0 to (expression_graph_size dagger - 1) do
     ignore (infer i)
   done; type_map
+
+let expression_of_int i = Terminal(string_of_int i,make_ground "int",Obj.magic (ref i))
+
 
 let test_expression () =
   let t1 = TID(0) in

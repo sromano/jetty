@@ -262,6 +262,7 @@ let c_bottom = Terminal("bottom",canonical_type t1,Obj.magic @@ ref None)
 
 let c_one = Terminal("1",make_ground "int",Obj.magic (ref 1));;
 let c_zero = Terminal("0",make_ground "int",Obj.magic (ref 0));;
+let c_numbers = 0--9 |> List.map expression_of_int;;
 let c_plus = Terminal("+",
                      make_arrow (make_ground "int") (make_arrow (make_ground "int") (make_ground "int")),
                      lift_binary (+));;
@@ -270,7 +271,7 @@ let c_times = Terminal("*",
                      lift_binary (fun x y ->x*y ));;
 
 let polynomial_library = 
-  make_flat_library [c_S;c_B;c_C;c_I;c_one;c_zero;c_plus;c_times;];;
+  make_flat_library @@ [c_S;c_B;c_C;c_I;c_plus;c_times;c_zero;c_one;];;
 
 let c_null = Terminal("null",canonical_type (TCon("list",[t1])),Obj.magic (ref []));;
 let c_cons = Terminal("cons",
