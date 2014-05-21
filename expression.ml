@@ -122,12 +122,19 @@ let rec extract_expression g i =
   | ExpressionBranch(f,x) -> 
       Application(extract_expression g f, extract_expression g x)
 
+let expression_graph_size (_,_,s) = !s
+
+(* dirty hack *)
+let expression_in_graph g e = 
+  let initial_size = expression_graph_size g in
+  ignore(insert_expression g e);
+  initial_size = expression_graph_size g
+
 let extract_node (i2n,_,_) i = 
   try
     Hashtbl.find i2n i
   with Not_found -> raise (Failure "extract_node: ID not in graph")
-    
-let expression_graph_size (_,_,s) = !s
+   
 
 let is_leaf_ID (g,_,_) i = 
   match Hashtbl.find g i with
@@ -195,6 +202,8 @@ let rec combine_wildcards dagger i j =
 let make_wildcard w = 
   Terminal("?" ^ string_of_int w,t1, ref ())
 
+let empty_wildcard = Terminal("?", t1, ref ())
+
 let rec maximum_wildcard = function
   | Application(f,x) -> max (maximum_wildcard f) (maximum_wildcard x)
   | Terminal(n,_,_) when n.[0] = '?' -> int_of_string @@ String.sub n 1 @@ String.length n - 1
@@ -215,6 +224,16 @@ let rec bottomless = function
   | Application(f,x) -> bottomless f && bottomless x
   | Terminal(n,_,_) -> not (n = "bottom")
 
+let rec antiunify_expressions dagger i j = 
+  if i = j then extract_expression dagger i else
+  match extract_node dagger i with
+  | ExpressionLeaf(_) -> Terminal("?",t1,ref ())
+  | ExpressionBranch(l,r) -> 
+    match extract_node dagger j with
+    | ExpressionBranch(f,x) -> 
+      Application(antiunify_expressions dagger l f,
+                 antiunify_expressions dagger r x)
+    | ExpressionLeaf(_) -> Terminal("?",t1,ref ())
 
 let rec has_trivial_symmetry dagger i = 
   match extract_node dagger i with
@@ -226,6 +245,30 @@ let rec has_trivial_symmetry dagger i =
     | ExpressionBranch(a,b) -> 
       has_trivial_symmetry dagger a || has_trivial_symmetry dagger b 
       || has_trivial_symmetry dagger x
+
+(* used by the procedure below *)
+type turn = 
+  | R | L
+
+(* used by symbolic dimensionality reduction
+   returns the types of all of the wildcards, as well as how to get to them. *)
+let wild_types dagger request i = 
+  let rec collect_wild c r = function
+    | Terminal(n,_,_) when n.[0] = '?' -> ([([],r)],c)
+    | Terminal(_,t,_) -> 
+      let (t,c) = instantiate_type c t in
+      let c = unify c t r in
+      ([],c)
+    | Application(f,x) -> 
+      let (argument_type,c) = makeTID c in
+      let (function_wild,c) = collect_wild c (make_arrow argument_type r) f in
+      let (argument_type,c) = chaseType c argument_type in
+      let (argument_wild,c) = collect_wild c argument_type x in
+      (List.map (fun (p,r) -> (L :: p,r)) function_wild @ 
+      List.map (fun (p,r) -> (R :: p,r)) argument_wild,
+      c)
+  in fst @@ collect_wild empty_context request @@ extract_expression dagger i
+
 
 (* performs type inference upon the entire graph of expressions *)
 (* returns an array whose ith element is the type of the ith expression *)

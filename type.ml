@@ -115,7 +115,7 @@ let can_unify (t1 : tp) (t2 : tp) : bool =
 	fast_unify x y && List.for_all2 (fun a b -> fast_unify (fast_chase a) (fast_chase b)) xs ys
     | _ -> raise (Failure "constructors of different arity")
   in fast_unify (make_fast_type (ref []) t1) (make_fast_type (ref []) t2)
-;;
+
 
 let instantiate_type (n,m) t = 
   let substitution = ref [] in
@@ -159,7 +159,8 @@ let argument_request request left =
   let (request,c1) = instantiate_type empty_context request in
   let (left,c2) = instantiate_type c1 left in
   match left with
-    TCon(_,[right;result]) -> 
+  | TID(_) -> TID(0)
+  | TCon(_,[right;result]) -> 
       let c3 = unify c2 request result in
       canonical_type (fst (chaseType c3 right))
   | _ -> raise (Failure ("invalid function type: "^(string_of_type left)))

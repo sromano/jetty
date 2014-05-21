@@ -5,7 +5,7 @@ open Utils
 open Task
 
 
-let reduce_symmetries = false
+let reduce_symmetries = true
 
 
 let enumerate_bounded dagger (log_application,distribution) rt bound = 

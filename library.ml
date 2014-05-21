@@ -271,7 +271,7 @@ let c_times = Terminal("*",
                      lift_binary (fun x y ->x*y ));;
 
 let polynomial_library = 
-  make_flat_library @@ [c_S;c_B;c_C;c_I;c_plus;c_times;c_zero;c_one;];;
+  make_flat_library @@ [c_S;c_B;c_C;c_I;c_plus;c_times;(* c_zero;c_one; *)] @ c_numbers;;
 
 let c_null = Terminal("null",canonical_type (TCon("list",[t1])),Obj.magic (ref []));;
 let c_cons = Terminal("cons",
@@ -294,8 +294,8 @@ let string_of_library (log_application,distribution) =
      (List.map (fun (e,(w,t)) -> Printf.sprintf "\t %f \t %s : %s " w (string_of_expression e) (string_of_type t)) 
         bindings));;
 
-let all_terminals = ref ([c_K;c_S;c_B;c_C;c_I;c_one;c_zero;c_plus;c_times;c_bottom;
-                          c_null;c_append;c_cons;c_last_one] |> 
+let all_terminals = ref ([c_K;c_S;c_B;c_C;c_I;c_plus;c_times;c_bottom;
+                          c_null;c_append;c_cons;c_last_one] @ c_numbers |> 
                          List.map (fun e -> (string_of_expression e,e)));;
 let register_terminal t = 
   all_terminals := (string_of_expression t,t) :: !all_terminals;;

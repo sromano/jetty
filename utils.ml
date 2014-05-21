@@ -22,6 +22,9 @@ let rec take n = function
   | h::t when n > 0 -> h::(take (n-1) t)
   | _ -> []
 
+let rec map_list f = function
+  | [] -> [f []]
+  | (x :: xs) -> (f (x :: xs)) :: (map_list f xs)
 
 let hash_bindings h = 
   let b = ref [] in

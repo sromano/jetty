@@ -95,9 +95,9 @@ let expectation_maximization_iteration prefix
 	) requests frontier
     ) IntMap.empty frontiers
   in
-(*   let grammar = make_flat_library @@ List.filter is_terminal @@ List.map fst @@ 
+  let grammar = make_flat_library @@ List.filter is_terminal @@ List.map fst @@ 
     ExpressionMap.bindings @@ snd grammar in
- *)  let final_grammar = expectation_maximization_compress lambda smoothing grammar dagger
+  let final_grammar = expectation_maximization_compress lambda smoothing grammar dagger
       type_array requests tasks program_scores in
   (* save the grammar *)
   let c = open_out (prefix^"_grammar") in
