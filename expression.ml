@@ -106,6 +106,10 @@ let insert_expression_node (i2n,n2i,nxt) (n : expressionNode) : int =
     Hashtbl.add n2i n (!nxt);
     incr nxt; !nxt - 1;;
 
+let node_in_graph (_,n2i,_) n =
+  try
+    Some(Hashtbl.find n2i n)
+  with Not_found -> None
 
 let rec insert_expression g (e : expression) = 
   match e with

@@ -271,7 +271,7 @@ let c_times = Terminal("*",
                      lift_binary (fun x y ->x*y ));;
 
 let polynomial_library = 
-  make_flat_library @@ [c_S;c_B;c_C;c_I;c_plus;c_times;(* c_zero;c_one; *)] @ c_numbers;;
+  make_flat_library @@ [c_S;c_B;c_C;c_I;c_plus;c_times;c_zero;c_one;](*  @ c_numbers *);;
 
 let c_null = Terminal("null",canonical_type (TCon("list",[t1])),Obj.magic (ref []));;
 let c_cons = Terminal("cons",

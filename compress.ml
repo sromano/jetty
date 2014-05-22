@@ -15,7 +15,79 @@ if 2 fragments from different tasks unify to a grounded expression,
 that grounded expression gets included as a fragment.
 *)
 let candidate_fragments dagger solutions = 
-  (* for each task, collect up all the fragments into a set *)
+  print_string "Preparing for fragment merging..."; print_newline ();
+  let terminals = 0--(expression_graph_size dagger - 1) |> List.filter (is_leaf_ID dagger) in
+  let ground_pairs = 0--(expression_graph_size dagger - 1) |> 
+                     List.filter (compose not @@ has_wildcards dagger) |> 
+                     List.map (fun x -> (x,x,infer_type @@ extract_expression dagger x)) in
+  let q = try Some(List.find (is_wildcard dagger) terminals) with _ -> None in
+  (* map from fragment to the tasks that use that fragment *)
+  let task_map = Hashtbl.create @@ expression_graph_size dagger in
+  solutions |> List.iteri (fun t -> 
+    List.iter (fun i -> get_sub_IDs dagger i |> IntSet.iter (fun j -> 
+        try
+          let old = Hashtbl.find task_map j in
+          Hashtbl.replace task_map j @@ IntSet.add t old
+        with Not_found -> Hashtbl.add task_map j @@ IntSet.singleton t
+          )));
+  (* is (m n) a fragment, and if so, are its tasks complementary to those of i? *)
+  let compatible i m n = 
+    match node_in_graph dagger (ExpressionBranch(m,n)) with
+    | None -> None
+    | Some(mn) -> 
+      if IntSet.cardinal (Hashtbl.find task_map i) > 1 || 
+         IntSet.cardinal (Hashtbl.find task_map mn) > 1 || 
+         not (IntSet.equal (Hashtbl.find task_map mn) (Hashtbl.find task_map i))
+      then Some(mn)
+      else None
+  in
+  (* map from expression ID to a list of (grounded , other ID) *)
+  let instantiations = Hashtbl.create @@ expression_graph_size dagger - 1 in
+  terminals |> List.iter (fun t -> 
+      if Some(t) <> q then Hashtbl.add instantiations t 
+          ((t,t,terminal_type @@ extract_expression dagger t) :: 
+           if is_some q 
+           then [(t,get_some q,terminal_type @@ extract_expression dagger t)]
+           else []));
+  print_string "Done preparing."; print_newline ();
+  let rec instantiate i = 
+    try
+      Hashtbl.find instantiations i
+    with Not_found -> 
+      let answer = 
+        match extract_node dagger i with
+        | ExpressionLeaf(l) ->
+          raise (Failure("instantiate: terminal not instantiated: " ^ string_of_expression l))
+        | ExpressionBranch(left,right) -> 
+          let left_matches = 
+            if Some(left) = q
+            then ground_pairs
+            else instantiate left in
+          let right_matches = 
+            if Some(right) = q
+            then ground_pairs
+            else instantiate right in
+          left_matches |> List.fold_left (fun a (f,m,ft) -> 
+            right_matches |> List.fold_left (fun b (x,n,xt) -> 
+                  match compatible i m n with
+                  | Some(mn) -> begin
+                      try
+                        let fxt = application_type ft xt in
+                        (insert_expression_node dagger @@ ExpressionBranch(f,x), mn, fxt) :: b
+                      with _ -> b (* typing error *)
+                    end
+                  | None -> b) a) []
+      in Hashtbl.add instantiations i answer; answer
+  in 
+  let candidates = ref IntSet.empty in
+  task_map |> Hashtbl.iter (fun i _ -> 
+      if not (is_leaf_ID dagger i) then
+        instantiate i |> List.iter (fun (j,_,_) -> 
+            candidates := IntSet.add j !candidates));
+  print_string "Done merging."; print_newline ();
+  IntSet.elements !candidates |> List.filter (compose not @@ is_leaf_ID dagger)
+  
+(*   (* for each task, collect up all the fragments into a set *)
   let fragments = solutions |> List.map (IntSet.empty |> List.fold_left (fun a i -> 
     IntSet.union a @@ get_sub_IDs dagger i)) in
   (* record candidates in place *)
@@ -29,7 +101,7 @@ let candidate_fragments dagger solutions =
           ));
   hash_bindings candidates |> List.filter (fun (_,c) -> c > 1) |> 
   List.map fst |> List.filter (compose not @@ is_leaf_ID dagger)
-(* 
+ *)(* 
   let rec get_fragments head_task other_tasks = 
     try (* next 2 lines will throw exception once we're done *)
       let next_head = List.hd other_tasks

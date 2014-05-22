@@ -1,4 +1,4 @@
-jopen Phonetics
+open Phonetics
 open Ec
 open Task
 open Library

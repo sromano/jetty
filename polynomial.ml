@@ -33,15 +33,14 @@ let poly () =
       List.concat (List.map (fun b ->
 	(List.map (fun c -> make_polynomial_task a b c)
 	  interval)) interval)) interval) in
-(*   for i = 1 to 15 do
+   for i = 1 to 8 do
     Printf.printf "\n \n \n Iteration %i \n" i;
-    let g1 = expectation_maximization_iteration ("log/iter_"^string_of_int i) 1.5 1.0 10000 tasks (!g) in
-    g := g1
+    g := lower_bound_refinement_iteration ("log/iter_"^string_of_int i) 1.5 1.0 2000 tasks (!g)
   done;
- *)  g := load_library "log/iter_15_grammar";
+(*  g := load_library "log/iter_1_grammar" ;
   let decoder =
-    reduce_symbolically (polynomial_library) !g 10000 tasks in
-  Printf.printf "Decoder: %s\n" (string_of_expression decoder)
+    reduce_symbolically (polynomial_library) !g 100000 tasks in
+  Printf.printf "Decoder: %s\n" (string_of_expression decoder) *)
 ;;
 
 
