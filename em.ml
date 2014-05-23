@@ -4,10 +4,10 @@ open Task
 open Library
 open Enumerate
 open Utils
-
+open Compress
 
 let rec expectation_maximization_compress 
-    lambda smoothing g0 dagger type_array requests tasks program_scores = 
+    lambda smoothing g0 dagger type_array requests candidates tasks program_scores = 
   let likelihoods = program_likelihoods g0 dagger type_array requests in
   let task_posteriors = 
     List.map2 (fun task scores ->
@@ -16,43 +16,53 @@ let rec expectation_maximization_compress
         let z = lse_list (List.map snd scores) in
         List.map (fun (i,s) -> (i,s-.z)) scores
       ) tasks program_scores in
-  (* compute rewards for each program *)
-  let rewards = Hashtbl.create 100000 in
-  task_posteriors |> List.iter (fun posterior -> 
-      posterior |> List.iter (fun (i,r) -> 
-          try
-	    let old_reward = Hashtbl.find rewards i in
-	    Hashtbl.replace rewards i (old_reward+.(exp r))
-          with Not_found -> Hashtbl.add rewards i (exp r)
-	)
-    );
   (* compute rewards for each expression *)
-  let expression_rewards = Hashtbl.create 100000 in
-  let reward_expression weight i =
-    let rec reward j = 
+  let candidate_rewards = Hashtbl.create 10000 in
+  candidates |> List.iter (fun c -> Hashtbl.add candidate_rewards c neg_infinity);
+  let candidate_likelihood = memorize (fun (c,r) -> 
+    match likelihood_option g0 r @@ extract_expression dagger c with
+    | None -> neg_infinity
+    | Some(l) -> l) 10000 in
+  let rec reward_expression weight request i =
+    match extract_node dagger i with
+    | ExpressionBranch(l,r) -> 
+      reward_expression weight request l; 
+      reward_expression weight request r;
       (try
-	 let old_reward = Hashtbl.find expression_rewards j in
-	 Hashtbl.replace expression_rewards j (old_reward+.weight)
-       with Not_found -> Hashtbl.add expression_rewards j weight);
-      match extract_node dagger j with
-	ExpressionBranch(l,r) -> reward l; reward r
-      | _ -> ()
-    in reward i
-  in Hashtbl.iter (fun i w -> reward_expression w i) rewards;
+         let old = Hashtbl.find candidate_rewards i in
+         Hashtbl.replace candidate_rewards i @@ lse old weight
+       with Not_found -> (* Not a candidate - might still unify with some of them *)
+         (if has_wildcards dagger i then
+            let hits = List.filter (can_match_wildcards dagger i) candidates in
+            if not (null hits) then
+              (* TODO: use request here, also update it as we recurse *)
+              let likelihoods = List.map (fun hit -> candidate_likelihood (hit,t1)) hits in
+              let z = lse_list likelihoods in
+              List.iter2 (fun h l -> Hashtbl.replace candidate_rewards h @@ 
+                           lse (weight-.z) @@ Hashtbl.find candidate_rewards h) 
+                hits likelihoods))
+    | _ -> ()
+  in List.iter2 (fun t -> List.iter (fun (i,w) -> reward_expression w t.task_type i)) 
+    tasks task_posteriors;
   (* find those productions that have enough weight to make it into the library *)
-  let productions = hash_bindings expression_rewards |>
-                    List.filter (fun (i,r) -> is_leaf_ID dagger i || r > lambda) |> 
-                    List.map (fun (i,_) -> extract_expression dagger i) in
+  let productions =
+    (hash_bindings candidate_rewards |>
+     List.filter (fun (i,r) -> exp r > lambda) |> 
+     List.map (fun (i,_) -> extract_expression dagger i)) @ 
+    (snd g0 |> ExpressionMap.bindings |> List.map fst |> List.filter is_terminal) in
   let new_grammar = make_flat_library productions in
-  print_string "Computed posterior probabilities. \n";
+  print_string "Computed posterior probabilities."; print_newline ();
   (* assembled corpus *)
   let corpus = List.map (fun (i,l) -> (i,exp l)) @@ merge_a_list lse @@ 
     List.map2 (fun task ->
         List.map @@ fun (i,l) -> ((i,task.task_type),l))
       tasks task_posteriors in
-  (* fit the continuous parameters of the new grammar and then return it *)
+  print_string "Assembled corpus."; print_newline ();
+  (* fit the continuous parameters of the new grammar *)
   let likelihoods = program_likelihoods new_grammar dagger type_array requests in
+  print_string "Computed likelihoods."; print_newline ();
   let final_grammar = fit_grammar smoothing new_grammar dagger type_array likelihoods corpus in
+  print_string "Fit grammar."; print_newline ();
   (* check to see if we've hit a fixed point *)
   let final_productions = snd final_grammar |> ExpressionMap.bindings
                           |> List.map fst |> List.sort compare_expression in
@@ -63,7 +73,7 @@ let rec expectation_maximization_compress
   else begin
     print_endline "Another compression iteration...";
     expectation_maximization_compress lambda smoothing final_grammar dagger 
-      type_array requests tasks program_scores
+      type_array requests candidates tasks program_scores
   end
     
   
@@ -97,8 +107,9 @@ let expectation_maximization_iteration prefix
   in
   let grammar = make_flat_library @@ List.filter is_terminal @@ List.map fst @@ 
     ExpressionMap.bindings @@ snd grammar in
+  let candidates = candidate_fragments dagger @@ List.map (List.map fst) program_scores in
   let final_grammar = expectation_maximization_compress lambda smoothing grammar dagger
-      type_array requests tasks program_scores in
+      type_array requests candidates tasks program_scores in
   (* save the grammar *)
   let c = open_out (prefix^"_grammar") in
   Printf.fprintf c "%s" (string_of_library final_grammar);

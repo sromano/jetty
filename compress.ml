@@ -4,7 +4,8 @@ open Library
 open Utils
 open Task
 
-
+(* let minimum_candidate_size = 5;; *)
+let minimum_occurrences = 2;; (* how many tasks a tree must occur in to make it into the grammar *)
 
 (* finds all of the fragments we might consider adding to the grammar
 this can handle the case when the programs have wildcards in them 
@@ -35,11 +36,15 @@ let candidate_fragments dagger solutions =
     match node_in_graph dagger (ExpressionBranch(m,n)) with
     | None -> None
     | Some(mn) -> 
-      if IntSet.cardinal (Hashtbl.find task_map i) > 1 || 
-         IntSet.cardinal (Hashtbl.find task_map mn) > 1 || 
-         not (IntSet.equal (Hashtbl.find task_map mn) (Hashtbl.find task_map i))
+      let ti = Hashtbl.find task_map i
+      and tmn = Hashtbl.find task_map mn in
+      if (IntSet.cardinal ti > 1 || IntSet.cardinal tmn > 1 || not (IntSet.equal ti tmn)) && 
+         IntSet.cardinal (IntSet.union ti tmn) >= minimum_occurrences
       then Some(mn)
       else None
+  in
+  (* heuristic for deciding if an instantiation should be included *)
+  let prune_instantiations i j = false (* TODO *)
   in
   (* map from expression ID to a list of (grounded , other ID) *)
   let instantiations = Hashtbl.create @@ expression_graph_size dagger - 1 in
@@ -82,10 +87,12 @@ let candidate_fragments dagger solutions =
   let candidates = ref IntSet.empty in
   task_map |> Hashtbl.iter (fun i _ -> 
       if not (is_leaf_ID dagger i) then
-        instantiate i |> List.iter (fun (j,_,_) -> 
-            candidates := IntSet.add j !candidates));
-  print_string "Done merging."; print_newline ();
-  IntSet.elements !candidates |> List.filter (compose not @@ is_leaf_ID dagger)
+        instantiate i |> List.iter (fun (j,other,_) -> 
+            if not (prune_instantiations i j) then
+              candidates := IntSet.add j !candidates));
+  let can = IntSet.elements !candidates |> List.filter (compose not @@ is_leaf_ID dagger) in
+  Printf.printf "Got %i candidates." (List.length can); print_newline (); can
+  
   
 (*   (* for each task, collect up all the fragments into a set *)
   let fragments = solutions |> List.map (IntSet.empty |> List.fold_left (fun a i -> 
@@ -200,7 +207,6 @@ let compress lambda smoothing dagger type_array requests (task_solutions : (task
   List.exists (fun (_,s) -> s |> List.exists (fun (j,_) -> j = i))) in
   let candidates = task_solutions |> List.map (compose (List.map fst) snd) |>
                    candidate_fragments dagger in
-  Printf.printf "Found %i candidate productions \n" (List.length candidates);
   (* compute the dependencies of each candidate *)
   let dependencies =
     Array.of_list (candidates

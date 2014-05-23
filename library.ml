@@ -149,8 +149,12 @@ let fit_grammar smoothing (log_application,library) dagger program_types likelih
             (* get probability that an application was used *)
             let left_request = function_request request in
             let right_request = argument_request request program_types.(f) in
-            let left_probability = Hashtbl.find likelihoods (f,left_request) in
-            let right_probability = Hashtbl.find likelihoods (x,right_request) in
+            let left_probability = if is_wildcard dagger f 
+              then 0.
+              else Hashtbl.find likelihoods (f,left_request) in
+            let right_probability = if is_wildcard dagger x 
+              then 0.
+              else Hashtbl.find likelihoods (x,right_request) in
             let application_probability = log_application+.left_probability+.right_probability in
             (* get the uses from the right and the left *)
             let left_uses = uses f left_request in

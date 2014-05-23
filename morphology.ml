@@ -55,13 +55,14 @@ let morphology () =
   let lambda = 2.0 in
   let alpha = 1. in
   let frontier_size = 2000 in
+  let keep_size = 2000 in
   let g = ref @@ make_flat_library @@ phonetic_terminals in 
   let tasks = 
-    doubled_words |> List.map make_word_task in
+    doubled_words |> List.map make_word_task |> take 3 in
   for i = 1 to 9 do
     Printf.printf "\n \n \n Iteration %i \n" i;
     let g1 = backward_iteration ("log/iter_"^string_of_int i)
-        lambda alpha frontier_size tasks (!g) in
+        lambda alpha frontier_size keep_size tasks (!g) in
     g := g1
   done;
 (*  let decoder =

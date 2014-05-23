@@ -14,6 +14,15 @@ let safe_get_some message = function
   | Some(x) -> x
   | _ -> raise (Failure message);;
 
+let memorize f sz = 
+  let table = Hashtbl.create sz in
+  fun x -> try
+    Hashtbl.find table x
+  with Not_found -> 
+    let y = f x in
+    Hashtbl.add table x y;
+    y
+
 let null = function
   | [] -> true
   | _ -> false
