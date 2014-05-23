@@ -6,6 +6,8 @@ morphology:
 	$(c) -o test $(base) morphology.ml
 polynomial:
 	$(c) -o test $(base) polynomial.ml
+test:
+	$(c) -o test $(base) 
 clean:
 	rm test *.cmi *.cmo *cmx *~ 
 run:

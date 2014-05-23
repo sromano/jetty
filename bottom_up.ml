@@ -66,10 +66,10 @@ let match_template dagger template i =
           match extract_node dagger j with
           | ExpressionLeaf(Terminal(name_,_,_)) -> name == name_
           | _ -> false
-        with _ -> raise (Failure "match_template, ID not in graph")
+        with _ -> raise (Failure "match_template, ID not in graph (2)")
       end
   in if m template i
-     then Some(List.map snd @@ List.sort (fun (a,_) (b,_) -> compare a b) !bindings)
+     then Some(!bindings)
      else None
     
 let apply_template template bindings = 
@@ -78,9 +78,9 @@ let apply_template template bindings =
     | Terminal(name,_,_) when name.[0] = '?' && String.length name > 1 -> begin
         let name_ID = int_of_string @@ String.sub name 1 (String.length name - 1) in
         try
-          List.nth bindings name_ID
+          List.assoc name_ID bindings
         with _ -> 
-          Terminal("?",t1,ref ())  (* raise (Failure "apply_template: unbound") *)
+          Terminal("?",t1,ref ()) (* raise (Failure "apply_template: unbound") *)
       end
     | Terminal(_,_,_) -> t
     | Application(f,x) -> 
@@ -94,7 +94,7 @@ let backward_children dagger grammar request rewrites j =
         match match_template dagger template i with
         | None -> a
         | Some(bindings) ->
-          (handler @@ List.map (extract_expression dagger) bindings)::a) [] in
+          (handler @@ List.map (fun (b,i) -> (b,extract_expression dagger i)) bindings)::a) [] in
     match Hashtbl.find i2n i with
     | ExpressionLeaf(_) -> head_rewrites
     | ExpressionBranch(f,x) -> 
@@ -182,18 +182,22 @@ let backward_iteration
   save_best_programs (prefix^"_programs") dagger task_solutions;
  *)  g
 
-(* 
+
 let test_backwards () = 
   let dagger = make_expression_graph 1000 in
-  let l = make_flat_library [c_S;c_B;c_C;c_I;c_K;c_append;c_cons;c_null;c_one;] in
+  let l = make_flat_library [c_S;c_B;c_C;c_I;c_append;c_cons;c_null;c_one;] in
   snd l |> ExpressionMap.bindings |> List.iter (fun (e,_) -> 
-    ignore(insert_expression dagger e));
-  let rewrites = 
-    [i_rewrite; b_rewrite;c_rewrite;s_rewrite;append_rewrite1;append_rewrite2;k_rewrite;]
-  in
-  backward_enumerate dagger l rewrites 1000 t1
-    (insert_expression dagger @@ expression_of_string "1") |> List.iter (fun (_,e) -> 
+      ignore(insert_expression dagger e));
+  let rewrites = snd l |> ExpressionMap.bindings |> List.map (fun (e,(_,t)) -> 
+      (* load primitives into the graph *)
+      ignore(insert_expression dagger e);
+      get_templates e t |> List.map (fun (target,template) -> 
+          Printf.printf "%s  <>  %s\n" (string_of_expression target) (string_of_expression template);
+          (template,apply_template target)))
+                 |> List.concat in
+  backward_enumerate dagger l rewrites 20000 20000 (TCon("list",[make_ground "int"]))
+    (insert_expression dagger @@ expression_of_string "((cons 1) ((cons 1) null))") |> List.iter (fun (_,e) -> 
     Printf.printf "%s\n" @@ string_of_expression @@ extract_expression dagger e);;
- *)
+
 
 (* test_backwards ();; *)
