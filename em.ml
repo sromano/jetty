@@ -27,8 +27,10 @@ let rec expectation_maximization_compress
   let rec reward_expression weight request i =
     match extract_node dagger i with
     | ExpressionBranch(l,r) -> 
-      reward_expression weight request l; 
-      reward_expression weight request r;
+      let left_request = function_request request in
+      let right_request = argument_request request type_array.(l) in
+      reward_expression weight left_request l; 
+      reward_expression weight right_request r;
       (try
          let old = Hashtbl.find candidate_rewards i in
          Hashtbl.replace candidate_rewards i @@ lse old weight
@@ -36,13 +38,12 @@ let rec expectation_maximization_compress
          (if has_wildcards dagger i then
             let hits = List.filter (can_match_wildcards dagger i) candidates in
             if not (null hits) then (
-              (* TODO: use request here, also update it as we recurse *)
-              let likelihoods = List.map (fun hit -> candidate_likelihood (hit,t1)) hits in
+              let likelihoods = List.map (fun hit -> candidate_likelihood (hit,request)) hits in
               let z = lse_list likelihoods in
-              assert(z > neg_infinity);
-              List.iter2 (fun h l -> Hashtbl.replace candidate_rewards h @@ 
-                           lse (weight+.l-.z) @@ Hashtbl.find candidate_rewards h) 
-                hits likelihoods)))
+              if z > neg_infinity then
+                List.iter2 (fun h l -> Hashtbl.replace candidate_rewards h @@ 
+                             lse (weight+.l-.z) @@ Hashtbl.find candidate_rewards h) 
+                  hits likelihoods)))
     | _ -> ()
   in List.iter2 (fun t -> List.iter (fun (i,w) -> reward_expression w t.task_type i)) 
     tasks task_posteriors;
@@ -55,6 +56,7 @@ let rec expectation_maximization_compress
   let new_grammar = make_flat_library productions in
   Printf.printf "Computed production rewards; keeping %i." (List.length productions);
   print_newline ();
+  productions |> List.iter (fun p -> print_string (string_of_expression p); print_newline ());
   (* assembled corpus *)
   let corpus = List.map (fun (i,l) -> (i,exp l)) @@ merge_a_list lse @@ 
     List.map2 (fun task ->

@@ -33,6 +33,54 @@ let top_nouns = [
   "b aj s I k ue l";
 ]
 
+(* most common singular nouns produced by thirty months old *)
+let top_singular = [
+  "b c l";
+  "b ue b ue l";
+  "t sh i z";
+  "k uu k i";
+  "m I l k";
+(*   "p ae n t s"; *)
+  "s a k";
+  "a r m";
+(*   "f uu t"; *)
+  "n ow z";
+  "k i z";
+  "l aj t";
+(*   "w a t ue r"; *)
+  "s ow p";
+  "d c r";
+  "b ej b i";
+  "b ae th";
+  "b ue r d";
+  "h c r s";
+  "b aj s I k ue l";
+]
+
+(* most common singular nouns produced by thirty months old *)
+let top_plural = [
+  "b c l z";
+  "b ue b ue l z";
+  "t sh i z ue z";
+  "k uu k i z";
+  "m I l k s";
+(*   "p ae n t s"; *)
+  "s a k s";
+  "a r m z";
+(*   "f uu t"; *)
+  "n ow z ue z";
+  "k i z ue z";
+  "l aj t s";
+(*   "w a t ue r"; *)
+  "s ow p s";
+  "d c r z";
+  "b ej b i z";
+  "b ae th s";
+  "b ue r d z";
+  "h c r s ue z";
+  "b aj s I k ue l z";
+]
+
 let doubled_words = 
   ["a a"; "b c b c"; "s ow p s ow p"; "r I r I"; "d d"]
 
@@ -52,13 +100,13 @@ let make_word_task word =
 
 
 let morphology () = 
-  let lambda = 2.0 in
+  let lambda = 1.0 in
   let alpha = 1. in
   let frontier_size = 200000 in
   let keep_size = 10000 in
   let g = ref @@ make_flat_library @@ phonetic_terminals in 
   let tasks = 
-    doubled_words |> List.map make_word_task |> take 3 in
+    doubled_words |> List.map make_word_task in
   for i = 1 to 9 do
     Printf.printf "\n \n \n Iteration %i \n" i;
     let g1 = backward_iteration ("log/iter_"^string_of_int i)
