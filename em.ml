@@ -8,6 +8,7 @@ open Compress
 
 let rec expectation_maximization_compress 
     lambda smoothing g0 dagger type_array requests candidates tasks program_scores = 
+  Printf.printf "has Doppler: %b" @@ expression_in_graph dagger @@ expression_of_string "((S @) I)"; print_newline ();
   let likelihoods = program_likelihoods g0 dagger type_array requests in
   let task_posteriors = 
     List.map2 (fun task scores ->
@@ -34,13 +35,14 @@ let rec expectation_maximization_compress
        with Not_found -> (* Not a candidate - might still unify with some of them *)
          (if has_wildcards dagger i then
             let hits = List.filter (can_match_wildcards dagger i) candidates in
-            if not (null hits) then
+            if not (null hits) then (
               (* TODO: use request here, also update it as we recurse *)
               let likelihoods = List.map (fun hit -> candidate_likelihood (hit,t1)) hits in
               let z = lse_list likelihoods in
+              assert(z > neg_infinity);
               List.iter2 (fun h l -> Hashtbl.replace candidate_rewards h @@ 
-                           lse (weight-.z) @@ Hashtbl.find candidate_rewards h) 
-                hits likelihoods))
+                           lse (weight+.l-.z) @@ Hashtbl.find candidate_rewards h) 
+                hits likelihoods)))
     | _ -> ()
   in List.iter2 (fun t -> List.iter (fun (i,w) -> reward_expression w t.task_type i)) 
     tasks task_posteriors;
@@ -51,7 +53,8 @@ let rec expectation_maximization_compress
      List.map (fun (i,_) -> extract_expression dagger i)) @ 
     (snd g0 |> ExpressionMap.bindings |> List.map fst |> List.filter is_terminal) in
   let new_grammar = make_flat_library productions in
-  print_string "Computed posterior probabilities."; print_newline ();
+  Printf.printf "Computed production rewards; keeping %i." (List.length productions);
+  print_newline ();
   (* assembled corpus *)
   let corpus = List.map (fun (i,l) -> (i,exp l)) @@ merge_a_list lse @@ 
     List.map2 (fun task ->

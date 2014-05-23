@@ -139,11 +139,25 @@ let extract_node (i2n,_,_) i =
     Hashtbl.find i2n i
   with Not_found -> raise (Failure "extract_node: ID not in graph")
    
+(* returns a set containing all of the expressions reachable from a given list of IDs *)
+let reachable_expressions dagger expressions = 
+  let reachable = ref IntSet.empty in
+  let rec reach i = 
+    if not (IntSet.mem i !reachable)
+    then begin
+      reachable := IntSet.add i !reachable;
+      match extract_node dagger i with
+      | ExpressionBranch(f,x) -> reach f; reach x
+      | _ -> ()
+    end in
+  List.iter reach expressions; !reachable
 
 let is_leaf_ID (g,_,_) i = 
-  match Hashtbl.find g i with
-    ExpressionLeaf(_) -> true
-  | _ -> false
+  try
+    match Hashtbl.find g i with
+    | ExpressionLeaf(_) -> true
+    | _ -> false
+  with Not_found -> raise (Failure "is_leaf_ID: unknown ID")
   
 let rec get_sub_IDs g i = 
   let (i2n,_,_) = g in

@@ -34,7 +34,7 @@ let top_nouns = [
 ]
 
 let doubled_words = 
-  top_nouns |> List.map (fun w -> w ^ " " ^ w)
+  ["a a"; "b c b c"; "s ow p s ow p"; "r I r I"; "d d"]
 
 let make_word_task word = 
   let e = make_phonetic word in
@@ -54,8 +54,8 @@ let make_word_task word =
 let morphology () = 
   let lambda = 2.0 in
   let alpha = 1. in
-  let frontier_size = 2000 in
-  let keep_size = 2000 in
+  let frontier_size = 200000 in
+  let keep_size = 10000 in
   let g = ref @@ make_flat_library @@ phonetic_terminals in 
   let tasks = 
     doubled_words |> List.map make_word_task |> take 3 in

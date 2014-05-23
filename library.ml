@@ -25,7 +25,6 @@ let program_likelihoods (log_application,library) dagger program_types requests 
   (* get all of the different types we can choose from *)
   let terminal_types =
     List.map (fun (_,(l,t)) -> (t,l)) (ExpressionMap.bindings library) in
-  let (i2n,n2i,nxt) = dagger in
   let likelihoods = Hashtbl.create (expression_graph_size dagger) in
   let rec likelihood (i : int) (request : tp) = 
     if is_wildcard dagger i then 0. else
@@ -41,7 +40,7 @@ let program_likelihoods (log_application,library) dagger program_types requests 
           else let z = lse_list (List.map snd (List.filter (fun (t,_) -> 
               can_unify t request) terminal_types)) in
             numerator+.log_terminal-.z
-        in match Hashtbl.find i2n i with
+        in match extract_node dagger i with
           ExpressionBranch(f,x) -> 
             let left_request = function_request request in
             let right_request = argument_request request program_types.(f) in
@@ -101,7 +100,6 @@ type useCounts = {
    corpus is a list of ((expression ID,requested type),weight)
    returns the grammar with the parameters fit *)
 let fit_grammar smoothing (log_application,library) dagger program_types likelihoods corpus = 
-  let (i2n,n2i,nxt) = dagger in
   let log_terminal = log (1.0 -. exp log_application) in
   (* get all of the different terminals we can choose from;
      this ordering determines where they go in the use arrays
@@ -137,7 +135,7 @@ let fit_grammar smoothing (log_application,library) dagger program_types likelih
             let offsets_array = Array.create number_terminals 0. in
             offsets |> List.iter (fun (o,l) -> offsets_array.(o) <- exp l);
             (log_terminal+.offset_Z-.z, offsets_array, other_offsets) 
-        in match Hashtbl.find i2n i with
+        in match extract_node dagger i with
           (* we have no children, don't recurse *)
           ExpressionLeaf(_) -> 
             { application_counts = 0.0; terminal_counts = 1.0;
