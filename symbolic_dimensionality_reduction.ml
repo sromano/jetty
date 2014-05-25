@@ -50,11 +50,13 @@ let decode_likelihood grammar dagger paths i =
     | L :: p -> begin
       match e with
       | Application(l,_) -> score_path r l p
+      | Terminal(q,_,_) when q.[0] = '?' -> 0.0
       | _ -> neg_infinity
     end
     | R :: p -> begin
       match e with
       | Application(_,x) -> score_path r x p
+      | Terminal(q,_,_) when q.[0] = '?' -> 0.0
       | _ -> neg_infinity
     end
     | [] -> match likelihood_option grammar r e with

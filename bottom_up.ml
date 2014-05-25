@@ -110,14 +110,18 @@ let backward_children dagger grammar request rewrites j =
      List.map (fun (l,e) -> (insert_expression dagger e, get_some l))
 
 let backward_enumerate dagger grammar rewrites size keep request i =
-  let closed = ref @@ PQ.singleton (0.,i) in
-  let opened = ref @@ PQ.singleton (0.,i) in
+  let new_dagger = make_expression_graph keep in
+  let e = extract_expression dagger i in
+  let i = insert_expression new_dagger e in
+  let i_likelihood = get_some @@ likelihood_option grammar request e in
+  let closed = ref @@ PQ.singleton (i_likelihood,i) in
+  let opened = ref @@ PQ.singleton (i_likelihood,i) in
   let rec search () = 
     if PQ.cardinal !closed > size || PQ.cardinal !opened = 0
     then PQ.elements !closed
     else let next = PQ.max_elt !opened in
          opened := PQ.remove next !opened;
-         backward_children dagger grammar request rewrites (snd next) |> 
+         backward_children new_dagger grammar request rewrites (snd next) |> 
          List.iter (fun (j,l) -> let c = (l,j) in
                    if not (PQ.mem c !closed)
                    then begin
@@ -125,8 +129,9 @@ let backward_enumerate dagger grammar rewrites size keep request i =
                      opened := PQ.add c !opened
                    end);
          search ()
-  in search () |> List.filter (compose not @@ compose (has_trivial_symmetry dagger) snd) |> 
-     List.sort (fun (l,_) (u,_) -> compare u l) |> take keep
+  in search () |> List.filter (compose not @@ compose (has_trivial_symmetry new_dagger) snd) |> 
+     List.sort (fun (l,_) (u,_) -> compare u l) |> take keep |> 
+     List.map (fun (l,j) -> (l,insert_expression dagger @@ extract_expression new_dagger j))
 
 let backward_iteration
     prefix lambda smoothing frontier_size keep_size
@@ -176,11 +181,9 @@ let backward_iteration
   Printf.fprintf c "%s" (string_of_library g);
   close_out c;
   (* save the best programs *)
-(*   let task_solutions = List.combine tasks program_scores |> List.map (fun (t,solutions) ->
-    (t, solutions |> List.map (fun (i,s) -> 
-          (i,s+. (get_some @@ likelihood_option g t.task_type (extract_expression dagger i)))))) in
+  let task_solutions = List.combine tasks (List.map (List.map (fun (l,i) -> (i,l))) frontiers) in
   save_best_programs (prefix^"_programs") dagger task_solutions;
- *)  g
+  g
 
 
 let test_backwards () = 

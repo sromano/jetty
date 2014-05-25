@@ -54,36 +54,15 @@ let program_likelihoods (log_application,library) dagger program_types requests 
   in IntMap.iter (fun i -> List.iter (fun r -> ignore (likelihood i r))) requests; likelihoods
 
 (* computes likelihood of a possibly ill typed program: returns None if it doesn't type *)
-let likelihood_option (log_application,library) request e = 
-  let log_terminal = log (1.0 -. exp log_application) in
-  (* get all of the different types we can choose from *)
-  let terminal_types =
-    List.map (fun (_,(l,t)) -> (t,l)) (ExpressionMap.bindings library) in
-  let rec l q r = 
-    match q with
-    | Terminal(n,t,_) when n.[0] = '?' -> (0.,t) (* wildcard *)
-    | Terminal(_,t,_) -> 
-      let log_probability = fst @@ ExpressionMap.find q library in
-      let z = lse_list @@ List.map snd @@ 
-        List.filter (compose (can_unify r) fst) terminal_types in
-      (log_terminal+.log_probability-.z, t)
-    | Application(f,x) -> 
-      let (left_likelihood,f_type) = l f (function_request r) in
-      let (right_likelihood,x_type) = l x (argument_request r f_type) in
-      let application_likelihood = log_application+.left_likelihood+.right_likelihood in
-      try
-        let (log_probability,t) = ExpressionMap.find q library in
-        let z = lse_list @@ List.map snd @@ 
-          List.filter (compose (can_unify r) fst) terminal_types in
-        (lse (log_terminal+.log_probability-.z) application_likelihood, t)
-      with Not_found -> (application_likelihood, application_type f_type x_type)
-  in try
-    Some(fst @@ l e request)
-  with Not_found -> 
-    raise (Failure ("likelihood_option: unknown terminal in "^(string_of_expression e)))
-  | _ -> None
-    
-        
+let likelihood_option library request e = 
+  let dagger = make_expression_graph 100 in
+  let i = insert_expression dagger e in
+  let requests = IntMap.singleton i [request] in
+  try
+    let types = infer_graph_types dagger in
+    let likelihoods = program_likelihoods library dagger types requests in
+    Some(Hashtbl.find likelihoods (i,request))
+  with _ -> None        
 
 (* tracks the number of times that each production has been used, or could have been used *)
 type useCounts = { 

@@ -100,7 +100,7 @@ let make_word_task word =
 
 
 let morphology () = 
-  let lambda = 1.0 in
+  let lambda = 0.6 in
   let alpha = 1. in
   let frontier_size = 200000 in
   let keep_size = 10000 in

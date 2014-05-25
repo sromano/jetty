@@ -8,7 +8,6 @@ open Compress
 
 let rec expectation_maximization_compress 
     lambda smoothing g0 dagger type_array requests candidates tasks program_scores = 
-  Printf.printf "has Doppler: %b" @@ expression_in_graph dagger @@ expression_of_string "((S @) I)"; print_newline ();
   let likelihoods = program_likelihoods g0 dagger type_array requests in
   let task_posteriors = 
     List.map2 (fun task scores ->
@@ -56,7 +55,7 @@ let rec expectation_maximization_compress
   let new_grammar = make_flat_library productions in
   Printf.printf "Computed production rewards; keeping %i." (List.length productions);
   print_newline ();
-  productions |> List.iter (fun p -> print_string (string_of_expression p); print_newline ());
+(* productions |> List.iter (fun p -> print_string (string_of_expression p); print_newline ()); *)
   (* assembled corpus *)
   let corpus = List.map (fun (i,l) -> (i,exp l)) @@ merge_a_list lse @@ 
     List.map2 (fun task ->
@@ -75,11 +74,11 @@ let rec expectation_maximization_compress
                             List.map fst |> List.sort compare_expression in
   if list_equal compare_expression final_productions initial_productions
   then final_grammar
-  else begin
+  else final_grammar (* begin
     print_endline "Another compression iteration...";
     expectation_maximization_compress lambda smoothing final_grammar dagger 
       type_array requests candidates tasks program_scores
-  end
+  end *)
     
   
 
@@ -110,8 +109,8 @@ let expectation_maximization_iteration prefix
 	) requests frontier
     ) IntMap.empty frontiers
   in
-  let grammar = make_flat_library @@ List.filter is_terminal @@ List.map fst @@ 
-    ExpressionMap.bindings @@ snd grammar in
+(*  let grammar = make_flat_library @@ List.filter is_terminal @@ List.map fst @@ 
+    ExpressionMap.bindings @@ snd grammar in *)
   let candidates = candidate_fragments dagger @@ List.map (List.map fst) program_scores in
   let final_grammar = expectation_maximization_compress lambda smoothing grammar dagger
       type_array requests candidates tasks program_scores in

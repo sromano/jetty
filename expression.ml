@@ -184,9 +184,10 @@ let terminal_wildcard = function
 
 (* checks to see if the target could be matched to the template *)
 let rec can_match_wildcards dagger template target = 
-  if template = target then true else 
+  if template = target || is_wildcard dagger template || is_wildcard dagger target
+  then true
+  else 
   match extract_node dagger template with
-  | ExpressionLeaf(Terminal(n,_,_)) when n.[0] = '?' -> true
   | ExpressionLeaf(_) -> false
   | ExpressionBranch(template_function,template_argument) -> begin
     match extract_node dagger target with
@@ -243,7 +244,15 @@ let rec bottomless = function
   | Terminal(n,_,_) -> not (n = "bottom")
 
 let rec antiunify_expressions dagger i j = 
-  if i = j then extract_expression dagger i else
+  if i = j 
+  then extract_expression dagger i 
+  else 
+  if is_wildcard dagger i
+  then extract_expression dagger j
+  else
+  if is_wildcard dagger j
+  then extract_expression dagger i
+  else
   match extract_node dagger i with
   | ExpressionLeaf(_) -> Terminal("?",t1,ref ())
   | ExpressionBranch(l,r) -> 
