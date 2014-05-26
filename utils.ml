@@ -119,3 +119,16 @@ let time_it description callback =
   let return_value = callback () in
   Printf.printf "%s in %f seconds." description (Sys.time () -. start_time); print_newline ();
   return_value
+
+(* progress bar *)
+type progress_bar = { maximum_progress : int; mutable current_progress : int; }
+
+let make_progress_bar number_jobs = 
+  { maximum_progress = number_jobs; current_progress = 0; }
+
+let update_progress_bar bar new_progress = 
+  let old_dots = int_of_float @@ float_of_int bar.current_progress /. 80.0 in
+  let new_dots = int_of_float @@ float_of_int new_progress /. 80.0 in
+  bar.current_progress <- new_progress;
+  if new_dots > old_dots then
+    (1--(new_dots-old_dots)) |> List.iter (fun _ -> print_char '.'; flush stdout)

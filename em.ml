@@ -138,13 +138,13 @@ let backward_iteration
       get_templates e t |> List.map (fun (target,template) -> (template,apply_template target)))
                  |> List.concat in
   let frontiers = tasks |> List.map (fun t -> 
-    Printf.printf "Enumerating (backwards) for %s..." t.name;
+    Printf.printf "Enumerating (backwards) for %s" t.name;
     print_newline ();
     let i = insert_expression dagger @@ match t.score with
       | Seed(s) -> s
       | LogLikelihood(_) -> raise (Failure "backward_iteration: task has no seed") in
     let f = backward_enumerate dagger grammar rewrites frontier_size keep_size t.task_type i in
-    print_endline "Finished enumerating."; f) in
+    print_endline "\nFinished enumerating."; f) in
   let type_array = infer_graph_types dagger in  
   print_endline "Done inferring graph types.";
   let requests = List.fold_left2 (fun requests frontier t -> 

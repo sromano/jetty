@@ -109,6 +109,7 @@ let backward_children dagger grammar request rewrites j =
      List.map (fun (l,e) -> (insert_expression dagger e, get_some l))
 
 let backward_enumerate dagger grammar rewrites size keep request i =
+  let bar = make_progress_bar size in
   let new_dagger = make_expression_graph keep in
   let e = extract_expression dagger i in
   let i = insert_expression new_dagger e in
@@ -127,6 +128,7 @@ let backward_enumerate dagger grammar rewrites size keep request i =
                      closed := PQ.add c !closed;
                      opened := PQ.add c !opened
                    end);
+         update_progress_bar bar (PQ.cardinal !closed);
          search ()
   in search () |> List.filter (compose not @@ compose (has_trivial_symmetry new_dagger) snd) |> 
      List.sort (fun (l,_) (u,_) -> compare u l) |> take keep |> 
