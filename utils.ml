@@ -92,13 +92,13 @@ let lde x y =
 
 let rec remove_duplicates l = 
   match l with
-    [] -> []
+  | [] -> []
   | (x::y) -> x::(List.filter (fun z -> not (z = x)) (remove_duplicates y))
 
 
 let combine_with f _ a b = 
   match (a,b) with
-    (None,_) -> b
+  | (None,_) -> b
   | (_,None) -> a
   | (Some(x),Some(y)) -> Some(f x y)
 

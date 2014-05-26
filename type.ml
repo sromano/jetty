@@ -10,7 +10,7 @@ type tp =
 type tContext = int * tp TypeMap.t
 let empty_context = (0,TypeMap.empty);;
 let make_arrow t q = TCon("->", [t;q]);;
-
+let (@>) = make_arrow;;
 
 let rec string_of_type t = 
   match t with
@@ -175,6 +175,7 @@ let rec get_arity = function
 
 let make_ground g = TCon(g,[]);;
 let tint = make_ground "int";;
+let treal = make_ground "real";;
 let t1 = TID(1);;
 let t2 = TID(2);;
 let t3 = TID(3);;
@@ -182,8 +183,9 @@ let t4 = TID(4);;
 
 
 let test_type () = 
-  print_string (string_of_bool (can_unify (make_arrow t1 t1) (make_arrow t1 t1)));
+  print_string (string_of_type @@ t1 @> (t2 @> t2) @> tint);
+  print_string (string_of_bool (can_unify (t1 @> t1) (make_arrow t1 t1)));
   print_string (string_of_bool (can_unify (make_arrow t1 t1) (make_arrow (make_arrow t1 t2) t3)));
   print_string (string_of_bool (not (can_unify (make_arrow t1 t1) (make_arrow (make_arrow t1 t2) (make_ground "int")))));
 ;;
- (* test_type ();; *)
+(* test_type ();; *)

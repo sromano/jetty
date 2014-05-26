@@ -6,6 +6,8 @@ morphology:
 	$(c) -o test $(base) morphology.ml
 polynomial:
 	$(c) -o test $(base) polynomial.ml
+regress:
+	$(c) -o test $(base) regress.ml
 test:
 	$(c) -o test $(base) 
 clean:

@@ -67,7 +67,12 @@ let lift_binary k : unit ref = Obj.magic @@ ref (
       | (Some(a),Some(b)) -> Some(k a b)
       | _ -> None))
 
-let lift_unary k : unit ref = Obj.magic @@ ref k
+let lift_unary k : unit ref = Obj.magic @@ ref (function
+  | Some(x) -> (try
+                  Some(k x)
+                with _ -> None)
+  | None -> None)
+
 
 let infer_type (e : expression) = 
   let rec infer c r = 
@@ -317,7 +322,8 @@ let infer_graph_types dagger =
     ignore (infer i)
   done; type_map
 
-let expression_of_int i = Terminal(string_of_int i,make_ground "int",Obj.magic (ref i))
+let expression_of_int i = Terminal(string_of_int i,tint,Obj.magic (ref i));;
+let expression_of_float i = Terminal(string_of_float i,treal,Obj.magic (ref i));;
 
 
 let test_expression () =

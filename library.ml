@@ -6,6 +6,9 @@ open Utils
 open Obj
 
 
+(* specializes the list typed to only work on phonemes *)
+let phonetic_list = true
+
 type library = float * (float*tp) ExpressionMap.t
 
 (* creates a new library with all the production weights equal *)
@@ -241,30 +244,47 @@ let combinatory_library =
 
 let c_bottom = Terminal("bottom",canonical_type t1,Obj.magic @@ ref None)
 
-let c_one = Terminal("1",make_ground "int",Obj.magic (ref 1));;
-let c_zero = Terminal("0",make_ground "int",Obj.magic (ref 0));;
+let c_one = Terminal("1",tint,Obj.magic (ref 1));;
+let c_zero = Terminal("0",tint,Obj.magic (ref 0));;
 let c_numbers = 0--9 |> List.map expression_of_int;;
 let c_plus = Terminal("+",
-                     make_arrow (make_ground "int") (make_arrow (make_ground "int") (make_ground "int")),
+                     make_arrow tint (make_arrow tint tint),
                      lift_binary (+));;
 let c_times = Terminal("*",
-                     make_arrow (make_ground "int") (make_arrow (make_ground "int") (make_ground "int")),
+                     make_arrow tint (make_arrow tint tint),
                      lift_binary (fun x y ->x*y ));;
-
 let polynomial_library = 
   make_flat_library @@ [c_S;c_B;c_C;c_I;c_plus;c_times;c_zero;c_one;](*  @ c_numbers *);;
 
-let c_null = Terminal("null",canonical_type (TCon("list",[t1])),Obj.magic (ref []));;
+let c_reals = 0--9 |> List.map (compose expression_of_float float_of_int);;
+let c_sin = Terminal("sin",
+                    make_arrow treal treal,
+                    lift_unary sin);;
+let c_cos = Terminal("cos",
+                    make_arrow treal treal,
+                    lift_unary cos);;
+let c_plus_dot = Terminal("+.",
+                     make_arrow treal (make_arrow treal treal),
+                     lift_binary (+.));;
+let c_times_dot = Terminal("*.",
+                     make_arrow treal (make_arrow treal treal),
+                     lift_binary ( *. ));;
+let fourier_library = 
+  make_flat_library @@ [c_S;c_B;c_C;c_I;c_plus_dot;c_times_dot;c_sin;c_cos;] @ c_reals;;
+
+
+let list_type = if phonetic_list then make_ground "phone" else t1;;
+let c_null = Terminal("null",canonical_type (TCon("list",[list_type])),Obj.magic (ref []));;
 let c_cons = Terminal("cons",
-                      canonical_type @@ make_arrow t1 @@ 
-                      make_arrow (TCon("list",[t1])) @@ (TCon("list",[t1])),
+                      canonical_type @@ make_arrow list_type @@ 
+                      make_arrow (TCon("list",[list_type])) @@ (TCon("list",[list_type])),
                       lift_binary (fun x y -> x::y));;
 let c_append = Terminal("@",
-                        canonical_type @@ make_arrow (TCon("list",[t1])) @@ 
-                        make_arrow (TCon("list",[t1])) @@ (TCon("list",[t1])),
+                        canonical_type @@ make_arrow (TCon("list",[list_type])) @@ 
+                        make_arrow (TCon("list",[list_type])) @@ (TCon("list",[list_type])),
                         lift_binary (@));;
 let c_last_one = Terminal("last-one",
-                          canonical_type @@ make_arrow (TCon("list",[t1])) t1,
+                          canonical_type @@ make_arrow (TCon("list",[list_type])) list_type,
                           lift_unary last_one);;
 
 
@@ -275,8 +295,9 @@ let string_of_library (log_application,distribution) =
      (List.map (fun (e,(w,t)) -> Printf.sprintf "\t %f \t %s : %s " w (string_of_expression e) (string_of_type t)) 
         bindings));;
 
-let all_terminals = ref ([c_K;c_S;c_B;c_C;c_I;c_plus;c_times;c_bottom;
-                          c_null;c_append;c_cons;c_last_one] @ c_numbers |> 
+let all_terminals = ref ([c_K;c_S;c_B;c_C;c_I;c_bottom;
+                          c_sin;c_cos;c_times_dot;c_plus_dot;c_plus;c_times;
+                          c_null;c_append;c_cons;c_last_one] @ c_numbers @ c_reals |> 
                          List.map (fun e -> (string_of_expression e,e)));;
 let register_terminal t = 
   all_terminals := (string_of_expression t,t) :: !all_terminals;;
