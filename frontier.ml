@@ -52,7 +52,6 @@ let make_frontiers size keep_size grammar tasks =
             | Seed(s) -> s
             | LogLikelihood(_) -> raise (Failure "make_frontiers: task has no seed") in
           let f = backward_enumerate dagger grammar rewrites size keep_size t.task_type i in
-          print_endline "Finished enumerating.";
           List.map (fun (l,i) -> (i,l)) f) in
       frontiers
     end

@@ -92,85 +92,57 @@ let fit_grammar smoothing (log_application,library) dagger program_types likelih
                                    (t, l, i)))
       (ExpressionMap.bindings library) in
   let number_terminals = List.length terminal_order in
-  (* hash map from (ID,requested type) to use counts *)
-  let use_map = Hashtbl.create (Hashtbl.length likelihoods) in
-  let rec uses i request = 
-    if is_wildcard dagger i 
-    then { application_counts = 0.; terminal_counts = 0.;
-           use_counts = Array.make number_terminals 0.;
-           possible_counts = Array.make number_terminals 0.; } 
-    else try
-      Hashtbl.find use_map (i,request)
-    with Not_found -> 
-      let u = 
-        (* if it is in library compute uses if the production was used *)
-        let (terminal_probability,offsets,distractors) =
-          let hits = terminal_order |> List.filter
-                       (fun (j,_) -> can_match_wildcards dagger i j) in
-          if null hits then (neg_infinity, Array.create number_terminals 0., []) else
-            let offsets = hits |> List.map (fun (_,(_,l,o)) -> (o,l)) in
-            let offset_Z = lse_list @@ List.map snd offsets in
-            let offsets = offsets |> List.map (fun (o,l) -> (o,l-.offset_Z)) in
-            let others = List.filter (fun (_,(t,_,_)) -> can_unify t request) terminal_order in
-            let other_offsets = List.map (fun (_,(_,_,o)) -> o) others in
-            let z = lse_list (List.map (fun (_,(_,l,_)) -> l) others) in
-            let offsets_array = Array.create number_terminals 0. in
-            offsets |> List.iter (fun (o,l) -> offsets_array.(o) <- exp l);
-            (log_terminal+.offset_Z-.z, offsets_array, other_offsets) 
-        in match extract_node dagger i with
-          (* we have no children, don't recurse *)
-          ExpressionLeaf(_) -> 
-            { application_counts = 0.0; terminal_counts = 1.0;
-              use_counts = offsets;
-              possible_counts = Array.init number_terminals
-                (fun j -> if List.mem j distractors then 1.0 else 0.0); }
-          (* recurse on function and argument *)
-        | ExpressionBranch(f,x) ->
-            (* get probability that an application was used *)
-            let left_request = function_request request in
-            let right_request = argument_request request program_types.(f) in
-            let left_probability = if is_wildcard dagger f 
-              then 0.
-              else Hashtbl.find likelihoods (f,left_request) in
-            let right_probability = if is_wildcard dagger x 
-              then 0.
-              else Hashtbl.find likelihoods (x,right_request) in
-            let application_probability = log_application+.left_probability+.right_probability in
-            (* get the uses from the right and the left *)
-            let left_uses = uses f left_request in
-            let right_uses = uses x right_request in
-            (* normalize application and terminal probabilities *)
-            let z = lse terminal_probability application_probability in
-            let terminal_probability = exp (terminal_probability-.z) in
-            let application_probability = exp (application_probability-.z) in
-            (* mix together the terminal and application uses *)
-            { application_counts = application_probability*.(1.0+.left_uses.application_counts+.right_uses.application_counts);
-              terminal_counts = terminal_probability+.application_probability*.(left_uses.terminal_counts+.right_uses.terminal_counts);
-              use_counts = Array.init number_terminals
-                (fun j -> application_probability*.(left_uses.use_counts.(j)+.right_uses.use_counts.(j))
-                +. terminal_probability*.offsets.(j));
-              possible_counts = Array.init number_terminals
-                (fun j -> application_probability*.(left_uses.possible_counts.(j)+.right_uses.possible_counts.(j))
-                +. (if List.mem j distractors then terminal_probability else 0.0));
-            }
-      in Hashtbl.add use_map (i,request) u; u
+  let counts = { application_counts = log smoothing;
+                 terminal_counts = log smoothing;
+                 use_counts = Array.make number_terminals (log smoothing);
+                 possible_counts = Array.make number_terminals (log smoothing); } in
+  let rec uses weight i request = 
+    if not (is_wildcard dagger i) then begin
+      let l = Hashtbl.find likelihoods (i,request) in
+      (* if it is in library compute uses if the production was used *)
+      let hits = terminal_order |> List.filter
+                   (fun (j,_) -> can_match_wildcards dagger i j) in
+      if not (null hits) then begin
+        let offsets = hits |> List.map (fun (_,(_,l,o)) -> (o,l)) in
+        let offset_Z = lse_list @@ List.map snd offsets in
+        let offsets = offsets |> List.map (fun (o,l) -> (o,l-.offset_Z)) in
+        let others = List.filter (fun (_,(t,_,_)) -> can_unify t request) terminal_order in
+        let other_offsets = List.map (fun (_,(_,_,o)) -> o) others in
+        let z = lse_list (List.map (fun (_,(_,l,_)) -> l) others) in
+        let terminal_likelihood = log_terminal+.offset_Z-.z -.l in
+        offsets |> List.iter (fun (o,l) -> let u = counts.use_counts.(o) in
+                               counts.use_counts.(o) <- lse u (l+.terminal_likelihood+.weight));
+        other_offsets |> List.iter (fun o -> let p = counts.possible_counts.(o) in
+                               counts.possible_counts.(o) <- lse p (terminal_likelihood+.weight));
+        counts.terminal_counts <- lse counts.terminal_counts (terminal_likelihood+.weight)
+      end;
+      match extract_node dagger i with
+      (* we have no children, don't recurse *)
+      | ExpressionLeaf(_) -> ()
+      (* recurse on function and argument *)
+      | ExpressionBranch(f,x) ->
+        (* get probability that an application was used *)
+        let left_request = function_request request in
+        let right_request = argument_request request program_types.(f) in
+        let left_probability = if is_wildcard dagger f 
+          then 0.
+          else Hashtbl.find likelihoods (f,left_request) in
+        let right_probability = if is_wildcard dagger x 
+          then 0.
+          else Hashtbl.find likelihoods (x,right_request) in
+        let application_likelihood =
+          log_application+.left_probability+.right_probability -.l in
+        counts.application_counts <- 
+          lse counts.application_counts (application_likelihood+.weight);
+        (* get the uses from the right and the left *)
+        uses (weight+.application_likelihood) f left_request;
+        uses (weight+.application_likelihood) x right_request
+    end
   in 
-  let applications = ref smoothing in
-  let terminals = ref smoothing in
-  let terminal_uses = Array.make number_terminals smoothing in
-  let terminal_chances = Array.make number_terminals smoothing in
-  List.iter (fun ((i,request),w) -> 
-            let u = uses i request in
-            applications := w*.u.application_counts +. !applications;
-            terminals := w*.u.terminal_counts +. !terminals;
-            for j = 0 to (number_terminals-1) do
-             terminal_uses.(j) <- w*.u.use_counts.(j) +. terminal_uses.(j);
-             terminal_chances.(j) <- w*.u.possible_counts.(j) +. terminal_chances.(j);
-            done)
-    corpus;
-  let log_application = log (!applications/.(!applications +. !terminals)) in
+  List.iter (fun ((i,request),w) -> uses w i request) corpus;
+  let log_application = counts.application_counts -. counts.terminal_counts in
   let distribution = List.fold_left (fun a (i,(_,_,o)) -> 
-                                    let p = log (terminal_uses.(o)) -. log (terminal_chances.(o))
+                                    let p = counts.use_counts.(o) -. counts.possible_counts.(o)
                                     and e = extract_expression dagger i
                                     in ExpressionMap.add e (p,infer_type e) a)
       ExpressionMap.empty terminal_order
@@ -186,8 +158,7 @@ let fit_grammar_to_tasks smoothing grammar dagger program_types requests task_so
     lse_list @@ List.map snd p) in
   let task_posteriors = List.map2 (fun p z -> 
     p |> List.map (fun (i,l) -> (i,l-.z))) task_posteriors zs in
-  let corpus = List.map (fun (i,l) -> (i,exp l)) @@ 
-    merge_a_list lse task_posteriors in
+  let corpus = merge_a_list lse task_posteriors in
   fit_grammar smoothing grammar dagger program_types likelihoods corpus
 
 (* various built-in primitives *)

@@ -61,7 +61,7 @@ let rec expectation_maximization_compress
   print_newline ();
 (* productions |> List.iter (fun p -> print_string (string_of_expression p); print_newline ()); *)
   (* assembled corpus *)
-  let corpus = List.map (fun (i,l) -> (i,exp l)) @@ merge_a_list lse @@ 
+  let corpus = merge_a_list lse @@ 
     List.map2 (fun task ->
         List.map @@ fun (i,l) -> ((i,task.task_type),l))
       tasks task_posteriors in
