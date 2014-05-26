@@ -127,8 +127,9 @@ let make_progress_bar number_jobs =
   { maximum_progress = number_jobs; current_progress = 0; }
 
 let update_progress_bar bar new_progress = 
-  let old_dots = int_of_float @@ float_of_int bar.current_progress /. 80.0 in
-  let new_dots = int_of_float @@ float_of_int new_progress /. 80.0 in
+  let max = float_of_int bar.maximum_progress in
+  let old_dots = int_of_float @@ float_of_int bar.current_progress *. 80.0 /. max in
+  let new_dots = int_of_float @@ float_of_int new_progress *. 80.0 /. max in
   bar.current_progress <- new_progress;
   if new_dots > old_dots then
     (1--(new_dots-old_dots)) |> List.iter (fun _ -> print_char '.'; flush stdout)

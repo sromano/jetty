@@ -104,17 +104,17 @@ let morphology () =
   let alpha = 1. in
   let frontier_size = 200000 in
   let keep_size = 10000 in
-  let g = ref @@ make_flat_library @@ phonetic_terminals in 
+  let g = ref @@ load_library "log/iter_2_grammar" (* make_flat_library @@ phonetic_terminals *) in 
   let tasks = 
     doubled_words |> List.map make_word_task in
-  for i = 1 to 2 do
+  (* for i = 1 to 2 do
     Printf.printf "\n \n \n Iteration %i \n" i;
     let g1 = backward_iteration ("log/iter_"^string_of_int i)
         lambda alpha frontier_size keep_size tasks (!g) in
     g := g1
-  done;
+  done; *)
  let decoder =
-    reduce_symbolically (make_flat_library @@ phonetic_terminals) !g frontier_size 1000 tasks in
+    reduce_symbolically (make_flat_library @@ phonetic_terminals) !g 10000 1000 tasks in
   Printf.printf "Decoder: %s\n" (string_of_expression decoder)
 ;;
 
