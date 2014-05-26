@@ -5,7 +5,6 @@ open Library
 open Task
 open Compress
 open Partial_evaluation
-open Em
 
 module PQ = Set.Make
   (struct
@@ -132,58 +131,6 @@ let backward_enumerate dagger grammar rewrites size keep request i =
   in search () |> List.filter (compose not @@ compose (has_trivial_symmetry new_dagger) snd) |> 
      List.sort (fun (l,_) (u,_) -> compare u l) |> take keep |> 
      List.map (fun (l,j) -> (l,insert_expression dagger @@ extract_expression new_dagger j))
-
-let backward_iteration
-    prefix lambda smoothing frontier_size keep_size
-    tasks grammar = 
-  let dagger = make_expression_graph 100000 in
-  print_endline "Generating backward rewrites...";
-  let rewrites = snd grammar |> ExpressionMap.bindings |> List.map (fun (e,(_,t)) -> 
-      (* load primitives into the graph *)
-      ignore(insert_expression dagger e);
-      get_templates e t |> List.map (fun (target,template) -> (template,apply_template target)))
-                 |> List.concat in
-  let frontiers = tasks |> List.map (fun t -> 
-    Printf.printf "Enumerating (backwards) for %s..." t.name;
-    print_newline ();
-    let i = insert_expression dagger @@ match t.score with
-      | Seed(s) -> s
-      | LogLikelihood(_) -> raise (Failure "backward_iteration: task has no seed") in
-    let f = backward_enumerate dagger grammar rewrites frontier_size keep_size t.task_type i in
-    print_endline "Finished enumerating."; f) in
-  let type_array = infer_graph_types dagger in  
-  print_endline "Done inferring graph types.";
-  let requests = List.fold_left2 (fun requests frontier t -> 
-      let requested_type = t.task_type in
-      List.fold_left (fun (a : (tp list) IntMap.t) (i : int) -> 
-          try
-	    let old = IntMap.find i a in
-	    if List.mem requested_type old
-	    then a else IntMap.add i (requested_type::old) a
-          with Not_found -> IntMap.add i [requested_type] a
-	) requests frontier
-    ) IntMap.empty (List.map (List.map snd) frontiers) tasks
-  in
-  print_endline "Done getting requests.";
-  let task_solutions = List.combine tasks @@ 
-    List.map (List.map (fun (_,i) -> (i,0.))) frontiers
-  in
-  (* the following lines are for running EM *)
-  (* the commented outline afterwards will run lower bound refinement *)
-  let solutions = List.map (compose (List.map fst) snd) task_solutions in
-  let candidates = candidate_fragments dagger solutions in
-  let g = expectation_maximization_compress
-      lambda smoothing grammar dagger type_array requests candidates tasks @@
-    List.map snd task_solutions in
-(*   let g = compress lambda smoothing dagger type_array requests task_solutions in *)
-  (* save the grammar *)
-  let c = open_out (prefix^"_grammar") in
-  Printf.fprintf c "%s" (string_of_library g);
-  close_out c;
-  (* save the best programs *)
-  let task_solutions = List.combine tasks (List.map (List.map (fun (l,i) -> (i,l))) frontiers) in
-  save_best_programs (prefix^"_programs") dagger task_solutions;
-  g
 
 
 let test_backwards () = 

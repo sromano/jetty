@@ -7,6 +7,9 @@ open Library
 open Enumerate
 open Utils
 open Compress
+open Frontier
+open Em
+
 
 
 let lower_bound_refinement_iteration
@@ -51,3 +54,5 @@ let lower_bound_refinement_iteration
           (i,s+. (get_some @@ likelihood_option g t.task_type (extract_expression dagger i)))))) in
   save_best_programs (prefix^"_programs") dagger task_solutions;
   g
+
+

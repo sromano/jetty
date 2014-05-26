@@ -4,7 +4,7 @@ open Library
 open Utils
 open Task
 open Enumerate
-
+open Frontier
 
 let make_decoder dagger i j = 
   (* arbitrary cutoffs *)
@@ -90,18 +90,10 @@ let best_decoder dagger grammar request solutions =
   let decoder_scores = List.map (decoder_posterior dagger grammar request solutions) decoders in
   fst @@ List.hd @@ List.sort (fun (_,p) (_,q) -> compare q p) @@ List.combine decoders decoder_scores
 
-let reduce_symbolically base_grammar posterior_grammar frontier_size tasks = 
-  let (frontiers,dagger) = enumerate_frontiers_for_tasks posterior_grammar frontier_size tasks in
-  print_string "Scoring programs...";
-  print_newline ();
-  let program_scores = score_programs dagger frontiers tasks in
+let reduce_symbolically base_grammar posterior_grammar frontier_size keep_size tasks = 
+  let (dagger, fs) = make_frontiers frontier_size keep_size posterior_grammar tasks in
+  let task_solutions = List.map (List.map fst) fs in
   let request = (List.hd tasks).task_type in
-  let task_solutions = program_scores |> List.map 
-                         (compose (List.map fst) @@ List.filter (fun (_,s) -> is_valid s))
-                       |> List.filter (fun s -> List.length s > 0)
-  in 
-  Printf.printf "%i / %i tasks solved." (List.length task_solutions) (List.length tasks);
-  print_newline ();
   let d = time_it "Found decoder"
       (fun () -> best_decoder dagger base_grammar request task_solutions) in
   extract_expression dagger d

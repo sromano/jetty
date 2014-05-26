@@ -6,7 +6,7 @@ open Expression
 open Type
 open Utils
 open Symbolic_dimensionality_reduction
-open Bottom_up
+open Em
 
 
 (* most common nouns produced by thirty months old *)
@@ -107,15 +107,15 @@ let morphology () =
   let g = ref @@ make_flat_library @@ phonetic_terminals in 
   let tasks = 
     doubled_words |> List.map make_word_task in
-  for i = 1 to 9 do
+  for i = 1 to 2 do
     Printf.printf "\n \n \n Iteration %i \n" i;
     let g1 = backward_iteration ("log/iter_"^string_of_int i)
         lambda alpha frontier_size keep_size tasks (!g) in
     g := g1
   done;
-(*  let decoder =
-    reduce_symbolically (make_flat_library @@ phonetic_terminals) !g frontier_size tasks in
-  Printf.printf "Decoder: %s\n" (string_of_expression decoder) *)
+ let decoder =
+    reduce_symbolically (make_flat_library @@ phonetic_terminals) !g frontier_size 1000 tasks in
+  Printf.printf "Decoder: %s\n" (string_of_expression decoder)
 ;;
 
 
