@@ -140,21 +140,7 @@ let expectation_maximization_iteration prefix
 let backward_iteration
     prefix lambda smoothing frontier_size keep_size
     tasks grammar = 
-  let dagger = make_expression_graph 100000 in
-  print_endline "Generating backward rewrites...";
-  let rewrites = snd grammar |> ExpressionMap.bindings |> List.map (fun (e,(_,t)) -> 
-      (* load primitives into the graph *)
-      ignore(insert_expression dagger e);
-      get_templates e t |> List.map (fun (target,template) -> (template,apply_template target)))
-                 |> List.concat in
-  let frontiers = tasks |> List.map (fun t -> 
-    Printf.printf "Enumerating (backwards) for %s" t.name;
-    print_newline ();
-    let i = insert_expression dagger @@ match t.score with
-      | Seed(s) -> s
-      | LogLikelihood(_) -> raise (Failure "backward_iteration: task has no seed") in
-    let f = backward_enumerate dagger grammar rewrites frontier_size keep_size t.task_type i in
-    print_endline "\nFinished enumerating."; f) in
+  let (dagger,frontiers) = make_frontiers frontier_size keep_size grammar tasks in
   let type_array = infer_graph_types dagger in  
   print_endline "Done inferring graph types.";
   let requests = List.fold_left2 (fun requests frontier t -> 
@@ -166,11 +152,11 @@ let backward_iteration
 	    then a else IntMap.add i (requested_type::old) a
           with Not_found -> IntMap.add i [requested_type] a
 	) requests frontier
-    ) IntMap.empty (List.map (List.map snd) frontiers) tasks
+    ) IntMap.empty (List.map (List.map fst) frontiers) tasks
   in
   print_endline "Done getting requests.";
   let task_solutions = List.combine tasks @@ 
-    List.map (List.map (fun (_,i) -> (i,0.))) frontiers
+    List.map (List.map (fun (i,_) -> (i,0.))) frontiers
   in
   (* the following lines are for running EM *)
   (* the commented outline afterwards will run lower bound refinement *)
@@ -185,6 +171,6 @@ let backward_iteration
   Printf.fprintf c "%s" (string_of_library g);
   close_out c;
   (* save the best programs *)
-  let task_solutions = List.combine tasks (List.map (List.map (fun (l,i) -> (i,l))) frontiers) in
+  let task_solutions = List.combine tasks frontiers in
   save_best_programs (prefix^"_programs") dagger task_solutions;
   g
