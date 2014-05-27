@@ -120,16 +120,16 @@ let backward_enumerate dagger grammar rewrites size keep request i =
     if PQ.cardinal !closed > size || PQ.cardinal !opened = 0
     then PQ.elements !closed
     else let next = PQ.max_elt !opened in
-         opened := PQ.remove next !opened;
-         backward_children new_dagger grammar request rewrites (snd next) |> 
-         List.iter (fun (j,l) -> let c = (l,j) in
-                   if not (PQ.mem c !closed)
-                   then begin
-                     closed := PQ.add c !closed;
-                     opened := PQ.add c !opened
-                   end);
-         update_progress_bar bar (PQ.cardinal !closed);
-         search ()
+      opened := PQ.remove next !opened;
+      backward_children new_dagger grammar request rewrites (snd next) |> 
+      List.iter (fun (j,l) -> let c = (l,j) in
+                  if not (PQ.mem c !closed)
+                  then begin
+                    closed := PQ.add c !closed;
+                    opened := PQ.add c !opened
+                  end);
+      (if number_of_cores = 1 then update_progress_bar bar (PQ.cardinal !closed));
+      search ()
   in search () |> List.filter (compose not @@ compose (has_trivial_symmetry new_dagger) snd) |> 
      List.sort (fun (l,_) (u,_) -> compare u l) |> take keep |> 
      List.map (fun (l,j) -> (l,insert_expression dagger @@ extract_expression new_dagger j))

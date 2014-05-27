@@ -45,15 +45,30 @@ let make_frontiers size keep_size grammar tasks =
           ignore(insert_expression dagger e);
           get_templates e t |> List.map (fun (target,template) -> 
               (template,apply_template target))) |> List.concat in
-      let frontiers = bottom_tasks |> List.map (fun t -> 
-          Printf.printf "Enumerating (backwards) for %s..." t.name;
-          print_newline ();
-          let i = insert_expression dagger @@ match t.score with
-            | Seed(s) -> s
-            | LogLikelihood(_) -> raise (Failure "make_frontiers: task has no seed") in
-          let f = backward_enumerate dagger grammar rewrites size keep_size t.task_type i in
-          List.map (fun (l,i) -> (i,l)) f) in
-      frontiers
+      if number_of_cores = 1 then
+        bottom_tasks |> List.map (fun t -> 
+            Printf.printf "Enumerating (backwards) for %s..." t.name;
+            print_newline ();
+            let i = insert_expression dagger @@ match t.score with
+              | Seed(s) -> s
+              | LogLikelihood(_) -> raise (Failure "make_frontiers: task has no seed") in
+            let f = backward_enumerate dagger grammar rewrites size keep_size t.task_type i in
+            List.map (fun (l,i) -> (i,l)) f)
+      else (* parallel bottom-up enumeration *)
+        let graphs_and_frontiers = 
+          Array.make (List.length bottom_tasks) (make_expression_graph 10,[]) in
+        let graphs_and_frontiers = 
+          pmap ~processes:number_of_cores (fun t ->
+              let temp_dagger = make_expression_graph 10000 in
+              let i = insert_expression temp_dagger @@ match t.score with
+                | Seed(s) -> s
+                | LogLikelihood(_) -> raise (Failure "make_frontiers: partask has no seed") in
+              let f = List.map (fun (l,i) -> (i,l)) @@ 
+                backward_enumerate temp_dagger grammar rewrites size keep_size t.task_type i in
+              (temp_dagger,f))
+            (List.nth bottom_tasks) graphs_and_frontiers in
+        Array.fold_right (fun a b -> a :: b) graphs_and_frontiers [] |> List.map (fun (g,f) -> 
+          f |> List.map (fun (i,l) -> (insert_expression dagger @@ extract_expression g i,l)))
     end
   in 
   (* coalesced top and bottom *)

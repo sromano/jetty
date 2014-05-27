@@ -134,3 +134,55 @@ let update_progress_bar bar new_progress =
   bar.current_progress <- new_progress;
   if new_dots > old_dots then
     (1--(new_dots-old_dots)) |> List.iter (fun _ -> print_char '.'; flush stdout)
+
+(* paralleled map *)
+let pmap ?processes:(processes=4) ?bsize:(bsize=0) f input output =
+  let bsize = match bsize with
+    | 0 -> Array.length output / processes
+    | x -> x
+  in
+  (* Given the starting index of a block, computes ending index *)
+  let end_idx start_idx = min ((Array.length output) - 1) (start_idx+bsize-1) in
+  let next_idx, total_computed = ref 0, ref 0
+  and in_streams = ref []
+  in
+  while !total_computed < Array.length output do
+    (* Spawn processes *)
+    while !next_idx < Array.length output && List.length !in_streams < processes do
+      let rd, wt = Unix.pipe () in
+      match Unix.fork () with
+      | 0 -> begin
+	  (* Child *)
+	  Unix.close rd;
+	  let start_idx = !next_idx in
+	  let answer    = Array.init (end_idx start_idx - start_idx + 1)
+              (fun i -> f (input (i+start_idx))) in
+	  let chan = Unix.out_channel_of_descr wt in
+	  Marshal.to_channel chan (start_idx, answer) [Marshal.Closures];
+	  close_out chan;
+	  exit 0
+	end
+      | pid -> begin
+	  (* Parent *)
+	  Unix.close wt;
+	  in_streams := (rd,pid)::!in_streams;
+	  next_idx   := !next_idx + bsize;
+	end
+    done;
+    (* Receive input from processes *)
+    let recvs, _, _ = Unix.select (List.map fst !in_streams) [] [] (-1.) in
+    List.iter (fun descr ->
+        let chan = Unix.in_channel_of_descr descr in
+        let pid = List.assoc descr !in_streams
+        and start_idx, answer = Marshal.from_channel chan in
+        ignore (Unix.waitpid [] pid);
+        close_in chan;
+        Array.blit answer 0 output start_idx (Array.length answer);
+        total_computed := Array.length answer + !total_computed)
+      recvs;
+    in_streams := List.filter (fun (stream,_) -> not (List.mem stream recvs)) !in_streams;
+  done;
+  output
+
+
+let number_of_cores = 1 (* number of CPUs *)
