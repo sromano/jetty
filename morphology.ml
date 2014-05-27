@@ -109,7 +109,7 @@ let morphology () =
     top_singular @ top_plural |> List.map make_word_task in
   for i = 1 to 5 do
     Printf.printf "\n \n \n Iteration %i \n" i;
-    let g1 = backward_iteration ("log/iter_"^string_of_int i)
+    let g1 = backward_iteration ("log/morphology_"^string_of_int i)
         lambda alpha frontier_size keep_size tasks (!g) in
     g := g1
   done;

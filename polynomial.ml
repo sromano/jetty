@@ -35,7 +35,7 @@ let poly () =
 	  interval)) interval)) interval) in
    for i = 1 to 8 do
     Printf.printf "\n \n \n Iteration %i \n" i;
-    g := expectation_maximization_iteration ("log/iter_"^string_of_int i) 1.5 1.0 2000 tasks (!g)
+    g := expectation_maximization_iteration ("log/polynomial_"^string_of_int i) 1.5 1.0 2000 tasks (!g)
   done;
 (*  g := load_library "log/iter_1_grammar" ;
   let decoder =
