@@ -21,19 +21,22 @@ let rec expectation_maximization_compress
         List.map (fun (i,s) -> (i,s-.z)) scores
       ) tasks program_scores in
   (* compute rewards for each expression *)
-  let candidate_rewards = Hashtbl.create 10000 in
-  candidates |> List.iter (fun c -> Hashtbl.add candidate_rewards c neg_infinity);
+  let make_candidate_rewards () = 
+    let r = Hashtbl.create 10000 in
+    candidates |> List.iter (fun c -> Hashtbl.add r c neg_infinity);
+    r
+  in
   let candidate_likelihood = memorize (fun (c,r) -> 
     match likelihood_option g0 r @@ extract_expression dagger c with
     | None -> neg_infinity
     | Some(l) -> l) 10000 in
-  let rec reward_expression weight request i =
+  let rec reward_expression candidate_rewards weight request i =
     match extract_node dagger i with
     | ExpressionBranch(l,r) -> 
       let left_request = function_request request in
       let right_request = argument_request request type_array.(l) in
-      reward_expression weight left_request l; 
-      reward_expression weight right_request r;
+      reward_expression candidate_rewards weight left_request l; 
+      reward_expression candidate_rewards weight right_request r;
       (try
          let old = Hashtbl.find candidate_rewards i in
          Hashtbl.replace candidate_rewards i @@ lse old weight
@@ -48,8 +51,15 @@ let rec expectation_maximization_compress
                              lse (weight+.l-.z) @@ Hashtbl.find candidate_rewards h) 
                   hits likelihoods)))
     | _ -> ()
-  in List.iter2 (fun t -> List.iter (fun (i,w) -> reward_expression w t.task_type i)) 
-    tasks task_posteriors;
+  in 
+  let rewards = Array.make (List.length tasks) (Hashtbl.create 5) in
+  let rewards = pmap ~processes:number_of_cores (fun (t,posterior) -> 
+      let r = make_candidate_rewards () in
+      List.iter (fun (i,w) -> reward_expression r w t.task_type i) posterior;
+      r) (List.nth @@ List.combine tasks task_posteriors) rewards in
+  let candidate_rewards = make_candidate_rewards () in
+  Array.iter (Hashtbl.iter (fun i r -> 
+    Hashtbl.replace candidate_rewards i @@ lse r @@ Hashtbl.find candidate_rewards i)) rewards;
   (* find those productions that have enough weight to make it into the library *)
   let productions =
     (hash_bindings candidate_rewards |>
