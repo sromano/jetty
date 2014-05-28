@@ -1,3 +1,4 @@
+open Library
 open Task
 open Enumerate
 open Bottom_up
@@ -65,10 +66,11 @@ let make_frontiers size keep_size grammar tasks =
                 | LogLikelihood(_) -> raise (Failure "make_frontiers: partask has no seed") in
               let f = List.map (fun (l,i) -> (i,l)) @@ 
                 backward_enumerate temp_dagger grammar rewrites size keep_size t.task_type i in
-              (scrub_graph temp_dagger,f))
+              scrub_graph temp_dagger;
+              (temp_dagger,f))
             (List.nth bottom_tasks) graphs_and_frontiers in
         Array.fold_right (fun a b -> a :: b) graphs_and_frontiers [] |> List.map (fun (g,f) -> 
-            let g = dirty_graph g in
+            dirty_graph g;
             f |> List.map (fun (i,l) -> (insert_expression dagger @@ extract_expression g i,l)))
     end
   in 
