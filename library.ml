@@ -274,6 +274,36 @@ let register_terminal t =
   all_terminals := (string_of_expression t,t) :: !all_terminals;;
 let register_terminals = List.iter register_terminal;;
 
+(* replaces all of the "unit references" with actual unit references. necessary for marshaling *)
+let scrub_graph (i2n,n2i,_) = 
+  let substitution = ref [] in
+  Hashtbl.iter (fun i n -> 
+    match n with
+    | ExpressionLeaf(Terminal(name,t,r)) -> 
+      let clean = ExpressionLeaf(Terminal(name,t,ref ()))
+      and dirty = n in
+      substitution := (i,clean,dirty) :: !substitution
+    | _ -> ()) i2n;
+  !substitution |> List.iter (fun (i,c,d) -> 
+    Hashtbl.replace i2n i c;
+    Hashtbl.remove n2i d;
+    Hashtbl.add n2i c i)
+
+(* undoes the above operation *)
+let dirty_graph (i2n,n2i,_) =
+  let substitution = ref [] in
+  Hashtbl.iter (fun i n -> 
+    match n with
+    | ExpressionLeaf(Terminal(name,t,r)) -> 
+      let clean = n
+      and dirty = ExpressionLeaf(List.assoc name !all_terminals) in
+      substitution := (i,clean,dirty) :: !substitution
+    | _ -> ()) i2n;
+  !substitution |> List.iter (fun (i,c,d) -> 
+    Hashtbl.replace i2n i d;
+    Hashtbl.remove n2i c;
+    Hashtbl.add n2i d i)
+  
 
 (* parses an expression. has to be in library because needs definitions of terminals *)
 let expression_of_string s = 

@@ -322,6 +322,7 @@ let infer_graph_types dagger =
     ignore (infer i)
   done; type_map
 
+
 let expression_of_int i = Terminal(string_of_int i,tint,Obj.magic (ref i));;
 let expression_of_float i = Terminal(string_of_float i,treal,Obj.magic (ref i));;
 
