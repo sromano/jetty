@@ -1,16 +1,12 @@
-base = utils.ml type.ml expression.ml task.ml library.ml enumerate.ml compress.ml partial_evaluation.ml  bottom_up.ml frontier.ml em.ml ec.ml  symbolic_dimensionality_reduction.ml phonetics.ml
-
-c = ocamlopt  -inline 100 -ffast-math unix.cmxa -thread threads.cmxa
+c = corebuild -lflag -ffast-math
 
 morphology:
-	$(c) -o test $(base) morphology.ml
+	$(c) morphology.native; cp morphology.native test
 polynomial:
-	$(c) -o test $(base) polynomial.ml
+	$(c) polynomial.native; cp polynomial.native test
 regress:
-	$(c) -o test $(base) regress.ml
-test:
-	$(c) -o test $(base) 
+	$(c) regress.native; cp regress.native test
 clean:
-	rm test *.cmi *.cmo *cmx *~ 
+	rm -rf _build test
 run:
 	./test | tee log/output

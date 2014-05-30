@@ -185,4 +185,4 @@ let pmap ?processes:(processes=4) ?bsize:(bsize=0) f input output =
   output
 
 
-let number_of_cores = 1 (* number of CPUs *)
+let number_of_cores = 4 (* number of CPUs *)
