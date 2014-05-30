@@ -279,7 +279,7 @@ let scrub_graph (i2n,n2i,_) =
   let substitution = ref [] in
   Hashtbl.iter (fun i n -> 
     match n with
-    | ExpressionLeaf(Terminal(name,t,r)) when name.[0] <> '?' -> 
+    | ExpressionLeaf(Terminal(name,t,_)) when name.[0] <> '?' -> 
       let clean = ExpressionLeaf(Terminal(name,t,ref ()))
       and dirty = n in
       substitution := (i,clean,dirty) :: !substitution
@@ -294,7 +294,7 @@ let dirty_graph (i2n,n2i,_) =
   let substitution = ref [] in
   Hashtbl.iter (fun i n -> 
     match n with
-    | ExpressionLeaf(Terminal(name,t,r)) when name.[0] <> '?' -> 
+    | ExpressionLeaf(Terminal(name,_,_)) when name.[0] <> '?' -> 
       let clean = n
       and dirty = ExpressionLeaf(List.assoc name !all_terminals) in
       substitution := (i,clean,dirty) :: !substitution

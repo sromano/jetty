@@ -110,8 +110,8 @@ let can_unify (t1 : tp) (t2 : tp) : bool =
     | (_,FID(i)) when fast_occurs i t1 -> false
     | (_,FID(i)) -> i := Some(t1); true
     | (FCon(k1,_),FCon(k2,_)) when k1 <> k2 -> false
-    | (FCon(k1,[]),FCon(k2,[])) -> true
-    | (FCon(k1,x::xs),FCon(k2,y::ys)) -> 
+    | (FCon(_,[]),FCon(_,[])) -> true
+    | (FCon(_,x::xs),FCon(_,y::ys)) -> 
 	fast_unify x y && List.for_all2 (fun a b -> fast_unify (fast_chase a) (fast_chase b)) xs ys
     | _ -> raise (Failure "constructors of different arity")
   in fast_unify (make_fast_type (ref []) t1) (make_fast_type (ref []) t2)

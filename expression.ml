@@ -55,7 +55,7 @@ let run_expression_for_interval (time : float) (e : expression) : 'a option =
 	let res = run_expression e in 
 	ignore (Unix.setitimer ITIMER_REAL {it_interval = 0.0; it_value = 0.0}) ;
 	reset_sigalrm () ; res
-      with exc -> begin
+      with _ -> begin
         reset_sigalrm ();
  	ignore (Unix.setitimer ITIMER_REAL {it_interval = 0.0; it_value = 0.0}) ; 
         None
@@ -206,7 +206,7 @@ let rec combine_wildcards dagger i j =
   if i = j then Some(j) else
   match extract_node dagger i with
   | ExpressionLeaf(Terminal("?",_,_)) -> Some(j)
-  | ExpressionLeaf(Terminal(n,_,_)) -> (
+  | ExpressionLeaf(Terminal(_,_,_)) -> (
     match extract_node dagger j with
     | ExpressionLeaf(Terminal("?",_,_)) -> Some(i)
     | _ -> None)

@@ -89,7 +89,7 @@ let candidate_fragments dagger solutions =
   let candidates = ref IntSet.empty in
   task_map |> Hashtbl.iter (fun i _ -> 
       if not (is_leaf_ID dagger i) then
-        instantiate i |> List.iter (fun (j,other,_) -> 
+        instantiate i |> List.iter (fun (j,_,_) -> 
             if not (prune_instantiations i j) then
               candidates := IntSet.add j !candidates));
   let can = IntSet.elements !candidates |> List.filter (compose not @@ is_leaf_ID dagger) in
@@ -202,7 +202,7 @@ let compute_job_IDs dagger type_array terminals candidates requests =
 
 let compress lambda smoothing dagger type_array requests (task_solutions : (task * (int*float) list) list) = 
   let t1 = Sys.time () in
-  let (i2n,n2i,_) = dagger in
+  let (i2n,_,_) = dagger in
   let terminals = List.map fst @@ List.filter (fun (i,_) -> is_leaf_ID dagger i) (hash_bindings i2n) in
   (* request might have spurious request for programs that don't solve any tasks *)
   let requests = requests |> IntMap.filter (fun i _ -> task_solutions |> 
