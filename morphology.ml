@@ -1,3 +1,5 @@
+open Core.Std
+
 open Phonetics
 open Ec
 open Task
@@ -91,7 +93,7 @@ let make_word_task word =
     match e with
     | Terminal(_,TCon("phone",[]),p) -> 
     let p : phone = !(Obj.magic p) in
-    if List.exists (phonetic_neighbors p) correct_phones
+    if List.exists correct_phones (phonetic_neighbors p)
     then w
     else w-.10000.
     | _ -> w) in  
@@ -106,7 +108,7 @@ let morphology () =
   let keep_size = 10000 in
   let g = ref @@ make_flat_library phonetic_terminals (* load_library "log/iter_2_grammar" *) in 
   let tasks = 
-    top_singular @ top_plural |> List.map make_word_task in
+    List.map doubled_words (* (top_singular @ top_plural) *) make_word_task in
   for i = 1 to 5 do
     Printf.printf "\n \n \n Iteration %i \n" i;
     let g1 = backward_iteration ("log/morphology_"^string_of_int i)

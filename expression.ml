@@ -1,37 +1,34 @@
+open Time_limit
 open Type
 open Utils
 
-open Unix
 open Obj
+
+open Core.Std
+
 
 type expression = 
   | Terminal of string * tp * unit ref
   | Application of expression * expression
 
-let rec compare_expression e1 e2 = 
+let rec compare_expression (e1 : expression) (e2 : expression) : int = 
   match (e1,e2) with
-    (Terminal(n1,_,_),Terminal(n2,_,_)) -> compare n1 n2
+  | (Terminal(n1,_,_),Terminal(n2,_,_)) -> String.compare n1 n2
   | (Terminal(_,_,_),_) -> -1
   | (_,Terminal(_,_,_)) -> 1
   | (Application(l,r),Application(l_,r_)) -> 
-      let c = compare_expression l l_ in
-      if c == 0 then compare_expression r r_ else c
-
-
-module ExpressionMap = Map.Make(struct type t =expression let compare = compare_expression end)
-module ExpressionSet = Set.Make(struct type t =expression let compare = compare_expression end)
+      let cmp = compare_expression l l_ in
+      if cmp = 0 then compare_expression r r_ else cmp
 
 let is_terminal = function
   | Terminal(_,_,_) -> true
   | _ -> false
 
-let terminal_type e = 
-  match e with
+let terminal_type = function
   | Terminal(_,t,_) -> t
   | _ -> raise (Failure "terminal_type: not a terminal")
 
-let terminal_thing e = 
-  match e with
+let terminal_thing = function
   | Terminal(_,_,t) -> t
   | _ -> raise (Failure "terminal_thing: not a terminal")
 
@@ -45,21 +42,9 @@ let rec run_expression (e:expression) : 'a option =
     | Some(left) -> 
       (Obj.magic left) (Obj.magic (run_expression x))
 
-exception Timeout;;
-let sigalrm_handler = Sys.Signal_handle (fun _ -> raise Timeout) ;;
 let run_expression_for_interval (time : float) (e : expression) : 'a option = 
-  let old_behavior = Sys.signal Sys.sigalrm sigalrm_handler in
-   let reset_sigalrm () = Sys.set_signal Sys.sigalrm old_behavior 
-   in ignore (Unix.setitimer ITIMER_REAL {it_interval = 0.0; it_value = time}) ;
-      try
-	let res = run_expression e in 
-	ignore (Unix.setitimer ITIMER_REAL {it_interval = 0.0; it_value = 0.0}) ;
-	reset_sigalrm () ; res
-      with _ -> begin
-        reset_sigalrm ();
- 	ignore (Unix.setitimer ITIMER_REAL {it_interval = 0.0; it_value = 0.0}) ; 
-        None
-      end
+  run_for_interval time (fun _ -> run_expression e)
+
 
 let lift_binary k : unit ref = Obj.magic @@ ref (
   fun x -> Some(fun y -> 
@@ -100,36 +85,36 @@ type expressionNode = ExpressionLeaf of expression
 type expressionGraph = 
     ((int,expressionNode) Hashtbl.t) * ((expressionNode,int) Hashtbl.t) * (int ref);;
 let make_expression_graph size : expressionGraph = 
-  (Hashtbl.create size,Hashtbl.create size,ref 0)
+  (Hashtbl.create ~hashable:Int.hashable (),Hashtbl.Poly.create (),ref 0)
 
 
 let insert_expression_node (i2n,n2i,nxt) (n : expressionNode) : int =
   try
-    Hashtbl.find n2i n
-  with Not_found -> 
-    Hashtbl.add i2n (!nxt) n;
-    Hashtbl.add n2i n (!nxt);
-    incr nxt; !nxt - 1;;
+    Hashtbl.find_exn n2i n
+  with _ -> 
+    ignore(Hashtbl.add i2n (!nxt) n);
+    ignore(Hashtbl.add n2i n (!nxt));
+    incr nxt; !nxt - 1
 
 let node_in_graph (_,n2i,_) n =
-  try
-    Some(Hashtbl.find n2i n)
-  with Not_found -> None
+  Hashtbl.find n2i n
 
 let rec insert_expression g (e : expression) = 
   match e with
-    Terminal(_,_,_) ->
+  | Terminal(_,_,_) ->
       insert_expression_node g (ExpressionLeaf(e))
   | Application(f,x) -> 
-      insert_expression_node g (ExpressionBranch(insert_expression g f,insert_expression g x));;
+      insert_expression_node g (ExpressionBranch(insert_expression g f,insert_expression g x))
 
 
 let rec extract_expression g i = 
   let (i2n,_,_) = g in
   match Hashtbl.find i2n i with
-    ExpressionLeaf(e) -> e
-  | ExpressionBranch(f,x) -> 
+  | Some(ExpressionLeaf(e)) -> e
+  | Some(ExpressionBranch(f,x)) -> 
       Application(extract_expression g f, extract_expression g x)
+  | None -> raise (Failure "extract_expression")
+
 
 let expression_graph_size (_,_,s) = !s
 
@@ -141,25 +126,25 @@ let expression_in_graph g e =
 
 let extract_node (i2n,_,_) i = 
   try
-    Hashtbl.find i2n i
-  with Not_found -> raise (Failure "extract_node: ID not in graph")
+    Hashtbl.find_exn i2n i
+  with _ -> raise (Failure "extract_node: ID not in graph")
    
 (* returns a set containing all of the expressions reachable from a given list of IDs *)
 let reachable_expressions dagger expressions = 
-  let reachable = ref IntSet.empty in
+  let reachable = ref Int.Set.empty in
   let rec reach i = 
-    if not (IntSet.mem i !reachable)
+    if not (Int.Set.mem !reachable i)
     then begin
-      reachable := IntSet.add i !reachable;
+      reachable := Int.Set.add !reachable i;
       match extract_node dagger i with
       | ExpressionBranch(f,x) -> reach f; reach x
       | _ -> ()
     end in
-  List.iter reach expressions; !reachable
+  List.iter expressions reach; !reachable
 
 let is_leaf_ID (g,_,_) i = 
   try
-    match Hashtbl.find g i with
+    match Hashtbl.find_exn g i with
     | ExpressionLeaf(_) -> true
     | _ -> false
   with Not_found -> raise (Failure "is_leaf_ID: unknown ID")
@@ -167,9 +152,10 @@ let is_leaf_ID (g,_,_) i =
 let rec get_sub_IDs g i = 
   let (i2n,_,_) = g in
   match Hashtbl.find i2n i with
-    ExpressionLeaf(_) -> IntSet.singleton i
-  | ExpressionBranch(f,x) -> 
-      IntSet.add i (IntSet.union (get_sub_IDs g f) (get_sub_IDs g x))
+  | Some(ExpressionLeaf(_)) -> Int.Set.singleton i
+  | Some(ExpressionBranch(f,x)) -> 
+      Int.Set.add (Int.Set.union (get_sub_IDs g f) (get_sub_IDs g x)) i
+  | _ -> raise (Failure "get_sub_IDs")
 
 let is_wildcard dagger i = 
   match extract_node dagger i with
@@ -230,13 +216,13 @@ let empty_wildcard = Terminal("?", t1, ref ())
 
 let rec maximum_wildcard = function
   | Application(f,x) -> max (maximum_wildcard f) (maximum_wildcard x)
-  | Terminal(n,_,_) when n.[0] = '?' -> int_of_string @@ String.sub n 1 @@ String.length n - 1
+  | Terminal(n,_,_) when n.[0] = '?' -> int_of_string (String.sub n ~pos:1 ~len:(String.length n - 1))
   | _ -> -1
 
 let rec map_wildcard f = function
   | Application(m,n) -> Application(map_wildcard f m,map_wildcard f n)
   | Terminal(n,_,_) when n.[0] = '?' -> 
-    f @@ int_of_string @@ String.sub n 1 @@ String.length n - 1
+    f @@ int_of_string @@ String.sub n ~pos:1 ~len:(String.length n - 1)
   | e -> e
 
 let substitute_wildcard original w new_W = 
@@ -296,8 +282,8 @@ let wild_types dagger request i =
       let (function_wild,c) = collect_wild c (make_arrow argument_type r) f in
       let (argument_type,c) = chaseType c argument_type in
       let (argument_wild,c) = collect_wild c argument_type x in
-      (List.map (fun (p,r) -> (L :: p,r)) function_wild @ 
-      List.map (fun (p,r) -> (R :: p,r)) argument_wild,
+      (List.map ~f:(fun (p,r) -> (L :: p,r)) function_wild @ 
+      List.map ~f:(fun (p,r) -> (R :: p,r)) argument_wild,
       c)
   in fst @@ collect_wild empty_context request @@ extract_expression dagger i
 
@@ -305,26 +291,26 @@ let wild_types dagger request i =
 (* performs type inference upon the entire graph of expressions *)
 (* returns an array whose ith element is the type of the ith expression *)
 let infer_graph_types dagger = 
-  let type_map = Array.make (expression_graph_size dagger) (TID(0)) in
-  let done_map = Array.make (expression_graph_size dagger) false in
+  let type_map = Array.create (expression_graph_size dagger) (TID(0)) in
+  let done_map = Array.create (expression_graph_size dagger) false in
   let (i2n,_,_) = dagger in
   let rec infer i = 
     if done_map.(i) then type_map.(i)
     else let q = (match Hashtbl.find i2n i with
-      ExpressionLeaf(Terminal(_,t,_)) -> t
-    | ExpressionBranch(f,x) -> 
+    | Some(ExpressionLeaf(Terminal(_,t,_))) -> t
+    | Some(ExpressionBranch(f,x)) -> 
 	let ft = infer f in
 	let xt = infer x in
 	application_type ft xt
-    | _ -> raise (Failure "leaf that is not a terminal")) in
+    | _ -> raise (Failure "bad id in infer_graph_types")) in
     done_map.(i) <- true; type_map.(i) <- q; q
   in for i = 0 to (expression_graph_size dagger - 1) do
     ignore (infer i)
   done; type_map
 
 
-let expression_of_int i = Terminal(string_of_int i,tint,Obj.magic (ref i));;
-let expression_of_float i = Terminal(string_of_float i,treal,Obj.magic (ref i));;
+let expression_of_int i = Terminal(Int.to_string i,tint,Obj.magic (ref i));;
+let expression_of_float i = Terminal(Float.to_string i,treal,Obj.magic (ref i));;
 
 
 let test_expression () =

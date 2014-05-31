@@ -1,10 +1,12 @@
+open Core.Std
 
-module TypeMap = Map.Make(struct type t = int let compare = compare end)
+
+module TypeMap = Map.Make(Int)
 
 
 
 type tp = 
-    TID of int
+  | TID of int
   | TCon of string * tp list
 
 type tContext = int * tp TypeMap.t
@@ -12,40 +14,42 @@ let empty_context = (0,TypeMap.empty);;
 let make_arrow t q = TCon("->", [t;q]);;
 let (@>) = make_arrow;;
 
-let rec string_of_type t = 
+let rec string_of_type (t : tp) : string = 
   match t with
-    TID(i) -> string_of_int i
+  | TID(i) -> string_of_int i
   | TCon(k,[]) -> k
   | TCon(k,[p;q]) when k = "->" -> "("^(string_of_type p)^" -> "^(string_of_type q)^")"
-  | TCon(k,a) -> "("^k^" "^(String.concat " " (List.map string_of_type a))^")"
+  | TCon(k,a) -> "("^k^" "^(String.concat ~sep:" " (List.map a ~f:string_of_type))^")"
 
 
 let makeTID context = 
-    (TID(fst context), (fst context+1, snd context))
+  (TID(fst context), (fst context+1, snd context))
 
 let bindTID i t context = 
-  (fst context, TypeMap.add i t (snd context))
+  (fst context, TypeMap.add (snd context) i t)
 
 let rec chaseType (context : tContext) (t : tp) : tp*tContext = 
-    match t with
-      TCon(s, ts) ->
-	let (ts_, context_) = List.fold_right
-	    (fun t (tz, k) ->
-	      let (t_, k_) = chaseType k t in
-	      (t_ :: tz, k_)) ts ([], context)
-	in (TCon(s, ts_), context_)
-    | TID(i) -> 
-	try
-	  let (t_, context_) = chaseType context (TypeMap.find i (snd context)) in
-	  let substitution = TypeMap.add i t_ (snd context_) in
-	  (t_, (fst context_, substitution))
-        with Not_found -> (t,context)
+  match t with
+  | TCon(s, ts) ->
+    let (ts_, context_) =
+      List.fold_right ts 
+	~f:(fun t (tz, k) ->
+	    let (t_, k_) = chaseType k t in
+	    (t_ :: tz, k_)) ~init:([], context)
+    in (TCon(s, ts_), context_)
+  | TID(i) -> 
+    match TypeMap.find (snd context) i with
+    | Some(hit) -> 
+      let (t_, context_) = chaseType context hit in
+      let substitution = TypeMap.add (snd context_) i t_ in
+      (t_, (fst context_, substitution))
+    | None -> (t,context)
 
 let rec occurs (i : int) (t : tp) : bool = 
   match t with
-    TID(j) -> j == i
+  | TID(j) -> j = i
   | TCon(_,ts) -> 
-      List.exists (occurs i) ts
+    List.exists ts (occurs i)
 
 let occursCheck = true
 
@@ -55,66 +59,68 @@ let rec unify context t1 t2 : tContext =
   unify_ context__ t1_ t2_
 and unify_ context t1 t2 : tContext = 
   match (t1, t2) with
-    (TID(i), TID(j)) when i == j -> context
+  | (TID(i), TID(j)) when i = j -> context
   | (TID(i), _) ->
-      if occursCheck && occurs i t2
-      then raise (Failure "occurs")
-      else bindTID i t2 context
+    if occursCheck && occurs i t2
+    then raise (Failure "occurs")
+    else bindTID i t2 context
   | (_,TID(i)) ->
-      if occursCheck && occurs i t1
-      then raise (Failure "occurs")
-      else bindTID i t1 context
+    if occursCheck && occurs i t1
+    then raise (Failure "occurs")
+    else bindTID i t1 context
   | (TCon(k1,as1),TCon(k2,as2)) when k1 = k2 -> 
-      List.fold_left2 (fun c a1 a2 -> unify c a1 a2) context as1 as2
-  | _ -> raise (Failure "unify");;
+    List.fold2_exn ~init:context as1 as2 ~f:unify
+  | _ -> raise (Failure "unify")
 
 
 type fast_type = 
-    FCon of string * fast_type list
+  | FCon of string * fast_type list
   | FID of (fast_type option) ref
 
 let can_unify (t1 : tp) (t2 : tp) : bool =
   let rec same_structure t1 t2 =
     match (t1, t2) with
-      (TCon(k1,as1), TCon(k2,as2)) when k1 = k2 -> 
-	List.for_all2 same_structure as1 as2
+    | (TCon(k1,as1), TCon(k2,as2)) when k1 = k2 -> 
+      List.for_all2_exn as1 as2 same_structure
     | (TID(_),_) -> true
     | (_,TID(_)) -> true
     | _ -> false
   in if not (same_structure t1 t2) then false else
-  let rec make_fast_type dictionary t = 
-    match t with
-      TID(i) -> 
-	(try List.assoc i !dictionary
-	 with Not_found -> let f = FID(ref None) in dictionary := (i,f)::!dictionary; f)
-    | TCon(k,xs) -> 
-	FCon(k, List.map (make_fast_type dictionary) xs)
-  in let rec fast_occurs r f = 
-    match f with
-      FID(r_) -> r == r_
-    | FCon(_,fs) -> List.exists (fast_occurs r) fs
-  in let rec fast_chase f = 
-    match f with
-      FID(r) ->
+    let rec make_fast_type dictionary t = 
+      match t with
+      | TID(i) -> 
+        (match List.Assoc.find !dictionary i with
+         | None -> let f = FID(ref None) in dictionary := (i,f)::!dictionary; f
+         | Some(f) -> f)
+      | TCon(k,xs) -> 
+	FCon(k, List.map xs ~f:(make_fast_type dictionary))
+    in let rec fast_occurs r f = 
+      match f with
+      | FID(r_) -> phys_equal r r_
+      | FCon(_,fs) -> List.exists ~f:(fast_occurs r) fs
+    in let rec fast_chase f = 
+      match f with
+      | FID(r) ->
 	(match !r with
-	  None -> f
-	| Some(f_) ->
-	    let f__ = fast_chase f_ in
-	    r := Some(f__); f__)
-    | FCon(k,fs) -> FCon(k,List.map fast_chase fs)
-  in let rec fast_unify t1 t2 = 
-    match (t1,t2) with
-      (FID(i1),FID(i2)) when i1 == i2 -> true
-    | (FID(i),_) when fast_occurs i t2 -> false
-    | (FID(i),_) -> i := Some(t2); true
-    | (_,FID(i)) when fast_occurs i t1 -> false
-    | (_,FID(i)) -> i := Some(t1); true
-    | (FCon(k1,_),FCon(k2,_)) when k1 <> k2 -> false
-    | (FCon(_,[]),FCon(_,[])) -> true
-    | (FCon(_,x::xs),FCon(_,y::ys)) -> 
-	fast_unify x y && List.for_all2 (fun a b -> fast_unify (fast_chase a) (fast_chase b)) xs ys
-    | _ -> raise (Failure "constructors of different arity")
-  in fast_unify (make_fast_type (ref []) t1) (make_fast_type (ref []) t2)
+         | None -> f
+	 | Some(f_) ->
+	   let f__ = fast_chase f_ in
+	   r := Some(f__); f__)
+      | FCon(k,fs) -> FCon(k,List.map ~f:fast_chase fs)
+    in let rec fast_unify t1 t2 = 
+      match (t1,t2) with
+      | (FID(i1),FID(i2)) when i1 = i2 -> true
+      | (FID(i),_) when fast_occurs i t2 -> false
+      | (FID(i),_) -> i := Some(t2); true
+      | (_,FID(i)) when fast_occurs i t1 -> false
+      | (_,FID(i)) -> i := Some(t1); true
+      | (FCon(k1,_),FCon(k2,_)) when k1 <> k2 -> false
+      | (FCon(_,[]),FCon(_,[])) -> true
+      | (FCon(_,x::xs),FCon(_,y::ys)) -> 
+	fast_unify x y && 
+        List.for_all2_exn xs ys (fun a b -> fast_unify (fast_chase a) (fast_chase b))
+      | _ -> raise (Failure "constructors of different arity")
+    in fast_unify (make_fast_type (ref []) t1) (make_fast_type (ref []) t2)
 
 
 let instantiate_type (n,m) t = 
@@ -122,10 +128,11 @@ let instantiate_type (n,m) t =
   let next = ref n in
   let rec instantiate j = 
     match j with
-      TID(i) -> (try TID(List.assoc i (!substitution))
-		with Not_found -> substitution := (i,!next)::!substitution; next := (1+ !next); TID(!next-1)
+    | TID(i) -> (try TID(List.Assoc.find_exn !substitution i)
+		 with Not_found -> 
+                   substitution := (i,!next)::!substitution; next := (1+ !next); TID(!next-1)
 		)
-    | TCon(k,js) -> TCon(k,List.map instantiate js)
+    | TCon(k,js) -> TCon(k,List.map ~f:instantiate js)
   in let q = instantiate t in
   (q,(!next,m))
 
@@ -136,16 +143,17 @@ let canonical_type t =
   let substitution = ref [] in
   let rec canon q = 
     match q with
-      TID(i) -> (try TID(List.assoc i (!substitution))
-		with Not_found -> substitution := (i,!next)::!substitution; next := (1+ !next); TID(!next-1))
-    | TCon(k,a) -> TCon(k,List.map canon a)
+    | TID(i) -> (try TID(List.Assoc.find_exn !substitution i)
+		 with Not_found ->
+                   substitution := (i,!next)::!substitution; next := (1+ !next); TID(!next-1))
+    | TCon(k,a) -> TCon(k,List.map ~f:canon a)
   in canon t
 
 let rec next_type_variable t = 
   match t with
-    TID(i) -> i+1
+  | TID(i) -> i+1
   | TCon(_,[]) -> 0
-  | TCon(_,is) -> List.fold_left max 0 (List.map next_type_variable is)
+  | TCon(_,is) -> List.fold_left ~f:max ~init:0 (List.map is next_type_variable)
 
 
 let application_type f x = 

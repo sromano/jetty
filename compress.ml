@@ -1,3 +1,5 @@
+open Core.Std
+
 open Expression
 open Type
 open Library
@@ -17,50 +19,47 @@ let minimum_occurrences = 2;; (* how many tasks a tree must occur in to make it 
 *)
 let candidate_fragments dagger solutions = 
   print_string "Preparing for fragment merging..."; print_newline ();
-  let terminals = 0--(expression_graph_size dagger - 1) |> List.filter (is_leaf_ID dagger) in
+  let terminals = List.filter (0--(expression_graph_size dagger - 1)) (is_leaf_ID dagger) in
   let valid_IDs = reachable_expressions dagger @@ List.concat solutions in
   let ground_pairs = 0--(expression_graph_size dagger - 1) |> 
-                     List.filter (compose not @@ has_wildcards dagger) |> 
-                     List.filter (fun i -> IntSet.mem i valid_IDs) |> 
-                     List.map (fun x -> (x,x,infer_type @@ extract_expression dagger x)) in
-  let q = try Some(List.find (is_wildcard dagger) terminals) with _ -> None in
+                     List.filter ~f:(compose not @@ has_wildcards dagger) |> 
+                     List.filter ~f:(fun i -> Int.Set.mem valid_IDs i) |> 
+                     List.map ~f:(fun x -> (x,x,infer_type @@ extract_expression dagger x)) in
+  let q = List.find terminals (is_wildcard dagger) in
   (* map from fragment to the tasks that use that fragment *)
-  let task_map = Hashtbl.create @@ expression_graph_size dagger in
-  solutions |> List.iteri (fun t -> 
-      List.iter (fun i -> get_sub_IDs dagger i |> IntSet.iter (fun j -> 
-          try
-            let old = Hashtbl.find task_map j in
-            Hashtbl.replace task_map j @@ IntSet.add t old
-          with Not_found -> Hashtbl.add task_map j @@ IntSet.singleton t
+  let task_map = Hashtbl.Poly.create () in
+  List.iteri solutions ~f:(fun t s -> 
+      List.iter s (fun i -> get_sub_IDs dagger i |> Int.Set.iter ~f:(fun j -> 
+          match Hashtbl.find task_map j with
+          | Some(old) ->
+            Hashtbl.replace task_map ~key:j ~data:(Int.Set.add old t)
+          | None -> ignore(Hashtbl.add task_map ~key:j ~data:(Int.Set.singleton t))
         )));
   (* is (m n) a fragment, and if so, are its tasks complementary to those of i? *)
   let compatible i m n = 
     match node_in_graph dagger (ExpressionBranch(m,n)) with
     | Some(mn) when Hashtbl.mem task_map mn -> 
-      let ti = Hashtbl.find task_map i
-      and tmn = Hashtbl.find task_map mn in
-      if (IntSet.cardinal ti > 1 || IntSet.cardinal tmn > 1 || not (IntSet.equal ti tmn)) && 
-         IntSet.cardinal (IntSet.union ti tmn) >= minimum_occurrences
+      let ti = Hashtbl.find_exn task_map i
+      and tmn = Hashtbl.find_exn task_map mn in
+      if (Int.Set.length ti > 1 || Int.Set.length tmn > 1 || not (Int.Set.equal ti tmn)) && 
+         Int.Set.length (Int.Set.union ti tmn) >= minimum_occurrences
       then Some(mn)
       else None
     | _ -> None
   in
-  (* heuristic for deciding if an instantiation should be included *)
-  let prune_instantiations i j = false (* TODO *)
-  in
   (* map from expression ID to a list of (grounded , other ID) *)
-  let instantiations = Hashtbl.create @@ expression_graph_size dagger - 1 in
-  terminals |> List.iter (fun t -> 
-      if Some(t) <> q then Hashtbl.add instantiations t 
+  let instantiations = Int.Table.create () in
+  List.iter terminals (fun t -> 
+      if Some(t) <> q then ignore(Hashtbl.add instantiations t 
           ((t,t,terminal_type @@ extract_expression dagger t) :: 
            if is_some q 
            then [(t,get_some q,terminal_type @@ extract_expression dagger t)]
-           else []));
+           else [])));
   print_string "Done preparing."; print_newline ();
   let rec instantiate i = 
-    try
-      Hashtbl.find instantiations i
-    with Not_found -> 
+    match Hashtbl.find instantiations i with
+    | Some(z) -> z
+    | None -> 
       let answer = 
         match extract_node dagger i with
         | ExpressionLeaf(l) ->
@@ -74,8 +73,8 @@ let candidate_fragments dagger solutions =
             if Some(right) = q
             then ground_pairs
             else instantiate right in
-          left_matches |> List.fold_left (fun a (f,m,ft) -> 
-              right_matches |> List.fold_left (fun b (x,n,xt) -> 
+          List.fold_left left_matches ~init:[] ~f:(fun a (f,m,ft) -> 
+              List.fold_left right_matches ~init:a ~f:(fun b (x,n,xt) -> 
                   match compatible i m n with
                   | Some(mn) -> begin
                       try
@@ -83,26 +82,25 @@ let candidate_fragments dagger solutions =
                         (insert_expression_node dagger @@ ExpressionBranch(f,x), mn, fxt) :: b
                       with _ -> b (* typing error *)
                     end
-                  | None -> b) a) []
-      in Hashtbl.add instantiations i answer; answer
+                  | None -> b))
+      in ignore(Hashtbl.add instantiations i answer); answer
   in 
-  let candidates = ref IntSet.empty in
-  task_map |> Hashtbl.iter (fun i _ -> 
+  let candidates = ref Int.Set.empty in
+  Hashtbl.iter task_map (fun ~key:i ~data -> 
       if not (is_leaf_ID dagger i) then
-        instantiate i |> List.iter (fun (j,_,_) -> 
-            if not (prune_instantiations i j) then
-              candidates := IntSet.add j !candidates));
-  let can = IntSet.elements !candidates |> List.filter (compose not @@ is_leaf_ID dagger) in
+        List.iter (instantiate i) (fun (j,_,_) -> 
+              candidates := Int.Set.add !candidates j));
+  let can = Int.Set.elements !candidates |> List.filter ~f:(compose not @@ is_leaf_ID dagger) in
   Printf.printf "Got %i candidates." (List.length can); print_newline (); can
 
 
 (*   (* for each task, collect up all the fragments into a set *)
-     let fragments = solutions |> List.map (IntSet.empty |> List.fold_left (fun a i -> 
-     IntSet.union a @@ get_sub_IDs dagger i)) in
+     let fragments = solutions |> List.map (Int.Set.empty |> List.fold_left (fun a i -> 
+     Int.Set.union a @@ get_sub_IDs dagger i)) in
      (* record candidates in place *)
      let candidates = Hashtbl.create 10000 in
      fragments |> List.iter (fun task_fragments ->
-     task_fragments |> IntSet.iter (fun i -> 
+     task_fragments |> Int.Set.iter (fun i -> 
         try
           let old = Hashtbl.find candidates i in
           Hashtbl.replace candidates i @@ old+1
@@ -117,10 +115,10 @@ let candidate_fragments dagger solutions =
       and next_tail = List.tl other_tasks in
       (* loop over every solution to the head task;
          collect up the fragments and check to see if they should be included *)
-      head_task |> IntSet.iter (fun fragment -> 
+      head_task |> Int.Set.iter (fun fragment -> 
           if Hashtbl.mem candidates fragment then () else 
           let wild = has_wildcards dagger fragment in
-          other_tasks |> List.iter (IntSet.iter (fun other_fragment -> 
+          other_tasks |> List.iter (Int.Set.iter (fun other_fragment -> 
               if wild || has_wildcards dagger other_fragment
               then match combine_wildcards dagger fragment other_fragment with
                 | Some(union_fragment) when (not (Hashtbl.mem candidates union_fragment)
@@ -145,9 +143,9 @@ let no_job_ID = -1
 let compute_job_IDs dagger type_array terminals candidates requests =
   let (i2n,_,_) = dagger in
   (* number all of the candidates *)
-  let candidates = candidates |> List.mapi (fun i c -> (c,i)) in
+  let candidates = List.mapi candidates (fun i c -> (c,i)) in
   (* maps tuples of (ID,request) to job ID *)
-  let jobs = Hashtbl.create 10000 in
+  let jobs = Hashtbl.Poly.create () in
   (* these lists contain information about the jobs *)
   let candidate_index = ref [] in
   let has_children = ref [] in
@@ -157,11 +155,11 @@ let compute_job_IDs dagger type_array terminals candidates requests =
   let candidate_conflicts = ref [] in
   let rec make_job i request = 
     if is_wildcard dagger i then no_job_ID else
-      try
-        Hashtbl.find jobs (i,request) 
-      with Not_found -> 
-        (match Hashtbl.find i2n i with
-           ExpressionLeaf(Terminal(_,_,_)) -> 
+      match Hashtbl.find jobs (i,request) with
+      | Some(z) -> z
+      | None -> 
+        (match Hashtbl.find_exn i2n i with
+        | ExpressionLeaf(Terminal(_,_,_)) -> 
            has_children := !has_children @ [false];
            left_child := !left_child @ [no_job_ID];
            right_child := !right_child @ [no_job_ID]
@@ -175,21 +173,20 @@ let compute_job_IDs dagger type_array terminals candidates requests =
            left_child := !left_child @ [left_job];
            right_child := !right_child @ [right_job]);
         candidate_index := !candidate_index @
-                           [List.map snd @@ List.filter (fun (c,_) -> can_match_wildcards dagger i c) candidates];
+                           [List.map ~f:snd @@ List.filter candidates (fun (c,_) -> can_match_wildcards dagger i c)];
         terminal_conflicts := !terminal_conflicts @
-                              [float_of_int @@ List.length @@ (terminals |> 
-                                                               List.filter (fun t -> can_unify type_array.(t) request))];
+                              [Float.of_int @@ List.length @@ (List.filter terminals (fun t -> can_unify type_array.(t) request))];
         candidate_conflicts := !candidate_conflicts @
-                               [List.map snd @@ (candidates |> List.filter
-                                                   (fun (c,_) -> can_unify type_array.(c) request))
+                               [List.map ~f:snd @@ (List.filter candidates
+                                                      (fun (c,_) -> can_unify type_array.(c) request))
                                ];
         let j = Hashtbl.length jobs in
-        Hashtbl.add jobs (i,request) j;
+        ignore(Hashtbl.add jobs ~key:(i,request) ~data:j);
         j
   in
   (* create a job for each request and all of its sub requests *)
-  ignore(requests |> IntMap.iter (fun i types -> types |> 
-                                                 List.iter (fun t -> ignore(make_job i t))));
+  ignore(Int.Map.iter requests (fun ~key:i ~data:types ->  
+      List.iter types (fun t -> ignore(make_job i t))));
   (* pack everything up into arrays and then return it all *)
   (Array.of_list !candidate_index,
    Array.of_list !has_children,
@@ -201,21 +198,20 @@ let compute_job_IDs dagger type_array terminals candidates requests =
 
 
 let compress lambda smoothing dagger type_array requests (task_solutions : (task * (int*float) list) list) = 
-  let t1 = Sys.time () in
+  let t1 = Time.to_float @@ Time.now () in
   let (i2n,_,_) = dagger in
-  let terminals = List.map fst @@ List.filter (fun (i,_) -> is_leaf_ID dagger i) (hash_bindings i2n) in
+  let terminals = List.map ~f:fst @@ List.filter (Hashtbl.to_alist i2n) (fun (i,_) -> is_leaf_ID dagger i) in
   (* request might have spurious request for programs that don't solve any tasks *)
-  let requests = requests |> IntMap.filter (fun i _ -> task_solutions |> 
-                                                       List.exists (fun (_,s) -> s |> List.exists (fun (j,_) -> j = i))) in
-  let candidates = task_solutions |> List.map (compose (List.map fst) snd) |>
+  let requests = Int.Map.filter requests (fun ~key:i ~data:_ ->  
+      List.exists task_solutions (fun (_,s) -> List.exists s (fun (j,_) -> j = i))) in
+  let candidates = List.map task_solutions (compose (List.map ~f:fst) snd) |>
                    candidate_fragments dagger in
   (* compute the dependencies of each candidate *)
   let dependencies =
-    Array.of_list (candidates
-                   |> List.map (fun i ->
-                       let children = IntSet.elements @@ get_sub_IDs dagger i in
-                       let children = children |> List.filter (fun j -> List.mem j candidates) in
-                       children |> List.map (index_of candidates))) in
+    Array.of_list (List.map candidates (fun i ->
+        let children = Int.Set.elements @@ get_sub_IDs dagger i in
+        let children = List.filter children (List.mem candidates) in
+        List.map children (index_of candidates))) in
   (* precompute all of the typing information *)
   let (candidate_index,has_children,
        left_child,right_child,
@@ -223,14 +219,12 @@ let compress lambda smoothing dagger type_array requests (task_solutions : (task
        jobs) = compute_job_IDs dagger type_array terminals candidates requests
   in
   (* figure out correspondence between jobs and tasks *)
-  let task_jobs = List.map (fun (task,solutions) -> 
-      List.map (fun (i,l) -> 
-          (Hashtbl.find jobs (i,task.task_type), l)
-        ) solutions
-    ) task_solutions in
+  let task_jobs = List.map task_solutions (fun (task,solutions) -> 
+      List.map solutions (fun (i,l) -> 
+          (Hashtbl.find_exn jobs (i,task.task_type), l))) in
   (* routine for performing the dynamic program *)
   let number_jobs = Hashtbl.length jobs in
-  let job_likelihoods = Array.make number_jobs 0. in
+  let job_likelihoods = Array.create number_jobs 0. in
   let do_jobs productions = 
     for j = 0 to (number_jobs-1) do
       let application = 
@@ -242,66 +236,67 @@ let compress lambda smoothing dagger type_array requests (task_solutions : (task
           and right_likelihood = 
             if right_index = no_job_ID then 0. else job_likelihoods.(right_index) in
           -.log2 +. left_likelihood +. right_likelihood
-        else neg_infinity
+        else Float.neg_infinity
       in let terminal =
-        let number_library_hits = candidate_index.(j) |> List.fold_left (fun a h -> 
-            if productions.(h) then 1.+.a else a) (if has_children.(j) then 0. else 1.) in
+        let number_library_hits = List.fold_left candidate_index.(j)
+            ~init:(if has_children.(j) then 0. else 1.)
+            ~f:(fun a h -> if productions.(h) then 1.+.a else a) in
         if number_library_hits > 0.
         then log number_library_hits -. log2 -.
-             log (List.fold_left (fun a k -> 
-                 if productions.(k) then a+.1. else a
-               ) terminal_conflicts.(j) candidate_conflicts.(j))
-        else neg_infinity
+             log (List.fold_left candidate_conflicts.(j) ~init:terminal_conflicts.(j) ~f:(fun a k -> 
+                 if productions.(k) then a+.1. else a))
+        else Float.neg_infinity
       in job_likelihoods.(j) <- lse application terminal
     done
   in
   (* computes log posterior for a given subset of the candidates *)
   let posterior productions = 
-    let log_prior = -.lambda *. Array.fold_left 
-                        (fun a u -> if u then a+.1. else a) 0. productions in
-    let likelihood = List.fold_left (fun a t -> 
-        let ls = List.map (fun (j,l) -> l +. job_likelihoods.(j)) t in
-        a +. lse_list ls) 0. task_jobs in
+    let log_prior = -.lambda *. (Array.fold_right productions 
+                                   ~f:(fun u a -> if u then a+.1. else a) ~init:0.) in
+    let likelihood = List.fold_left task_jobs ~f:(fun a t -> 
+        let ls = List.map t (fun (j,l) -> l +. job_likelihoods.(j)) in
+        a +. lse_list ls) ~init:0. in
     log_prior +. likelihood
   in
   (* computes the state successors in the search space *)
   let successors productions =
     let new_productions = 0--(List.length candidates - 1) |> 
-                          List.filter (fun p -> not productions.(p)) 
-    in List.map (fun p -> 
+                          List.filter ~f:(fun p -> not productions.(p)) 
+    in List.map new_productions (fun p -> 
         let a = Array.copy productions in
         a.(p) <- true;
-        List.iter (fun q -> a.(q) <- true) @@ dependencies.(p);
-        a) new_productions
+        List.iter dependencies.(p) (fun q -> a.(q) <- true);
+        a)
   in
   (* performs a greedy search *)
   let rec hill_climb productions = 
     do_jobs productions;
     let current_score = posterior productions in
-    let new_scores = successors productions |> List.map (fun s -> do_jobs s; (posterior s, s)) in
+    let new_scores = List.map (successors productions) (fun s -> do_jobs s; (posterior s, s)) in
     if List.length new_scores > 0
     then let (new_score,new_productions) = 
-      List.fold_left (fun (s1,p1) (s2,p2) -> if s1 > s2 then (s1,p1) else (s2,p2))
-        (List.hd new_scores) (List.tl new_scores) in
+      List.fold_left (safe_get_some "compressed tale" @@ List.tl new_scores)
+        ~init:(safe_get_some "compressed head" @@ List.hd new_scores)
+        ~f:(fun (s1,p1) (s2,p2) -> if s1 > s2 then (s1,p1) else (s2,p2)) in        
       if new_score > current_score
       then hill_climb new_productions
       else productions
     else productions
   in
-  let t2 = Sys.time () in
+  let t2 = Time.to_float @@ Time.now () in
   Printf.printf "time to prepare for hillclimbing is %f" (t2-.t1);
   print_newline ();
   Printf.printf "about to begin hillclimbing..."; print_newline ();
-  let t1 = Sys.time () in
-  let initial_state = Array.make (List.length candidates) false in
+  let t1 = Time.to_float @@ Time.now () in
+  let initial_state = Array.create (List.length candidates) false in
   let productions = hill_climb initial_state in
-  let es = List.map (extract_expression dagger) @@
-    terminals @ (List.map fst @@ 
-                 List.filter (fun (_,i) -> productions.(i)) @@ 
-                 List.mapi (fun i c -> (c,i)) candidates) in
+  let es = List.map ~f:(extract_expression dagger) @@
+    terminals @ (List.map ~f:fst @@ 
+                 List.filter ~f:(fun (_,i) -> productions.(i)) @@ 
+                 List.mapi candidates (fun i c -> (c,i))) in
   let new_grammar = fit_grammar_to_tasks smoothing (make_flat_library es) 
       dagger type_array requests task_solutions in
-  let t2 = Sys.time () in
+  let t2 = Time.to_float @@ Time.now () in
   Printf.printf "time to compute grammar is %f \n " (t2-.t1);
   new_grammar
 

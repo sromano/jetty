@@ -1,3 +1,5 @@
+open Core.Std
+
 open Task
 open Expression
 open Type
@@ -9,12 +11,11 @@ open Obj
 (* specializes the list typed to only work on phonemes *)
 let phonetic_list = true
 
-type library = float * (float*tp) ExpressionMap.t
+type library = float * (expression*(float*tp)) list
 
 (* creates a new library with all the production weights equal *)
 let make_flat_library primitives = 
-  (log 0.35, List.fold_left (fun a p -> ExpressionMap.add p (0.0,infer_type p) a)
-  ExpressionMap.empty primitives)
+  (log 0.35, List.map primitives ~f:(fun p -> (p, (0.0,infer_type p))))
 
 (* computes likelihoods of all expressions using a dynamic program *)
 (* program_types is a hashmap from ID to type
@@ -23,28 +24,27 @@ let make_flat_library primitives =
 let program_likelihoods (log_application,library) dagger program_types requests = 
   let log_terminal = log (1.0 -. exp log_application) in
   (* store map from production ID to log probability *)
-  let terminals = ExpressionMap.bindings library |> List.map (fun (e,(l,_)) ->
-      (insert_expression dagger e, l)) in 
+  let terminals = List.map library ~f:(fun (e,(l,_)) -> (insert_expression dagger e, l)) in 
   (* get all of the different types we can choose from *)
   let terminal_types =
-    List.map (fun (_,(l,t)) -> (t,l)) (ExpressionMap.bindings library) in
-  let likelihoods = Hashtbl.create (expression_graph_size dagger) in
+    List.map library ~f:(fun (_,(l,t)) -> (t,l)) in
+  let likelihoods = Hashtbl.Poly.create () in
   let rec likelihood (i : int) (request : tp) = 
     if is_wildcard dagger i then 0. else
     try
-      Hashtbl.find likelihoods (i,request)
-    with Not_found -> 
+      Hashtbl.find_exn likelihoods (i,request)
+    with _ -> 
       let log_probability = 
         let terminal_probability = 
-          let numerator = terminals |> List.fold_left (fun a (j,l) -> 
-            if can_match_wildcards dagger i j then lse a l else a) neg_infinity in
+          let numerator = List.fold_left terminals ~init:Float.neg_infinity ~f:(fun a (j,l) -> 
+            if can_match_wildcards dagger i j then lse a l else a) in
           if is_invalid numerator
-          then neg_infinity
-          else let z = lse_list (List.map snd (List.filter (fun (t,_) -> 
-              can_unify t request) terminal_types)) in
+          then Float.neg_infinity
+          else let z = lse_list (List.map ~f:snd (List.filter terminal_types ~f:(fun (t,_) -> 
+              can_unify t request))) in
             numerator+.log_terminal-.z
         in match extract_node dagger i with
-          ExpressionBranch(f,x) -> 
+        | ExpressionBranch(f,x) -> 
             let left_request = function_request request in
             let right_request = argument_request request program_types.(f) in
             let application_probability = log_application+. likelihood f left_request 
@@ -52,19 +52,20 @@ let program_likelihoods (log_application,library) dagger program_types requests 
             lse terminal_probability application_probability
         | _ -> terminal_probability
       in
-      Hashtbl.add likelihoods (i,request) log_probability;
+      ignore(Hashtbl.add likelihoods (i,request) log_probability);
       log_probability
-  in IntMap.iter (fun i -> List.iter (fun r -> ignore (likelihood i r))) requests; likelihoods
+  in Int.Map.iter requests (fun ~key ~data ->
+      List.iter data ~f:(fun r -> ignore (likelihood key r))); likelihoods
 
 (* computes likelihood of a possibly ill typed program: returns None if it doesn't type *)
 let likelihood_option library request e = 
   let dagger = make_expression_graph 100 in
   let i = insert_expression dagger e in
-  let requests = IntMap.singleton i [request] in
+  let requests = Int.Map.singleton i [request] in
   try
     let types = infer_graph_types dagger in
     let likelihoods = program_likelihoods library dagger types requests in
-    Some(Hashtbl.find likelihoods (i,request))
+    Some(Hashtbl.find_exn likelihoods (i,request))
   with _ -> None        
 
 (* tracks the number of times that each production has been used, or could have been used *)
@@ -88,31 +89,29 @@ let fit_grammar smoothing (log_application,library) dagger program_types likelih
      "offsets" index into this list
    *)
   let terminal_order =
-    List.mapi (fun i (e,(l,t)) -> (insert_expression dagger e,
-                                   (t, l, i)))
-      (ExpressionMap.bindings library) in
+    List.mapi library ~f:(fun i (e,(l,t)) -> (insert_expression dagger e,
+                                              (t, l, i))) in
   let number_terminals = List.length terminal_order in
   let counts = { application_counts = log smoothing;
                  terminal_counts = log smoothing;
-                 use_counts = Array.make number_terminals (log smoothing);
-                 possible_counts = Array.make number_terminals (log smoothing); } in
+                 use_counts = Array.create number_terminals (log smoothing);
+                 possible_counts = Array.create number_terminals (log smoothing); } in
   let rec uses weight i request = 
     if not (is_wildcard dagger i) then begin
-      let l = Hashtbl.find likelihoods (i,request) in
+      let l = Hashtbl.find_exn likelihoods (i,request) in
       (* if it is in library compute uses if the production was used *)
-      let hits = terminal_order |> List.filter
-                   (fun (j,_) -> can_match_wildcards dagger i j) in
-      if not (null hits) then begin
-        let offsets = hits |> List.map (fun (_,(_,l,o)) -> (o,l)) in
-        let offset_Z = lse_list @@ List.map snd offsets in
-        let offsets = offsets |> List.map (fun (o,l) -> (o,l-.offset_Z)) in
-        let others = List.filter (fun (_,(t,_,_)) -> can_unify t request) terminal_order in
-        let other_offsets = List.map (fun (_,(_,_,o)) -> o) others in
-        let z = lse_list (List.map (fun (_,(_,l,_)) -> l) others) in
+      let hits = List.filter terminal_order ~f:(fun (j,_) -> can_match_wildcards dagger i j) in
+      if not (List.is_empty hits) then begin
+        let offsets = List.map hits ~f:(fun (_,(_,l,o)) -> (o,l)) in
+        let offset_Z = lse_list @@ List.map offsets snd in
+        let offsets = List.map offsets ~f:(fun (o,l) -> (o,l-.offset_Z)) in
+        let others = List.filter terminal_order (fun (_,(t,_,_)) -> can_unify t request) in
+        let other_offsets = List.map others (fun (_,(_,_,o)) -> o) in
+        let z = lse_list (List.map others (fun (_,(_,l,_)) -> l)) in
         let terminal_likelihood = log_terminal+.offset_Z-.z -.l in
-        offsets |> List.iter (fun (o,l) -> let u = counts.use_counts.(o) in
+        List.iter offsets ~f:(fun (o,l) -> let u = counts.use_counts.(o) in
                                counts.use_counts.(o) <- lse u (l+.terminal_likelihood+.weight));
-        other_offsets |> List.iter (fun o -> let p = counts.possible_counts.(o) in
+        List.iter other_offsets ~f:(fun o -> let p = counts.possible_counts.(o) in
                                counts.possible_counts.(o) <- lse p (terminal_likelihood+.weight));
         counts.terminal_counts <- lse counts.terminal_counts (terminal_likelihood+.weight)
       end;
@@ -126,10 +125,10 @@ let fit_grammar smoothing (log_application,library) dagger program_types likelih
         let right_request = argument_request request program_types.(f) in
         let left_probability = if is_wildcard dagger f 
           then 0.
-          else Hashtbl.find likelihoods (f,left_request) in
+          else Hashtbl.find_exn likelihoods (f,left_request) in
         let right_probability = if is_wildcard dagger x 
           then 0.
-          else Hashtbl.find likelihoods (x,right_request) in
+          else Hashtbl.find_exn likelihoods (x,right_request) in
         let application_likelihood =
           log_application+.left_probability+.right_probability -.l in
         counts.application_counts <- 
@@ -139,26 +138,25 @@ let fit_grammar smoothing (log_application,library) dagger program_types likelih
         uses (weight+.application_likelihood) x right_request
     end
   in 
-  List.iter (fun ((i,request),w) -> uses w i request) corpus;
+  List.iter corpus ~f:(fun ((i,request),w) -> uses w i request);
   let log_application = counts.application_counts -. counts.terminal_counts in
-  let distribution = List.fold_left (fun a (i,(_,_,o)) -> 
-                                    let p = counts.use_counts.(o) -. counts.possible_counts.(o)
-                                    and e = extract_expression dagger i
-                                    in ExpressionMap.add e (p,infer_type e) a)
-      ExpressionMap.empty terminal_order
+  let distribution = List.map terminal_order (fun (i,(_,_,o)) -> 
+      let p = counts.use_counts.(o) -. counts.possible_counts.(o)
+      and e = extract_expression dagger i
+      in (e, (p,infer_type e))) 
   in (log_application,distribution)
 
 (* wrapper over fit_grammar that does not assume a corpus structure *)
 let fit_grammar_to_tasks smoothing grammar dagger program_types requests task_solutions = 
   let likelihoods = program_likelihoods grammar dagger program_types requests in
-  let task_posteriors = task_solutions |> List.map (fun (t,s) ->
-    s |> List.map (fun (i,l) -> 
-          ((i,t.task_type),l+.Hashtbl.find likelihoods (i,t.task_type)))) in
-  let zs = task_posteriors |> List.map (fun p -> 
-    lse_list @@ List.map snd p) in
-  let task_posteriors = List.map2 (fun p z -> 
-    p |> List.map (fun (i,l) -> (i,l-.z))) task_posteriors zs in
-  let corpus = merge_a_list lse task_posteriors in
+  let task_posteriors = List.map task_solutions (fun (t,s) ->
+    List.map s (fun (i,l) -> 
+          ((i,t.task_type),l+.Hashtbl.find_exn likelihoods (i,t.task_type)))) in
+  let zs = List.map task_posteriors (fun p -> 
+    lse_list @@ List.map p snd) in
+  let task_posteriors = List.map2_exn task_posteriors zs ~f:(fun p z -> 
+    List.map p ~f:(fun (i,l) -> (i,l-.z))) in
+  let corpus = merge_a_list task_posteriors lse in
   fit_grammar smoothing grammar dagger program_types likelihoods corpus
 
 (* various built-in primitives *)
@@ -217,7 +215,7 @@ let c_bottom = Terminal("bottom",canonical_type t1,Obj.magic @@ ref None)
 
 let c_one = Terminal("1",tint,Obj.magic (ref 1));;
 let c_zero = Terminal("0",tint,Obj.magic (ref 0));;
-let c_numbers = 0--9 |> List.map expression_of_int;;
+let c_numbers = List.map (0--9) expression_of_int;;
 let c_plus = Terminal("+",
                      make_arrow tint (make_arrow tint tint),
                      lift_binary (+));;
@@ -227,7 +225,7 @@ let c_times = Terminal("*",
 let polynomial_library = 
   make_flat_library @@ [c_S;c_B;c_C;c_I;c_plus;c_times;c_zero;c_one;](*  @ c_numbers *);;
 
-let c_reals = 0--9 |> List.map (compose expression_of_float float_of_int);;
+let c_reals = List.map (0--9) (expression_of_float % Float.of_int);;
 let c_sin = Terminal("sin",
                     make_arrow treal treal,
                     lift_unary sin);;
@@ -259,50 +257,49 @@ let c_last_one = Terminal("last-one",
                           lift_unary last_one);;
 
 
-let string_of_library (log_application,distribution) = 
-  let bindings = ExpressionMap.bindings distribution in
-  String.concat "\n"
-    ((string_of_float (exp log_application))::
-     (List.map (fun (e,(w,t)) -> Printf.sprintf "\t %f \t %s : %s " w (string_of_expression e) (string_of_type t)) 
-        bindings));;
+let string_of_library (log_application,bindings) = 
+  String.concat ~sep:"\n"
+    ((Float.to_string (exp log_application))::
+     (List.map bindings (fun (e,(w,t)) ->
+          Printf.sprintf "\t %f \t %s : %s " w (string_of_expression e) (string_of_type t))));;
 
-let all_terminals = ref ([c_K;c_S;c_B;c_C;c_I;c_bottom;
+let all_terminals = ref (List.map ([c_K;c_S;c_B;c_C;c_I;c_bottom;
                           c_sin;c_cos;c_times_dot;c_plus_dot;c_plus;c_times;
-                          c_null;c_append;c_cons;c_last_one] @ c_numbers @ c_reals |> 
-                         List.map (fun e -> (string_of_expression e,e)));;
+                          c_null;c_append;c_cons;c_last_one] @ c_numbers @ c_reals)
+                           (fun e -> (string_of_expression e,e)));;
 let register_terminal t = 
   all_terminals := (string_of_expression t,t) :: !all_terminals;;
-let register_terminals = List.iter register_terminal;;
+let register_terminals t = List.iter t register_terminal;;
 
 (* replaces all of the "unit references" with actual unit references. necessary for marshaling *)
 let scrub_graph (i2n,n2i,_) = 
   let substitution = ref [] in
-  Hashtbl.iter (fun i n -> 
+  Hashtbl.iter i2n (fun ~key:i ~data:n -> 
     match n with
     | ExpressionLeaf(Terminal(name,t,_)) when name.[0] <> '?' -> 
       let clean = ExpressionLeaf(Terminal(name,t,ref ()))
       and dirty = n in
       substitution := (i,clean,dirty) :: !substitution
-    | _ -> ()) i2n;
-  !substitution |> List.iter (fun (i,c,d) -> 
+    | _ -> ());
+  List.iter !substitution (fun (i,c,d) -> 
     Hashtbl.replace i2n i c;
     Hashtbl.remove n2i d;
-    Hashtbl.add n2i c i)
+    ignore(Hashtbl.add n2i c i))
 
 (* undoes the above operation *)
 let dirty_graph (i2n,n2i,_) =
   let substitution = ref [] in
-  Hashtbl.iter (fun i n -> 
+  Hashtbl.iter i2n (fun ~key:i ~data:n -> 
     match n with
     | ExpressionLeaf(Terminal(name,_,_)) when name.[0] <> '?' -> 
       let clean = n
-      and dirty = ExpressionLeaf(List.assoc name !all_terminals) in
+      and dirty = ExpressionLeaf(List.Assoc.find_exn !all_terminals name) in
       substitution := (i,clean,dirty) :: !substitution
-    | _ -> ()) i2n;
-  !substitution |> List.iter (fun (i,c,d) -> 
+    | _ -> ());
+  List.iter !substitution (fun (i,c,d) -> 
     Hashtbl.replace i2n i d;
     Hashtbl.remove n2i c;
-    Hashtbl.add n2i d i)
+    ignore(Hashtbl.add n2i d i))
   
 
 (* parses an expression. has to be in library because needs definitions of terminals *)
@@ -310,7 +307,7 @@ let expression_of_string s =
   let i = ref 0 in
   let rec read () = 
     if !i < String.length s
-    then (if s.[!i] == '('
+    then (if s.[!i] = '('
           then (incr i;
                 let f = read () in
                 incr i;
@@ -326,32 +323,31 @@ let expression_of_string s =
                 if name.[0] = '?'
                 then Terminal(name,t1,ref ())
                 else try
-                  List.assoc name !all_terminals
-                with Not_found -> raise (Failure ("not in all_terminals: "^name))))
+                  List.Assoc.find_exn !all_terminals name
+                with _ -> raise (Failure ("not in all_terminals: "^name))))
     else raise (Failure ("expression_of_string: "^s))
   in read ()
 
 let load_library f = 
   let i = open_in f in
-  let log_application = float_of_string @@ input_line i in
+  let log_application = Float.of_string @@ input_line i in
   let productions = ref [] in
   try
     while true do
-      let l = String.trim @@ input_line i in
-      let weight_index = String.index l ' ' in
-      let w = float_of_string @@ String.sub l 0 weight_index in
-      let e = expression_of_string @@ String.trim @@ 
+      let l = String.strip @@ input_line i in
+      let weight_index = safe_get_some "load_library: None" @@ String.index l ' ' in
+      let w = Float.of_string @@ String.sub l 0 weight_index in
+      let e = expression_of_string @@ String.strip @@ 
         String.sub l weight_index (String.length l - weight_index) in
       productions := (e,w) :: !productions
-    done; (0.,ExpressionMap.empty)
+    done; (0.,[])
   with End_of_file -> 
-    (log log_application, !productions |> 
-    List.fold_left (fun a (e,w) -> ExpressionMap.add e (w,infer_type e) a) ExpressionMap.empty)
+    (log log_application, List.map !productions (fun (e,w) -> (e, (w,infer_type e))))
 
 
 
 let test_library () = 
-  ["I";"((C +) 1)";"(K (+ (0 S)))"] |> List.map 
+  List.map ["I";"((C +) 1)";"(K (+ (0 S)))"]
     (fun s -> print_string (string_of_expression @@ expression_of_string s); print_newline ());;
 
 

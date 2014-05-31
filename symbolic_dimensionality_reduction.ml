@@ -1,3 +1,5 @@
+open Core.Std
+
 open Expression
 open Type
 open Library
@@ -27,23 +29,23 @@ let make_decoder dagger i j =
 let potential_decoders dagger solutions = 
   (* consider each pair of frontiers *)
   let potentials = solutions |> map_list (function
-    | [] -> IntSet.empty
-    | [_] -> IntSet.empty
-    | (t :: rest) -> List.concat rest |> List.fold_left (fun a other -> 
-      t |> List.fold_left (fun b this -> 
+    | [] -> Int.Set.empty
+    | [_] -> Int.Set.empty
+    | (t :: rest) -> List.concat rest |> List.fold_left ~f:(fun a other -> 
+      List.fold_left t ~init:a ~f:(fun b this -> 
             match make_decoder dagger this other with
             | None -> b
-            | Some(d) -> IntSet.add d b) a) IntSet.empty) in
+            | Some(d) -> Int.Set.add b d)) ~init:Int.Set.empty) in
   (* coalesced potentials *)
-  let potentials = potentials |> List.fold_left IntSet.union IntSet.empty in
-  Printf.printf "Computed %i pairwise decoders" @@ IntSet.cardinal potentials;
+  let potentials = List.fold_left potentials ~f:Int.Set.union ~init:Int.Set.empty in
+  Printf.printf "Computed %i pairwise decoders" @@ Int.Set.length potentials;
   print_newline ();
   (* only keep those that can be used in all of the tasks *)
-  let candidates = potentials |> IntSet.filter (fun c -> 
-    solutions |> List.for_all (List.exists (can_match_wildcards dagger c))) in
-  Printf.printf "Computed %i candidate decoders" @@ IntSet.cardinal candidates;
+  let candidates = Int.Set.filter potentials (fun c -> 
+    List.for_all solutions (List.exists ~f:(can_match_wildcards dagger c))) in
+  Printf.printf "Computed %i candidate decoders" @@ Int.Set.length candidates;
   print_newline ();
-  IntSet.elements candidates
+  Int.Set.to_list candidates
 
 let decode_likelihood grammar dagger paths i = 
   let rec score_path r e = function
@@ -51,23 +53,23 @@ let decode_likelihood grammar dagger paths i =
       match e with
       | Application(l,_) -> score_path r l p
       | Terminal(q,_,_) when q.[0] = '?' -> 0.0
-      | _ -> neg_infinity
+      | _ -> Float.neg_infinity
     end
     | R :: p -> begin
       match e with
       | Application(_,x) -> score_path r x p
       | Terminal(q,_,_) when q.[0] = '?' -> 0.0
-      | _ -> neg_infinity
+      | _ -> Float.neg_infinity
     end
     | [] -> match likelihood_option grammar r e with
-      | None -> neg_infinity
+      | None -> Float.neg_infinity
       | Some(l) -> l
   in
   let e = extract_expression dagger i in
-  List.fold_left (fun a (path,r) -> a+.score_path r e path) 0. paths
+  List.fold_left paths ~f:(fun a (path,r) -> a+.score_path r e path) ~init:0.
 
 let decoder_posterior dagger grammar request solutions decoder = 
-  let modified_grammar = (fst grammar,ExpressionMap.add empty_wildcard (0.,t1) @@ snd grammar) in
+  let modified_grammar = (fst grammar,(empty_wildcard, (0.,t1)) :: snd grammar) in
   let manifold = extract_expression dagger decoder in
   Printf.printf "Posterior: %s" @@ string_of_expression manifold;
   print_newline ();
@@ -77,23 +79,24 @@ let decoder_posterior dagger grammar request solutions decoder =
   print_float prior; print_newline ();
   let paths = wild_types dagger request decoder in
   print_int @@ List.length paths; print_newline ();
-  let likelihood = solutions |> List.fold_left (fun l frontier -> 
-      let term = frontier |> List.fold_left (fun a i -> 
+  let likelihood = List.fold_left solutions ~init:0.0 ~f:(fun l frontier -> 
+      let term = List.fold_left frontier ~init:Float.neg_infinity ~f:(fun a i -> 
           if can_match_wildcards dagger decoder i 
           then lse a (decode_likelihood grammar dagger paths i)
-          else a) neg_infinity in
-      l +. term) 0.0 in
+          else a) in
+      l +. term) in
   prior+.likelihood
 
 let best_decoder dagger grammar request solutions = 
   let decoders = potential_decoders dagger solutions in
-  let decoder_scores = List.map (decoder_posterior dagger grammar request solutions) decoders in
-  fst @@ List.hd @@ List.sort (fun (_,p) (_,q) -> compare q p) @@ List.combine decoders decoder_scores
+  let decoder_scores = List.map decoders (decoder_posterior dagger grammar request solutions) in
+  fst @@ List.hd_exn @@ List.sort ~cmp:(fun (_,p) (_,q) -> compare q p)
+  @@ List.zip_exn decoders decoder_scores
 
 let reduce_symbolically base_grammar posterior_grammar frontier_size keep_size tasks = 
   let (dagger, fs) = make_frontiers frontier_size keep_size posterior_grammar tasks in
-  let task_solutions = List.map (List.map fst) fs in
-  let request = (List.hd tasks).task_type in
+  let task_solutions = List.map fs (List.map ~f:fst) in
+  let request = (List.hd_exn tasks).task_type in
   let d = time_it "Found decoder"
       (fun () -> best_decoder dagger base_grammar request task_solutions) in
   extract_expression dagger d

@@ -1,3 +1,5 @@
+open Core.Std
+
 open Expression
 open Type
 open Utils
@@ -13,28 +15,23 @@ type task =
 
 
 let score_programs dagger frontiers tasks = 
-  let start_time = Sys.time() in
-  let scores = List.map (fun task -> 
+  let start_time = time() in
+  let scores = List.map tasks (fun task -> 
       let ll = match task.score with
       | Seed(_) -> raise (Failure "score_programs: task has seed")
       | LogLikelihood(ll) -> ll in
-      List.filter (compose is_valid snd)
-        (List.map (fun i -> 
+      List.filter ~f:(compose is_valid snd)
+        (List.map ~f:(fun i -> 
              let e = extract_expression dagger i in
-             (i,ll e)
-           ) (List.assoc task.task_type frontiers))
-    ) tasks in
-  let end_time = Sys.time() in
+             (i,ll e)) (List.Assoc.find_exn frontiers task.task_type))) in
+  let end_time = time() in
   Printf.printf "Scored programs in %f seconds." (end_time-.start_time); print_newline ();
   scores
 
 let save_best_programs f dagger task_solutions = 
-  let task_solutions = task_solutions |> List.filter (fun (_,s) -> List.length s > 0) in
-  let s = String.concat "\n" @@ List.map
-          (fun (t,s) -> let (e,p) = List.tl s |> List.fold_left (fun (f,p) (g,q) -> 
-                if p > q then (f,p) else (g,q)) (List.hd s) in
-            Printf.sprintf "%s\t%s\t%f" t.name (string_of_expression @@ extract_expression dagger e) p)
-          task_solutions 
-  in let c = open_out f in
-  Printf.fprintf c "%s" s;
-  close_out c
+  let task_solutions = List.filter task_solutions (fun (_,s) -> List.length s > 0) in
+  let s = String.concat ~sep:"\n" @@ List.map task_solutions (fun (t,s) ->
+      let (e,p) = List.fold_left (List.tl_exn s) ~init:(List.hd_exn s) ~f:(fun (f,p) (g,q) -> 
+          if p > q then (f,p) else (g,q))  in
+      Printf.sprintf "%s\t%s\t%f" t.name (string_of_expression @@ extract_expression dagger e) p)
+  in Out_channel.write_all f ~data:s

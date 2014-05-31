@@ -4,4 +4,3 @@ PKG core
 PKG async
 PKG core_extended
 EXT nonrec
-B +threads

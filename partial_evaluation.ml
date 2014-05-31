@@ -1,3 +1,5 @@
+open Core.Std
+
 open Expression
 open Library
 open Utils
@@ -5,7 +7,7 @@ open Utils
 let extra_primitives = ref [];;
 let register_primitive name arguments callback = 
   let callback = fun terms -> 
-  terms |> List.map (fun t -> if t = c_bottom then None else Some(terminal_thing t)) |> callback
+  List.map terms (fun t -> if t = c_bottom then None else Some(terminal_thing t)) |> callback
   in extra_primitives := (name,(arguments,callback)) :: !extra_primitives;;
 
 
@@ -30,15 +32,15 @@ let try_primitive e =
   in
   let try_application callback arguments actual_arguments = 
     let rec walk_arguments argument actual = 
-      if null argument
+      if List.is_empty argument
       then Stepped(match callback actual_arguments with
       | None -> c_bottom
       | Some(r) -> r)
-      else match List.hd actual with
+      else match List.hd_exn actual with
       | Terminal(n,_,_) when n.[0] = '?' -> 
         Blocked(int_of_string @@ String.sub n 1 (String.length n - 1),
-               List.hd argument)
-      | _ -> walk_arguments (List.tl argument) (List.tl actual)
+               List.hd_exn argument)
+      | _ -> walk_arguments (List.tl_exn argument) (List.tl_exn actual)
     in walk_arguments arguments actual_arguments
   in
   let rec try_primitives = function
@@ -68,13 +70,13 @@ let rec reduce_expression = function
      | NormalForm -> Stepped(Application(Application(f,x),Application(g,x)))
      | block -> block)
   (* append *)
-  | Application(Application(Terminal(a,b,c),Terminal(n,x,y)),r) when a = "@" && n = "null" ->
+  | Application(Application(Terminal(a,_,_),Terminal(n,_,_)),r) when a = "@" && n = "null" ->
     Stepped(r)
   | Application(Application(Terminal(a,_,_),
                             Application(Application(Terminal(c,_,_),x),xs)),ys)
     when a = "@" && c = "cons" -> 
     Stepped(Application(Application(c_cons,x),Application(Application(c_append,xs),ys)))
-  | Application(Application(Terminal(a,_,_),Terminal(q,_,_)),ys)
+  | Application(Application(Terminal(a,_,_),Terminal(q,_,_)),_)
     when a = "@" && q.[0] = '?' -> 
     Blocked(int_of_string @@ String.sub q 1 (String.length q - 1),
             [c_null;Application(Application(c_cons,make_wildcard 1),make_wildcard 2)])
