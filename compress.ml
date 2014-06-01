@@ -86,12 +86,14 @@ let candidate_fragments dagger solutions =
       in ignore(Hashtbl.add instantiations i answer); answer
   in 
   let candidates = ref Int.Set.empty in
+  let bar = make_progress_bar (Hashtbl.length task_map) in
   Hashtbl.iter task_map (fun ~key:i ~data -> 
+      update_progress_bar bar (bar.current_progress + 1);
       if not (is_leaf_ID dagger i) then
         List.iter (instantiate i) (fun (j,_,_) -> 
               candidates := Int.Set.add !candidates j));
   let can = Int.Set.elements !candidates |> List.filter ~f:(compose not @@ is_leaf_ID dagger) in
-  Printf.printf "Got %i candidates." (List.length can); print_newline (); can
+  Printf.printf "\nGot %i candidates." (List.length can); print_newline (); can
 
 
 (*   (* for each task, collect up all the fragments into a set *)
