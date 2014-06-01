@@ -13,8 +13,8 @@ let reduce_symmetries = true
 let enumerate_bounded dagger (log_application,distribution) rt bound = 
   let log_terminal = log (1.0-. exp log_application) in
   let terminals = List.map distribution (fun (e,(l,t)) ->
-    (t,(insert_expression dagger e, l))) in
-  let type_blacklist = TID(0) :: ([c_S;c_B;c_C;c_K;c_I] |> List.map ~f:terminal_type) in
+      (t,(insert_expression dagger e, l))) in
+  let type_blacklist = TID(0) :: ([c_S;c_B;c_C;c_K;c_F;c_I] |> List.map ~f:terminal_type) in
   let identity_ID = insert_expression dagger c_I in
   let rec enumerate can_identify requestedType budget = 
     let add_node acc e l c = 
@@ -28,29 +28,33 @@ let enumerate_bounded dagger (log_application,distribution) rt bound =
     let applications = 
       if budget < -.log_application
       then Int.Map.empty
-      else let f_request = make_arrow (TID(next_type_variable requestedType)) requestedType in
-           let fs = enumerate false f_request (budget+.log_application) in
-           List.fold_left (Int.Map.to_alist fs) ~init:Int.Map.empty
-             ~f:(fun acc (f,(fun_l,fun_type)) -> 
-                 let x_request = argument_request requestedType fun_type in
-                 let xs = enumerate true x_request (budget+.log_application+.fun_l) in
-                 List.fold_left (Int.Map.to_alist xs) ~init:acc
-                   ~f:(fun acc2 (x,(arg_l,arg_type)) -> 
-                       let application = insert_expression_node dagger (ExpressionBranch(f,x)) in
-                       let my_type = application_type fun_type arg_type in
-                       if reduce_symmetries && List.mem type_blacklist my_type
-                       then acc2 
-                       else add_node acc2 application (arg_l+.fun_l+.log_application) my_type))
+      else let f_request = TID(next_type_variable requestedType) @> requestedType in
+        let fs = enumerate false f_request (budget+.log_application) in
+        List.fold_left (Int.Map.to_alist fs) ~init:Int.Map.empty
+          ~f:(fun acc (f,(fun_l,fun_type)) -> 
+              try
+                let x_request = argument_request requestedType fun_type in
+                let xs = enumerate true x_request (budget+.log_application+.fun_l) in
+                List.fold_left (Int.Map.to_alist xs) ~init:acc
+                  ~f:(fun acc2 (x,(arg_l,arg_type)) -> 
+                      let application = insert_expression_node dagger (ExpressionBranch(f,x))
+                      in try
+                        let my_type = application_type fun_type arg_type in
+                        if reduce_symmetries && List.mem type_blacklist my_type
+                        then acc2 
+                        else add_node acc2 application (arg_l+.fun_l+.log_application) my_type
+                      with _ -> acc2 (* type error *))
+              with _ -> acc (* type error *))
     in
     let availableTerminals = List.filter terminals (fun (t,(e,_)) -> 
         can_unify t requestedType && (not (reduce_symmetries) || can_identify || e <> identity_ID)) in
     match availableTerminals with
-      [] -> applications
+    | [] -> applications
     | _ ->
-        let z = lse_list (List.map availableTerminals (fun (_,(_,l)) -> l)) in
-        let availableTerminals = List.map availableTerminals (fun (t,(e,l)) -> (t,(e,l-.z))) in
-        let availableTerminals = List.filter availableTerminals (fun (t,(_,l)) -> 0.0-.log_terminal-.l < budget) in
-        List.fold_left availableTerminals ~init:applications ~f:(fun acc (t,(e,l)) -> 
+      let z = lse_list (List.map availableTerminals (fun (_,(_,l)) -> l)) in
+      let availableTerminals = List.map availableTerminals (fun (t,(e,l)) -> (t,(e,l-.z))) in
+      let availableTerminals = List.filter availableTerminals (fun (t,(_,l)) -> 0.0-.log_terminal-.l < budget) in
+      List.fold_left availableTerminals ~init:applications ~f:(fun acc (t,(e,l)) -> 
           add_node acc e (log_terminal+.l) t)
   in Int.Map.map (enumerate true rt bound) fst
 
@@ -74,7 +78,7 @@ let enumerate_ID dagger library t frontier_size =
 
 
 let enumerate_frontiers_for_tasks grammar frontier_size tasks 
-    : (tp*int list) list*expressionGraph = 
+  : (tp*int list) list*expressionGraph = 
   let start_time = time () in
   let (special_tasks,normal_tasks) = List.partition_tf tasks (fun t -> is_some @@ t.proposal) in
   let types = remove_duplicates (List.map tasks (fun t -> t.task_type)) in
@@ -121,7 +125,7 @@ let test_enumerate () =
       (fun (e,_) -> ((Hashtbl.find_exn ls (e,make_arrow tint tint)),(extract_expression dagger e)))
   in let kansas = List.sort (fun (l,_) (r,_) -> compare l r) through in
   print_string (String.concat ~sep:"\n" (List.map ~f:(fun (l,e) -> 
-    string_of_expression  e ^ "\t" ^ Float.to_string l)
-                                    kansas  ))
+      string_of_expression  e ^ "\t" ^ Float.to_string l)
+      kansas  ))
 
- (* test_enumerate ();; *)
+(* test_enumerate ();; *)

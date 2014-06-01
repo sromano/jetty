@@ -160,7 +160,7 @@ let application_type f x =
   let (f,c1) = instantiate_type empty_context f in
   let (x,c2) = instantiate_type c1 x in
   let (r,c3) = makeTID c2 in
-  let c4 = unify c3 f (make_arrow x r) in
+  let c4 = unify c3 f (x @> r) in
   canonical_type (fst (chaseType c4 r))
 
 let argument_request request left = 
