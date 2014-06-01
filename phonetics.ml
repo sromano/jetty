@@ -99,6 +99,10 @@ let terminal_phone (p : phone) =
   | Some(s) -> s
   | _ -> raise (Failure "terminal_phone: unknown phone");;
 
+let strident = function
+  | Consonant(Alveolar,Fricative,_) -> true
+  | Consonant(AlveolarPalatal,Fricative,_) -> true
+  | _ -> false
 
 let transfer_voice p1 p2 = 
   match (p1,p2) with
@@ -120,7 +124,18 @@ register_primitive "transfer-voice" [phones;phones] (fun arguments ->
       | _ -> None
     with _ -> None)
 
-let phonetic_terminals = [c_S;c_B;c_C;c_I;
+let l_strident = Terminal("strident", (make_ground "phone") @> t1 @> t1 @> t1,
+                          lift_predicate strident
+                         );;
+register_primitive "strident" [phones;] (fun arguments -> 
+    try
+      match arguments with
+      | [Some(p);] -> 
+        Some(if strident !(Obj.magic p) then c_K else c_F)
+      | _ -> None
+    with _ -> None)
+
+let phonetic_terminals = [c_S;c_B;c_C;c_I;c_K;c_F;
                          c_null;c_append;c_cons;c_last_one;
                          l_transfer_voice;]
                          @ phones;;
@@ -161,10 +176,10 @@ let test_phonetics () =
 
 (* test_phonetics ();; *)
 let test_templates () = 
-  List.iter [l_transfer_voice;c_I; c_K;c_C;c_S;c_B;c_append;c_last_one;] (fun c -> 
+  List.iter [l_strident;l_transfer_voice;c_I;c_F;c_K;c_C;c_S;c_B;c_append;c_last_one;] (fun c -> 
     List.iter (get_templates c (infer_type c)) (fun (target,template) -> 
         Printf.printf "%s ---> %s" (string_of_expression target) (string_of_expression template);
         print_newline ()));;
 
 
-(* test_templates ();; *)
+test_templates ();;

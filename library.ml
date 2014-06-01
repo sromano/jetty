@@ -25,19 +25,21 @@ let program_likelihoods (log_application,library) dagger program_types requests 
   let log_terminal = log (1.0 -. exp log_application) in
   (* store map from production ID to log probability *)
   let terminals = List.map library ~f:(fun (e,(l,_)) -> (insert_expression dagger e, l)) in 
+  (* is ? in the library *)
+  let is_library_wild = List.exists terminals ~f:(is_wildcard dagger % fst) in
   (* get all of the different types we can choose from *)
   let terminal_types =
     List.map library ~f:(fun (_,(l,t)) -> (t,l)) in
   let likelihoods = Hashtbl.Poly.create () in
   let rec likelihood (i : int) (request : tp) = 
-    if is_wildcard dagger i then 0. else
+    if not is_library_wild && is_wildcard dagger i then 0. else
     try
       Hashtbl.find_exn likelihoods (i,request)
     with _ -> 
       let log_probability = 
         let terminal_probability = 
           let numerator = List.fold_left terminals ~init:Float.neg_infinity ~f:(fun a (j,l) -> 
-            if can_match_wildcards dagger i j then lse a l else a) in
+            if (not is_library_wild && can_match_wildcards dagger i j) || i = j then lse a l else a) in
           if is_invalid numerator
           then Float.neg_infinity
           else let z = lse_list (List.map ~f:snd (List.filter terminal_types ~f:(fun (t,_) -> 
@@ -205,11 +207,14 @@ let c_C = Terminal("C",  canonical_type @@
 let c_K = Terminal("K", canonical_type @@ 
                    make_arrow t1 (make_arrow t2 t1),
                    Obj.magic (ref (fun x -> Some(fun _ -> x))));;
+let c_F = Terminal("F", canonical_type @@ 
+                   make_arrow t1 (make_arrow t2 t2),
+                   Obj.magic (ref (fun _ -> Some(fun x -> x))));;
 let c_I = Terminal("I", canonical_type @@ 
                    make_arrow t1 t1,
                    Obj.magic (ref (fun x -> x)));;
 let combinatory_library = 
-  make_flat_library [c_S;c_B;c_C;c_K;c_I]
+  make_flat_library [c_S;c_B;c_C;c_K;c_F;c_I]
 
 let c_bottom = Terminal("bottom",canonical_type t1,Obj.magic @@ ref None)
 

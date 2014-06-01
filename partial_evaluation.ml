@@ -4,6 +4,7 @@ open Expression
 open Library
 open Utils
 
+(* primitives are strict on all of their arguments *)
 let extra_primitives = ref [];;
 let register_primitive name arguments callback = 
   let callback = fun terms -> 
@@ -60,6 +61,7 @@ let rec reduce_expression = function
   (* basis combinators *)
   | Application(Terminal(i,_,_),e) when i = "I" -> Stepped(e)
   | Application(Application(Terminal(k,_,_),e),_) when k = "K" -> Stepped(e)
+  | Application(Application(Terminal(k,_,_),_),e) when k = "F" -> Stepped(e)
   | Application(Application(Application(Terminal(b,_,_),f),g),x) when b = "B" -> 
     Stepped(Application(f,Application(g,x)))
   | Application(Application(Application(Terminal(c,_,_),f),g),x) when c = "C" -> 
@@ -106,7 +108,7 @@ let rec reduce_expression = function
           | _ -> raise (Failure ("last-one: invalid normal form(2): "^string_of_expression argument))
         end
       | block -> block
-    end    
+    end
   | Application(f,x) -> 
     begin  (* inductive case *)
       match reduce_expression f with

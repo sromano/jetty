@@ -58,6 +58,11 @@ let lift_unary k : unit ref = Obj.magic @@ ref (function
                 with _ -> None)
   | None -> None)
 
+let lift_predicate p : unit ref = Obj.magic @@ ref (function
+  | None -> None
+  | Some(x) -> Some(fun y -> Some(fun z -> 
+    if p x then y else z)))
+
 
 let infer_type (e : expression) = 
   let rec infer c r = 

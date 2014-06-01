@@ -54,13 +54,12 @@ let rec expectation_maximization_compress
                   hits likelihoods)))
     | _ -> ()
   in 
-  let rewards = Array.create (List.length tasks) (Int.Table.create ()) in
-  let rewards = pmap ~processes:number_of_cores (fun (t,posterior) -> 
+  let rewards = parallel_map (List.zip_exn tasks task_posteriors) ~f:(fun (t,posterior) -> 
       let r = make_candidate_rewards () in
       List.iter posterior (fun (i,w) -> reward_expression r w t.task_type i);
-      r) (List.nth_exn @@ List.zip_exn tasks task_posteriors) rewards in
+      r) in
   let candidate_rewards = make_candidate_rewards () in
-  Array.iter rewards (Hashtbl.iter ~f:(fun ~key:i ~data:r -> 
+  List.iter rewards ~f:(Hashtbl.iter ~f:(fun ~key:i ~data:r -> 
     Hashtbl.replace candidate_rewards ~key:i ~data:(lse r @@ Hashtbl.find_exn candidate_rewards i)));
   (* find those productions that have enough weight to make it into the library *)
   let productions =

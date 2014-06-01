@@ -84,7 +84,7 @@ let top_plural = [
 ]
 
 let doubled_words = 
-  ["a a"; "b c b c"; "s ow p s ow p"; "r I r I"; "d d"]
+  ["a a"; "b c b c"; "s ow p s ow p"; "r I g z r I g z"; "b aj s I k ue l b aj s I k ue l"]
 
 let make_word_task word = 
   let e = make_phonetic word in

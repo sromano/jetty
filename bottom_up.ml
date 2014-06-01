@@ -131,7 +131,7 @@ let backward_enumerate dagger grammar rewrites size keep request i =
                     closed := Set.add !closed c;
                     opened := Set.add !opened c
                   end);
-      (if number_of_cores = 1 then update_progress_bar bar (Set.length !closed));
+      (if !number_of_cores = 1 then update_progress_bar bar (Set.length !closed));
       search ()
   in List.filter (search ()) (not % (has_trivial_symmetry new_dagger) % fst) |> 
      Fn.flip List.take keep |> 

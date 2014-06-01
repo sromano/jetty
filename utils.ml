@@ -166,4 +166,33 @@ let pmap ?processes:(processes=4) ?bsize:(bsize=0) f input output =
   output
 
 
-let number_of_cores =1 (* number of CPUs *)
+let number_of_cores = ref 1;; (* number of CPUs *)
+let counted_CPUs = ref false;; (* have we counted the number of CPUs? *)
+
+let cpu_count () = 
+  try match Sys.os_type with 
+    | "Win32" -> int_of_string (safe_get_some "CPU_count" @@ Sys.getenv "NUMBER_OF_PROCESSORS") 
+    | _ ->
+      let i = Unix.open_process_in "getconf _NPROCESSORS_ONLN" in
+      let close () = ignore (Unix.close_process_in i) in
+      try Scanf.fscanf i "%d" (fun n -> close (); n) with e -> close (); raise e
+      with
+      | Not_found | Sys_error _ | Failure _ | Scanf.Scan_failure _ 
+      | End_of_file | Unix.Unix_error (_, _, _) -> 1
+
+
+let parallel_map l ~f = 
+  if not !counted_CPUs 
+  then begin
+    number_of_cores := cpu_count ();
+    Printf.printf "Counted %i CPUs" !number_of_cores; print_newline ();
+    counted_CPUs := true
+  end;
+  if 1 = !number_of_cores
+  then List.map l ~f:f
+  else
+    let input_array = Array.of_list l in
+    let output_array = Array.create (Array.length input_array) None in
+    let output_array = 
+      pmap ~processes:(!number_of_cores) (fun x -> Some(f x)) (Array.get input_array) output_array
+    in Array.to_list output_array |> List.map ~f:(safe_get_some "parallel_map")

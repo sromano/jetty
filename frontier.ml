@@ -47,30 +47,22 @@ let make_frontiers size keep_size grammar tasks =
           ignore(insert_expression dagger e);
           get_templates e t |> List.map ~f:(fun (target,template) -> 
               (template,apply_template target))) |> List.concat in
-      if number_of_cores = 1 then
-        List.map bottom_tasks (fun t -> 
-            Printf.printf "Enumerating (backwards) for %s..." t.name;
+      print_endline "Generated rewrites, starting enumeration...";
+      let graphs_and_frontiers = parallel_map bottom_tasks ~f:(fun t -> 
+        if !number_of_cores = 1 then begin
+            Printf.printf "\nEnumerating (backwards) for %s..." t.name;
             print_newline ();
-            let i = insert_expression dagger @@ match t.score with
-              | Seed(s) -> s
-              | LogLikelihood(_) -> raise (Failure "make_frontiers: task has no seed") in
-            backward_enumerate dagger grammar rewrites size keep_size t.task_type i)
-      else (* parallel bottom-up enumeration *)
-        let graphs_and_frontiers = 
-          Array.create (List.length bottom_tasks) (make_expression_graph 10,[]) in
-        let graphs_and_frontiers = 
-          pmap ~processes:number_of_cores (fun t ->
-              let temp_dagger = make_expression_graph 10000 in
-              let i = insert_expression temp_dagger @@ match t.score with
-                | Seed(s) -> s
-                | LogLikelihood(_) -> raise (Failure "make_frontiers: partask has no seed") in
-              let f = backward_enumerate temp_dagger grammar rewrites size keep_size t.task_type i in
-              scrub_graph temp_dagger;
-              (temp_dagger,f))
-            (List.nth_exn bottom_tasks) graphs_and_frontiers in
-        Array.to_list graphs_and_frontiers |> List.map ~f:(fun (g,f) -> 
-            dirty_graph g;
-            List.map f (fun (i,l) -> (insert_expression dagger @@ extract_expression g i,l)))
+        end;
+        let temp_dagger = make_expression_graph 10000 in
+        let i = insert_expression temp_dagger @@ match t.score with
+          | Seed(s) -> s
+          | LogLikelihood(_) -> raise (Failure "make_frontiers: partask has no seed") in
+        let f = backward_enumerate temp_dagger grammar rewrites size keep_size t.task_type i in
+        scrub_graph temp_dagger;
+        (temp_dagger,f)) in
+      List.map graphs_and_frontiers ~f:(fun (g,f) -> 
+          dirty_graph g;
+          List.map f (fun (i,l) -> (insert_expression dagger @@ extract_expression g i,l)))      
     end
   in 
   (* coalesced top and bottom *)
