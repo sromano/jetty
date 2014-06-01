@@ -87,7 +87,7 @@ let candidate_fragments dagger solutions =
   in 
   let candidates = ref Int.Set.empty in
   let bar = make_progress_bar (Hashtbl.length task_map) in
-  Hashtbl.iter task_map (fun ~key:i ~data -> 
+  Hashtbl.iter task_map (fun ~key:i ~data:_ -> 
       update_progress_bar bar (bar.current_progress + 1);
       if not (is_leaf_ID dagger i) then
         List.iter (instantiate i) (fun (j,_,_) -> 

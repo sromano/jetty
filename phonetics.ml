@@ -36,7 +36,8 @@ type consonant = place * manner * voice
 
 (* vowels *)
 type vowel = 
-  V_i | V_I | V_ej | V_ae | V_ue | V_v | V_aj | V_aw | V_a | V_u | V_uu | V_ow | V_c | V_cj
+  | V_E | V_i | V_I | V_ej | V_ae | V_ue | V_v | V_aj 
+  | V_aw | V_a | V_u | V_uu | V_ow | V_c | V_cj
 
 (* phonemes *)
 type phone = Vowel of vowel | Consonant of consonant
@@ -77,6 +78,7 @@ let c_w = make_consonant "w" (Bilabial,Approximant,Voiced);;
 let c_lo = make_consonant "lo" (Alveolar,LateralApproximate,Unvoiced);;
 let c_l = make_consonant "l" (Alveolar,LateralApproximate,Voiced);;
 let v_ej = make_vowel "ej" V_ej;;
+let v_E = make_vowel "E" V_E;;
 let v_ue = make_vowel "ue" V_ue;;
 let v_i = make_vowel "i" V_i;;
 let v_I = make_vowel "I" V_I;;
@@ -93,7 +95,7 @@ let v_uu = make_vowel "uu" V_uu;;
 
 let phones = [c_s;c_z;c_t;c_d;c_r;c_n;c_m;c_k;c_g;c_w;c_l;c_p;c_b;c_f;c_v;c_th;c_Th;c_ut;c_q;c_h;
               c_sh;c_zh;c_j;c_ng;c_uw;c_lo;
-              v_a;v_ej;v_ue;v_i;v_ae;v_ow;v_I;v_v;v_aj;v_aw;v_c;v_u;v_uu;];;
+              v_a;v_ej;v_E;v_ue;v_i;v_ae;v_ow;v_I;v_v;v_aj;v_aw;v_c;v_u;v_uu;];;
 let terminal_phone (p : phone) = 
   match List.find phones (fun q -> p = !(Obj.magic @@ terminal_thing q)) with
   | Some(s) -> s
@@ -137,7 +139,7 @@ register_primitive "strident" [phones;] (fun arguments ->
 
 let phonetic_terminals = [c_S;c_B;c_C;c_I;c_K;c_F;
                          c_null;c_append;c_cons;c_last_one;
-                         l_transfer_voice;]
+                         l_transfer_voice;l_strident;]
                          @ phones;;
 register_terminals phonetic_terminals;;
 
@@ -182,4 +184,4 @@ let test_templates () =
         print_newline ()));;
 
 
-test_templates ();;
+(* test_templates ();; *)

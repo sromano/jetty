@@ -11,6 +11,116 @@ open Symbolic_dimensionality_reduction
 open Em
 
 
+(* most common adjective stems produced by thirty months old *)
+let top_adjectives = [
+  "k ow l d";
+  "d ue r t i";
+  "h a t";
+  "w E t";
+  "b I g";
+  "b r ow k ue n";
+  "k l i n";
+  "g uu d";
+  "h E v i";
+  "j ue k i";
+  "h ue ng g r i";
+  "l I t ue l";
+  "ue s l i p";
+  "d r aj";
+  "c r ue n d zh";
+  "h ue r t";
+  "b ae d";
+  "h ae p i";
+  "r E d";
+  "b l u";
+]
+
+(* have comparative/superlative form *)
+let comparable_adjectives = 
+  List.filter top_adjectives (* remove words without comparative form *)
+    ~f:(not % List.mem ["b r ow k ue n";"g uu d";"ue s l i p";"h ue r t";])
+
+let top_comparative =
+  List.map comparable_adjectives ~f:(fun w -> w ^ " ue r")
+
+let top_superlative =
+  List.map comparable_adjectives ~f:(fun w -> w ^ " ue s t")
+
+(* most common verb stems produced by thirty months old *)
+let top_verbs = [
+  "i t";
+  "g ow";
+  "f a l";
+  "h ue g";
+  "k I s";
+  "w a k";
+  "l ue v";
+  "w a sh";
+  "k r aj";
+  "l uu k";
+  "ow p ue n";
+  "p l ej";
+  "d r I ng k";
+  "r i d";
+  "s l i p";
+  "s t a p";
+  "b aj t";
+  "b l ow";
+  "b r ej k";
+  "h I t";
+]
+
+(* remarkably regular *)
+let top_gerunds =
+  List.map top_verbs ~f:(fun v -> v ^ " I ng")
+
+(* top verbs with case marking (3rd person singular present) *)
+let top_case = [
+  "i t s";
+  "g ow z";
+  "f a l z";
+  "h ue g s";
+  "k I s ue z";
+  "w a k s";
+  "l ue v z";
+  "w a sh ue z";
+  "k r aj z";
+  "l uu k s";
+  "ow p ue n z";
+  "p l ej z";
+  "d r I ng k s";
+  "r i d z";
+  "s l i p s";
+  "s t a p s";
+  "b aj t s";
+  "b l ow z";
+  "b r ej k s";
+  "h I t s";
+]
+
+let top_past = [
+  "ej t";
+  "w E n t";
+  "f E l";
+  "h ue g d";
+  "k I s t";
+  "w a k t";
+  "l ue v d";
+  "w a sh t";
+  "k r aj d";
+  "l uu k t";
+  "ow p ue n d";
+  "p l ej d";
+  "d r ae ng k";
+  "r i d";
+  "s l E p t";
+  "s t a p t";
+  "b I t";
+  "b l u";
+  "b r ow k";
+  "h I t";
+]
+
 (* most common nouns produced by thirty months old *)
 let top_nouns = [
   "b c l";
@@ -105,13 +215,13 @@ let morphology () =
   let lambda = 1.5 in
   let alpha = 1. in
   let frontier_size = 200000 in
-  let keep_size = 10000 in
+  let keep_size = 5000 in
   let g = ref @@ make_flat_library phonetic_terminals (* load_library "log/iter_2_grammar" *) in 
   let tasks = 
-    List.map doubled_words (* (top_singular @ top_plural) *) make_word_task in
-  for i = 1 to 5 do
+    List.map top_superlative make_word_task in
+  for i = 1 to 6 do
     Printf.printf "\n \n \n Iteration %i \n" i;
-    let g1 = backward_iteration ("log/morphology_"^string_of_int i)
+    let g1 = backward_iteration ("log/super_"^string_of_int i)
         lambda alpha frontier_size keep_size tasks (!g) in
     g := g1
   done;
