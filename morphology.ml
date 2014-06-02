@@ -248,7 +248,7 @@ let morphology () =
     g := g1
   done;
 *)  let decoder =
-    reduce_symbolically (make_flat_library @@ phonetic_terminals) !g 1000 1000 tasks in
+    reduce_symbolically (make_flat_library @@ phonetic_terminals) !g 15000 1000 tasks in
   Printf.printf "Decoder: %s\n" (string_of_expression decoder)
 ;;
 

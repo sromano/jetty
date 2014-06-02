@@ -73,8 +73,10 @@ let enumerate_ID dagger library t frontier_size =
     else 
       Int.Map.to_alist indices |> List.sort 
         ~cmp:(fun (_,p) (_,q) -> compare q p) |> Fn.flip List.take frontier_size
-  in iterate (2.0 *. log (Float.of_int frontier_size))
+  in iterate (1.5 *. log (Float.of_int frontier_size))
 
+
+let always_sampled_prior = false (* forces us to enumerate from the prior *)
 
 let enumerate_frontiers_for_tasks grammar frontier_size tasks 
   : (tp*int list) list*expressionGraph = 
@@ -83,7 +85,10 @@ let enumerate_frontiers_for_tasks grammar frontier_size tasks
   let types = remove_duplicates (List.map tasks (fun t -> t.task_type)) in
   Printf.printf "number of (normal) types: %i \n" (List.length types);
   let dagger = make_expression_graph 100000 in
-  let indices = List.map types (fun t -> enumerate_ID dagger grammar t frontier_size) in
+  let indices = List.map types (fun t -> 
+      if always_sampled_prior || not (List.is_empty normal_tasks)
+      then enumerate_ID dagger grammar t frontier_size
+      else []) in
   let special_indices =
     let parallel_results = parallel_map special_tasks (fun t -> 
         let dagger = make_expression_graph 10000 in
