@@ -59,6 +59,37 @@ let make_regression_task polynomial_coefficients sin_coefficients cos_coefficien
   in { name = n; task_type = treal @> treal; 
        score = LogLikelihood(scoring_function); proposal = None; }
 
+let make_r2r n f =
+  let test_cases = List.map (0--5) Float.of_int in
+  let expression_test_cases = List.map ~f:expression_of_float test_cases in
+  let correct_values = List.map test_cases f in
+  let scoring_function = (fun (e : expression) -> 
+      let rec t y c = 
+        match y with
+	  [] -> 0.0
+        | (x::xs) -> 
+	  let q = Application(e,x) in
+	  match run_expression_for_interval 0.01 q with
+	    Some(r) when r = List.hd c -> t xs (List.tl_exn c)
+	  | _ -> Float.neg_infinity
+      in t expression_test_cases correct_values)
+  in { name = n; task_type = treal @> treal; 
+       score = LogLikelihood(scoring_function); proposal = None; }
+
+let higher_order () =
+  let frontier_size = 10000 in
+  let fs = [(sin,"sin");(cos,"cos");((fun x -> x*.x),"square")] in
+  let tasks = List.concat @@ List.map (0--9) ~f:(fun a ->
+      let a = Float.of_int a in
+      List.map fs ~f:(fun (f,n) ->
+          make_r2r (n ^ "(" ^ Float.to_string a ^ "x)") (fun x -> f (a*.x)))) in
+  let g = ref fourier_library in
+  for i = 1 to 8 do
+    Printf.printf "\n \n \n Iteration %i \n" i;
+    g := lower_bound_refinement_iteration ("log/regress_"^string_of_int i) 1.5 1.0 frontier_size tasks (!g)
+  done;
+;;
+
 
 let regress () = 
   let g = ref fourier_library in
