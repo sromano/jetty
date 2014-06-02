@@ -194,7 +194,7 @@ let top_plural = [
 ]
 
 let doubled_words = 
-  ["a a"; "b c b c"; "s ow p s ow p"; "r I g z r I g z"; "b aj s I k ue l b aj s I k ue l"]
+  ["a a"; "b c b c"; "s ow p s ow p"; "r I g z r I g z"; ]
 
 let make_word_task word = 
   let e = make_phonetic word in
@@ -218,7 +218,7 @@ let morphology () =
   let keep_size = 5000 in
   let g = ref @@ make_flat_library phonetic_terminals (* load_library "log/super_1_grammar" *) in 
   let tasks = 
-    List.map top_superlative make_word_task in
+    List.map doubled_words make_word_task in
 (*   for i = 1 to 6 do
     Printf.printf "\n \n \n Iteration %i \n" i;
     let g1 = backward_iteration ("log/super_"^string_of_int i)
@@ -226,7 +226,7 @@ let morphology () =
     g := g1
   done;
  *) let decoder =
-    reduce_symbolically (make_flat_library @@ phonetic_terminals) !g 2000 250 tasks in
+    reduce_symbolically (make_flat_library @@ phonetic_terminals) !g 200000 1000 tasks in
   Printf.printf "Decoder: %s\n" (string_of_expression decoder)
 ;;
 

@@ -113,7 +113,8 @@ let update_progress_bar bar new_progress =
   let new_dots = Int.of_float @@ Float.of_int new_progress *. 80.0 /. max in
   bar.current_progress <- new_progress;
   if new_dots > old_dots then
-    List.iter (1--(new_dots-old_dots)) (fun _ -> print_char '.'; flush stdout)
+    let difference = min 80 (new_dots-old_dots) in
+    List.iter (1--difference) (fun _ -> print_char '.'; flush stdout)
 
 (* paralleled map *)
 let pmap ?processes:(processes=4) ?bsize:(bsize=0) f input output =

@@ -8,14 +8,6 @@ open Expression
 open Utils
 open Expression
 
-open Phonetics
-
-let suffix = make_phonetic "ue s t"
-
-let matches_superlative = function
-  | Application(Application(Terminal(a,_,_),_),s) 
-    when a = "@" && 0 = compare_expression s suffix -> true
-  | _ -> false
 
 (* wrapper over various enumeration and scoring functions *)
 (* returns a list of frontiers, one for each task *)
@@ -67,9 +59,6 @@ let make_frontiers size keep_size grammar tasks =
           | Seed(s) -> s
           | LogLikelihood(_) -> raise (Failure "make_frontiers: partask has no seed") in
         let f = backward_enumerate temp_dagger grammar rewrites size keep_size t.task_type i in
-        (if List.exists f ~f:(matches_superlative % extract_expression temp_dagger % fst)
-         then print_endline "has superlatives"
-         else print_endline "no superlatives");
         scrub_graph temp_dagger;
         (temp_dagger,f)) in
       List.map graphs_and_frontiers ~f:(fun (g,f) -> 
