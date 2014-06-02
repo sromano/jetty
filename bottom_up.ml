@@ -8,10 +8,11 @@ open Task
 open Compress
 open Partial_evaluation
 
+
 (* generation of bottom-up templates *)
 let get_templates e t = 
   (* maximum number of times we can make up a value for a wildcard *)
-  let maximum_barriers = 10 in
+  let maximum_barriers = 20 in
   (* uses partial evaluation to get templates *)
   let rec collect_templates barriers target template = 
     if barriers > maximum_barriers then [] else
@@ -138,22 +139,3 @@ let backward_enumerate dagger grammar rewrites size keep request i =
      List.map ~f:(fun (j,l) -> (insert_expression dagger @@ extract_expression new_dagger j,l))
 
 
-let test_backwards () = 
-  let dagger = make_expression_graph 1000 in
-  let l = make_flat_library [c_S;c_B;c_C;c_I;c_append;c_cons;c_null;c_one;] in
-  List.iter (snd l) (fun (e,_) -> 
-      ignore(insert_expression dagger e));
-  let rewrites = List.map (snd l) (fun (e,(_,t)) -> 
-      (* load primitives into the graph *)
-      ignore(insert_expression dagger e);
-      List.map (get_templates e t) (fun (target,template) -> 
-          Printf.printf "%s  <>  %s\n" (string_of_expression target) (string_of_expression template);
-          (template,apply_template target)))
-                 |> List.concat in
-  backward_enumerate dagger l rewrites 20000 20000 (TCon("list",[make_ground "int"]))
-    (insert_expression dagger @@ expression_of_string "((cons 1) ((cons 1) null))") |> 
-  List.iter ~f:(fun (e,_) -> 
-    Printf.printf "%s\n" @@ string_of_expression @@ extract_expression dagger e);;
-
-
-(* test_backwards ();; *)

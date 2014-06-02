@@ -216,17 +216,17 @@ let morphology () =
   let alpha = 1. in
   let frontier_size = 200000 in
   let keep_size = 5000 in
-  let g = ref @@ make_flat_library phonetic_terminals (* load_library "log/iter_2_grammar" *) in 
+  let g = ref @@ make_flat_library phonetic_terminals (* load_library "log/super_1_grammar" *) in 
   let tasks = 
     List.map top_superlative make_word_task in
-  for i = 1 to 6 do
+(*   for i = 1 to 6 do
     Printf.printf "\n \n \n Iteration %i \n" i;
     let g1 = backward_iteration ("log/super_"^string_of_int i)
         lambda alpha frontier_size keep_size tasks (!g) in
     g := g1
   done;
- let decoder =
-    reduce_symbolically (make_flat_library @@ phonetic_terminals) !g 10000 1000 tasks in
+ *) let decoder =
+    reduce_symbolically (make_flat_library @@ phonetic_terminals) !g 2000 250 tasks in
   Printf.printf "Decoder: %s\n" (string_of_expression decoder)
 ;;
 

@@ -10,8 +10,8 @@ open Frontier
 
 let make_decoder dagger i j = 
   (* arbitrary cutoffs *)
-  let max_wild = 4 in
-  let min_tame = 0 in
+  let max_wild = 1 in
+  let min_tame = 3 in
   let d = antiunify_expressions dagger i j in
   let rec count_terminals = function
     | Terminal(n,_,_) when n = "?" -> (1,0)
@@ -21,8 +21,18 @@ let make_decoder dagger i j =
       (a+p,b+q)
     | _ -> (0,1)
   in
+  let rec reduce_wild = function
+    | Application(f,x) ->
+      let f = reduce_wild f
+      and x = reduce_wild x in
+      if fst (count_terminals f) > 0 && fst (count_terminals x) > 0
+      then Terminal("?",t1,ref ())
+      else Application(f,x)
+    | e -> e
+  in
+  let d = if max_wild = 1 then reduce_wild d else d in
   let (number_wild, number_tame) = count_terminals d in
-  if number_wild < max_wild && number_tame > min_tame
+  if number_wild <= max_wild && number_tame >= min_tame
   then Some(insert_expression dagger d)
   else None
 
@@ -40,6 +50,8 @@ let potential_decoders dagger solutions =
   let potentials = List.fold_left potentials ~f:Int.Set.union ~init:Int.Set.empty in
   Printf.printf "Computed %i pairwise decoders" @@ Int.Set.length potentials;
   print_newline ();
+  Int.Set.iter potentials ~f:(fun p -> 
+    print_endline @@ string_of_expression @@ extract_expression dagger p);
   (* only keep those that can be used in all of the tasks *)
   let candidates = Int.Set.filter potentials (fun c -> 
     List.for_all solutions (List.exists ~f:(can_match_wildcards dagger c))) in
@@ -89,7 +101,8 @@ let decoder_posterior dagger grammar request solutions decoder =
 
 let best_decoder dagger grammar request solutions = 
   let decoders = potential_decoders dagger solutions in
-  let decoder_scores = List.map decoders (decoder_posterior dagger grammar request solutions) in
+  let decoder_scores =
+    parallel_map decoders ~f:(decoder_posterior dagger grammar request solutions) in
   fst @@ List.hd_exn @@ List.sort ~cmp:(fun (_,p) (_,q) -> compare q p)
   @@ List.zip_exn decoders decoder_scores
 

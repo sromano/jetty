@@ -138,6 +138,11 @@ let fit_grammar smoothing (log_application,library) dagger program_types likelih
         (* get the uses from the right and the left *)
         uses (weight+.application_likelihood) f left_request;
         uses (weight+.application_likelihood) x right_request
+    end else begin (* wildcard *)
+      counts.application_counts <- 
+        lse counts.application_counts (log_application+.weight);
+      counts.terminal_counts <- 
+        lse counts.terminal_counts (log_terminal+.weight);
     end
   in 
   List.iter corpus ~f:(fun ((i,request),w) -> uses w i request);

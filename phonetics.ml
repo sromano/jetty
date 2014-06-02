@@ -177,11 +177,32 @@ let test_phonetics () =
   Printf.printf "%s\n" (string_of_expression @@ make_phonetic "ae");;
 
 (* test_phonetics ();; *)
-let test_templates () = 
+(*let test_templates () = 
   List.iter [l_strident;l_transfer_voice;c_I;c_F;c_K;c_C;c_S;c_B;c_append;c_last_one;] (fun c -> 
     List.iter (get_templates c (infer_type c)) (fun (target,template) -> 
         Printf.printf "%s ---> %s" (string_of_expression target) (string_of_expression template);
         print_newline ()));;
-
+*)
 
 (* test_templates ();; *)
+
+let test_backwards () = 
+  let dagger = make_expression_graph 1000 in
+  let l = make_flat_library @@ phones @ [c_append;c_cons;c_null;] in
+  List.iter (snd l) (fun (e,_) -> 
+      ignore(insert_expression dagger e));
+  let rewrites = List.map (snd l) (fun (e,(_,t)) -> 
+      (* load primitives into the graph *)
+      ignore(insert_expression dagger e);
+      List.map (get_templates e t) (fun (target,template) -> 
+          (* Printf.printf "%s  <>  %s\n" (string_of_expression target) (string_of_expression template); *)
+          (template,apply_template target)))
+                 |> List.concat 
+  in 
+  backward_enumerate dagger l rewrites 1000 500 (TCon("list",[make_ground "phone"]))
+    (insert_expression dagger @@ make_phonetic "h E v i ue s t") |> 
+  List.iter ~f:(fun (e,_) -> 
+    Printf.printf "%s\n" @@ string_of_expression @@ extract_expression dagger e);;
+
+
+(*test_backwards ();;*)
