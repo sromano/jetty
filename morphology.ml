@@ -207,26 +207,48 @@ let make_word_task word =
     then w
     else w-.10000.
     | _ -> w) in  
+  let ll e =
+    match run_expression e with
+    | Some(ps) when ps = correct_phones -> 0.0
+    | _ -> Float.neg_infinity
+  in
+  let wl = String.length word in
+  let prefixes = String.split word ' ' |> 
+                 map_list (String.concat ~sep:" ") |> 
+                 List.filter ~f:(fun s -> String.length s > 0 && String.length s < wl) |> 
+                 List.map ~f:make_phonetic in
+  let suffixes = String.split word ' ' |> List.rev |> 
+                 map_list (fun l -> String.concat ~sep:" " @@ List.rev l) |> 
+                 List.filter ~f:(fun s -> String.length s > 0 && String.length s < wl) |> 
+                 List.map ~f:make_phonetic in
+  let extras = List.map (List.dedup (prefixes @ suffixes)) ~f:(fun e -> (e,0.)) in
   { name = word; task_type = TCon("list",[make_ground "phone"]); 
-    score = Seed(e); proposal = Some(prop); }
+    score = LogLikelihood(ll); proposal = Some(prop,extras); }
 
+let pluralize = expression_of_string
+  "((S @) ((B ((C cons) null)) ((B (transfer-voice /s/)) last-one))"
 
 let morphology () = 
   let lambda = 1.5 in
   let alpha = 1. in
-  let frontier_size = 200000 in
+  let frontier_size = 15000 in
   let keep_size = 5000 in
-  let g = ref @@ make_flat_library phonetic_terminals (* load_library "log/super_1_grammar" *) in 
+  let g = ref @@ (* make_flat_library phonetic_terminals  *)load_library "log/super_1_grammar" in 
   let tasks = 
-    List.map doubled_words make_word_task in
-(*   for i = 1 to 6 do
+    List.map top_superlative make_word_task in
+(*  List.iter2_exn tasks top_singular ~f:(fun t s -> 
+    let grammar = modify_grammar !g t in
+    let p = Application(pluralize, make_phonetic s) in
+    Printf.printf "plural %s > %f\n " s (get_some @@ likelihood_option grammar (t.task_type @> t.task_type) pluralize);
+    Printf.printf "%s > %f\n " s (get_some @@ likelihood_option grammar t.task_type p));
+ for i = 1 to 6 do
     Printf.printf "\n \n \n Iteration %i \n" i;
-    let g1 = backward_iteration ("log/super_"^string_of_int i)
-        lambda alpha frontier_size keep_size tasks (!g) in
+    let g1 = lower_bound_refinement_iteration ("log/super_"^string_of_int i)
+        lambda alpha frontier_size tasks (!g) in
     g := g1
   done;
- *) let decoder =
-    reduce_symbolically (make_flat_library @@ phonetic_terminals) !g 200000 1000 tasks in
+*)  let decoder =
+    reduce_symbolically (make_flat_library @@ phonetic_terminals) !g 1000 1000 tasks in
   Printf.printf "Decoder: %s\n" (string_of_expression decoder)
 ;;
 

@@ -310,7 +310,10 @@ let infer_graph_types dagger =
     | _ -> raise (Failure "bad id in infer_graph_types")) in
     done_map.(i) <- true; type_map.(i) <- q; q
   in for i = 0 to (expression_graph_size dagger - 1) do
-    ignore (infer i)
+    ignore (try
+      infer i
+    with _ -> 
+      raise (Failure ("inference failed for program\n" ^ string_of_expression (extract_expression dagger i))))
   done; type_map
 
 

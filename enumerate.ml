@@ -16,10 +16,10 @@ let enumerate_bounded dagger (log_application,distribution) rt bound =
       (t,(insert_expression dagger e, l))) in
   let type_blacklist = TID(0) :: ([c_S;c_B;c_C;c_K;c_F;c_I] |> List.map ~f:terminal_type) in
   let identity_ID = insert_expression dagger c_I in
-  let rec enumerate can_identify requestedType budget = 
+  let rec enumerate can_identify context requestedType budget = 
     let add_node acc e l c = 
       try
-        let (other_l,other_context) = Int.Map.find_exn acc e in
+        let (other_l,_) = Int.Map.find_exn acc e in
         if l > other_l
         then Int.Map.add acc e (l,c)
         else acc
@@ -28,53 +28,53 @@ let enumerate_bounded dagger (log_application,distribution) rt bound =
     let applications = 
       if budget < -.log_application
       then Int.Map.empty
-      else let f_request = TID(next_type_variable requestedType) @> requestedType in
-        let fs = enumerate false f_request (budget+.log_application) in
+      else let (xt,c2) = makeTID context in
+        let fs = enumerate false c2  (xt @> requestedType) (budget+.log_application) in
         List.fold_left (Int.Map.to_alist fs) ~init:Int.Map.empty
-          ~f:(fun acc (f,(fun_l,fun_type)) -> 
-              try
-                let x_request = argument_request requestedType fun_type in
-                let xs = enumerate true x_request (budget+.log_application+.fun_l) in
+          ~f:(fun acc (f,(fun_l,fun_context)) -> 
+              let (xt2,c3) = chaseType fun_context xt in
+              let xs = enumerate true c3 xt2 (budget+.log_application+.fun_l) in
                 List.fold_left (Int.Map.to_alist xs) ~init:acc
-                  ~f:(fun acc2 (x,(arg_l,arg_type)) -> 
-                      let application = insert_expression_node dagger (ExpressionBranch(f,x))
-                      in try
-                        let my_type = application_type fun_type arg_type in
-                        if reduce_symmetries && List.mem type_blacklist my_type
-                        then acc2 
-                        else add_node acc2 application (arg_l+.fun_l+.log_application) my_type
-                      with _ -> acc2 (* type error *))
-              with _ -> acc (* type error *))
+                  ~f:(fun acc2 (x,(arg_l,arg_context)) -> 
+                      let application = insert_expression_node dagger (ExpressionBranch(f,x)) in
+                      let (my_type,final_context) = chaseType arg_context requestedType in
+                      if false && reduce_symmetries && List.mem type_blacklist @@ canonical_type my_type
+                      then acc2 else
+                        add_node acc2 application (arg_l+.fun_l+.log_application) final_context))
     in
-    let availableTerminals = List.filter terminals (fun (t,(e,_)) -> 
-        can_unify t requestedType && (not (reduce_symmetries) || can_identify || e <> identity_ID)) in
-    match availableTerminals with
-    | [] -> applications
-    | _ ->
-      let z = lse_list (List.map availableTerminals (fun (_,(_,l)) -> l)) in
-      let availableTerminals = List.map availableTerminals (fun (t,(e,l)) -> (t,(e,l-.z))) in
-      let availableTerminals = List.filter availableTerminals (fun (t,(_,l)) -> 0.0-.log_terminal-.l < budget) in
-      List.fold_left availableTerminals ~init:applications ~f:(fun acc (t,(e,l)) -> 
-          add_node acc e (log_terminal+.l) t)
-  in Int.Map.map (enumerate true rt bound) fst
+    let availableTerminals = List.filter_map terminals (fun (t,(e,l)) -> 
+        let (t,context1) = instantiate_type context t in
+        try
+          let context2 = unify context1 t requestedType in
+          if not reduce_symmetries || can_identify || e <> identity_ID
+          then Some((e,l,context2))
+          else None
+        with _ -> None) in
+    if List.is_empty availableTerminals
+    then applications
+    else
+      let z = lse_list (List.map availableTerminals (fun (_,l,_) -> l)) in
+      let availableTerminals = List.map availableTerminals (fun (e,l,c) -> (e,l-.z,c)) in
+      let availableTerminals = List.filter availableTerminals (fun (_,l,_) -> 0.0-.log_terminal-.l < budget) in
+      List.fold_left availableTerminals ~init:applications ~f:(fun acc (e,l,c) -> 
+          add_node acc e (log_terminal+.l) c)
+  in Int.Map.map (enumerate true empty_context rt bound) fst
 
 
 (* iterative deepening version of enumerate_bounded *)
 let enumerate_ID dagger library t frontier_size = 
   let rec iterate bound = 
     let indices = enumerate_bounded dagger library t bound in
-    if (Int.Map.length indices) < frontier_size
-    then begin
+    if !number_of_cores = 1 then begin
       Printf.printf "Type %s \t Bound %f \t  => %i / %i programs"  (string_of_type t) bound (Int.Map.length indices) frontier_size;
-      print_newline ();
-      iterate (bound+.0.5)
-    end
-    else
-      (Printf.printf "Type %s \t Bound %f \t  => %i / %i programs" (string_of_type t) bound (Int.Map.length indices) frontier_size;
-       print_newline ();
-       Int.Map.to_alist indices |> List.sort 
-         ~cmp:(fun (_,p) (_,q) -> compare q p) |> Fn.flip List.take frontier_size)
-  in iterate (1.3 *. log (Float.of_int frontier_size))
+      print_newline ()
+    end;
+    if Int.Map.length indices < frontier_size
+    then iterate (bound+.0.5)
+    else 
+      Int.Map.to_alist indices |> List.sort 
+        ~cmp:(fun (_,p) (_,q) -> compare q p) |> Fn.flip List.take frontier_size
+  in iterate (2.0 *. log (Float.of_int frontier_size))
 
 
 let enumerate_frontiers_for_tasks grammar frontier_size tasks 
@@ -85,14 +85,16 @@ let enumerate_frontiers_for_tasks grammar frontier_size tasks
   Printf.printf "number of (normal) types: %i \n" (List.length types);
   let dagger = make_expression_graph 100000 in
   let indices = List.map types (fun t -> enumerate_ID dagger grammar t frontier_size) in
-  let special_indices = List.map special_tasks (fun t -> 
-      Printf.printf "Enumerating for task \"%s\"" t.name; print_newline ();
-      let special_weights =
-        List.map (snd grammar) (fun (e, (w,ty)) -> (e,(get_some t.proposal e w,ty))) in
-      let special_grammar = (fst grammar,special_weights) in
-      let special_indices = enumerate_ID dagger special_grammar t.task_type frontier_size in
-      (t.task_type, List.fold_left (List.map special_indices fst)
-         ~f:Int.Set.add ~init:Int.Set.empty)) in
+  let special_indices =
+    let parallel_results = parallel_map special_tasks (fun t -> 
+        let dagger = make_expression_graph 10000 in
+        Printf.printf "Enumerating for task \"%s\"" t.name; print_newline ();
+        let special_grammar = modify_grammar grammar t in
+        let special_indices = enumerate_ID dagger special_grammar t.task_type frontier_size in
+        (dagger, t.task_type, List.fold_left (List.map special_indices fst)
+           ~f:Int.Set.add ~init:Int.Set.empty)) in
+    List.map parallel_results ~f:(fun (d,t,i) ->
+        (t,Int.Set.map i (insert_expression dagger % extract_expression d))) in
   let end_time = time () in
   Printf.printf "Enumerated all programs in %f seconds." (end_time-.start_time);
   print_newline ();

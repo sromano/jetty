@@ -108,6 +108,8 @@ let can_unify (t1 : tp) (t2 : tp) : bool =
 	   r := Some(f__); f__)
       | FCon(k,fs) -> FCon(k,List.map ~f:fast_chase fs)
     in let rec fast_unify t1 t2 = 
+      let t1 = fast_chase t1 in
+      let t2 = fast_chase t2 in
       match (t1,t2) with
       | (FID(i1),FID(i2)) when i1 = i2 -> true
       | (FID(i),_) when fast_occurs i t2 -> false
@@ -122,7 +124,6 @@ let can_unify (t1 : tp) (t2 : tp) : bool =
       | _ -> raise (Failure "constructors of different arity")
     in fast_unify (make_fast_type (ref []) t1) (make_fast_type (ref []) t2)
 
-
 let instantiate_type (n,m) t = 
   let substitution = ref [] in
   let next = ref n in
@@ -136,6 +137,12 @@ let instantiate_type (n,m) t =
   in let q = instantiate t in
   (q,(!next,m))
 
+
+let slow_can_unify c template target = try
+    let (template, c) = instantiate_type c template in
+    ignore(unify c template target); true
+  with _ -> false
+  
 
 (* puts a type into normal form *)
 let canonical_type t = 

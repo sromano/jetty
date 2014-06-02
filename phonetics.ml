@@ -137,7 +137,7 @@ register_primitive "strident" [phones;] (fun arguments ->
       | _ -> None
     with _ -> None)
 
-let phonetic_terminals = [c_S;c_B;c_C;c_I;c_K;c_F;
+let phonetic_terminals = [c_S;c_B;c_C;c_I;(* c_K;c_F; *)
                          c_null;c_append;c_cons;c_last_one;
                          l_transfer_voice;l_strident;]
                          @ phones;;
