@@ -64,15 +64,15 @@ let enumerate_bounded dagger (log_application,distribution) rt bound =
 let enumerate_ID dagger library t frontier_size = 
   let rec iterate bound = 
     let indices = enumerate_bounded dagger library t bound in
-    if !number_of_cores = 1 then begin
-      Printf.printf "Type %s \t Bound %f \t  => %i / %i programs"  (string_of_type t) bound (Int.Map.length indices) frontier_size;
+    if !number_of_cores = 1 || Int.Map.length indices >= frontier_size then begin
+      Printf.printf "Type %s \t Bound %f \t  => %i / %i programs" (string_of_type t) bound (Int.Map.length indices) frontier_size;
       print_newline ()
     end;
     if Int.Map.length indices < frontier_size
     then iterate (bound+.0.5)
     else 
       Int.Map.to_alist indices |> List.sort 
-        ~cmp:(fun (_,p) (_,q) -> compare q p) |> Fn.flip List.take frontier_size
+        ~cmp:(fun (_,p) (_,q) -> compare q p) (* |> Fn.flip List.take frontier_size*)
   in iterate (1.5 *. log (Float.of_int frontier_size))
 
 

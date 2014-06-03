@@ -141,6 +141,7 @@ let pmap ?processes:(processes=4) ?bsize:(bsize=0) f input output =
 	  let chan = Unix.out_channel_of_descr wt in
 	  Marshal.to_channel chan (start_idx, answer) [Marshal.Closures];
 	  Out_channel.close chan;
+	  flush stdout;
 	  exit 0
 	end
       | `In_the_parent(pid) -> begin
@@ -183,6 +184,7 @@ let cpu_count () =
 
 
 let parallel_map l ~f = 
+  flush stdout;
   if not !counted_CPUs 
   then begin
     number_of_cores := cpu_count ();
@@ -196,4 +198,6 @@ let parallel_map l ~f =
     let output_array = Array.create (Array.length input_array) None in
     let output_array = 
       pmap ~processes:(!number_of_cores) (fun x -> Some(f x)) (Array.get input_array) output_array
-    in Array.to_list output_array |> List.map ~f:(safe_get_some "parallel_map")
+    in 
+    flush stdout;
+    Array.to_list output_array |> List.map ~f:(safe_get_some "parallel_map")

@@ -231,8 +231,8 @@ let pluralize = expression_of_string
 let morphology () = 
   let lambda = 1.5 in
   let alpha = 1. in
-  let frontier_size = 15000 in
-  let g = ref @@ make_flat_library phonetic_terminals (* load_library "log/super_1_grammar"*) in 
+  let frontier_size = 1000 in
+  let g = ref @@ (* make_flat_library phonetic_terminals *) load_library "log/super_1_grammar" in 
   let tasks = 
     List.map top_superlative make_word_task in
 (*  List.iter2_exn tasks top_singular ~f:(fun t s -> 
@@ -241,11 +241,11 @@ let morphology () =
     Printf.printf "plural %s > %f\n " s (get_some @@ likelihood_option grammar (t.task_type @> t.task_type) pluralize);
     Printf.printf "%s > %f\n " s (get_some @@ likelihood_option grammar t.task_type p));
 *)
-  for i = 1 to 10 do
+(*  for i = 1 to 10 do
     Printf.printf "\n \n \n Iteration %i \n" i;
     g := lower_bound_refinement_iteration ("log/super_"^string_of_int i)
       lambda alpha frontier_size tasks (!g)
-  done;
+  done; *)
   let decoder =
     reduce_symbolically (make_flat_library @@ phonetic_terminals) !g frontier_size frontier_size tasks in
   Printf.printf "Decoder: %s\n" (string_of_expression decoder)
