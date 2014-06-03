@@ -1,4 +1,4 @@
-c = corebuild -lflag -ffast-math
+c = corebuild
 
 morphology:
 	$(c) morphology.native; cp morphology.native test

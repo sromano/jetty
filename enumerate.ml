@@ -95,10 +95,12 @@ let enumerate_frontiers_for_tasks grammar frontier_size tasks
         Printf.printf "Enumerating for task \"%s\"" t.name; print_newline ();
         let special_grammar = modify_grammar grammar t in
         let special_indices = enumerate_ID dagger special_grammar t.task_type frontier_size in
+	scrub_graph dagger;
         (dagger, t.task_type, List.fold_left (List.map special_indices fst)
            ~f:Int.Set.add ~init:Int.Set.empty)) in
     List.map parallel_results ~f:(fun (d,t,i) ->
-        (t,Int.Set.map i (insert_expression dagger % extract_expression d))) in
+      dirty_graph d;
+      (t,Int.Set.map i (insert_expression dagger % extract_expression d))) in
   let end_time = time () in
   Printf.printf "Enumerated all programs in %f seconds." (end_time-.start_time);
   print_newline ();
