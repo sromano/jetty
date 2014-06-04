@@ -258,6 +258,14 @@ let c_cons = Terminal("cons",
                       canonical_type @@ make_arrow list_type @@ 
                       make_arrow (TCon("list",[list_type])) @@ (TCon("list",[list_type])),
                       lift_binary (fun x y -> x::y));;
+let c_rcons = Terminal("rcons",
+                      canonical_type @@ make_arrow list_type @@ 
+                      make_arrow (TCon("list",[list_type])) @@ (TCon("list",[list_type])),
+                      lift_binary (fun x y -> y @ [x]));;
+let c_append1 = Terminal("@1",
+                      canonical_type @@ (TCon("list",[list_type])) @> list_type @> 
+                                        (TCon("list",[list_type])),
+                      lift_binary (fun y x -> y @ [x]));;
 let c_append = Terminal("@",
                         canonical_type @@ make_arrow (TCon("list",[list_type])) @@ 
                         make_arrow (TCon("list",[list_type])) @@ (TCon("list",[list_type])),
@@ -275,7 +283,8 @@ let string_of_library (log_application,bindings) =
 
 let all_terminals = ref (List.map ([c_K;c_S;c_B;c_C;c_I;c_bottom;
                           c_sin;c_cos;c_times_dot;c_plus_dot;c_plus;c_times;
-                          c_null;c_append;c_cons;c_last_one] @ c_numbers @ c_reals)
+                          c_null;c_append;c_rcons;c_cons;c_append1;c_last_one]
+                                   @ c_numbers @ c_reals)
                            (fun e -> (string_of_expression e,e)));;
 let register_terminal t = 
   all_terminals := (string_of_expression t,t) :: !all_terminals;;

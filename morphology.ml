@@ -196,14 +196,20 @@ let top_plural = [
 let doubled_words = 
   ["a a"; "b c b c"; "s ow p s ow p"; "r I g z r I g z"; ]
 
-let make_word_task word = 
+let make_word_task word stem = 
+  let word_parts = String.split word ' ' in
+  let stem_parts = String.split stem ' ' in
   let e = make_phonetic word in
+  let affix = make_phonetic @@ String.concat ~sep:" " @@ 
+    List.drop word_parts @@ List.length stem_parts in
+  let relevant_phones : phone list = safe_get_some "make_work_task: None" @@ 
+    run_expression affix in
   let correct_phones : phone list = safe_get_some "make_work_task: None" @@ run_expression e in
   let prop = (fun e w -> 
     match e with
     | Terminal(_,TCon("phone",[]),p) -> 
     let p : phone = !(Obj.magic p) in
-    if List.exists correct_phones (phonetic_neighbors p)
+    if List.exists relevant_phones (phonetic_neighbors p)
     then w
     else w-.10000.
     | _ -> w) in  
@@ -213,42 +219,42 @@ let make_word_task word =
     | _ -> Float.neg_infinity
   in
   let wl = String.length word in
-  let prefixes = String.split word ' ' |> 
+(*   let prefixes = String.split word ' ' |> 
                  map_list (String.concat ~sep:" ") |> 
                  List.filter ~f:(fun s -> String.length s > 0 && String.length s < wl) |> 
                  List.map ~f:make_phonetic in
   let suffixes = String.split word ' ' |> List.rev |> 
                  map_list (fun l -> String.concat ~sep:" " @@ List.rev l) |> 
                  List.filter ~f:(fun s -> String.length s > 0 && String.length s < wl) |> 
-                 List.map ~f:make_phonetic in
-  let extras = List.map (List.dedup (prefixes @ suffixes)) ~f:(fun e -> (e,0.)) in
+                 List.map ~f:make_phonetic in *)
+  let extras = [make_phonetic stem,0.] in
   { name = word; task_type = TCon("list",[make_ground "phone"]); 
     score = LogLikelihood(ll); proposal = Some(prop,extras); }
 
 let pluralize = expression_of_string
   "((S @) ((B ((C cons) null)) ((B (transfer-voice /s/)) last-one))"
+(*     "((S @1) ((B (transfer-voice /s/)) last-one))" *)
 
 let morphology () = 
   let lambda = 1.5 in
   let alpha = 1. in
   let frontier_size = 1000 in
-  let g = ref @@ (* make_flat_library phonetic_terminals *) load_library "log/super_1_grammar" in 
+  let g = ref @@ make_flat_library phonetic_terminals (* load_library "log/super_1_grammar" *) in 
   let tasks = 
-    List.map top_superlative make_word_task in
-(*  List.iter2_exn tasks top_singular ~f:(fun t s -> 
+    List.map2_exn top_plural top_singular make_word_task in
+ List.iter2_exn tasks (List.zip_exn top_singular top_plural) ~f:(fun t (s,p) -> 
     let grammar = modify_grammar !g t in
     let p = Application(pluralize, make_phonetic s) in
     Printf.printf "plural %s > %f\n " s (get_some @@ likelihood_option grammar (t.task_type @> t.task_type) pluralize);
     Printf.printf "%s > %f\n " s (get_some @@ likelihood_option grammar t.task_type p));
-*)
 (*  for i = 1 to 10 do
     Printf.printf "\n \n \n Iteration %i \n" i;
     g := lower_bound_refinement_iteration ("log/super_"^string_of_int i)
       lambda alpha frontier_size tasks (!g)
   done; *)
-  let decoder =
+(*   let decoder =
     reduce_symbolically (make_flat_library @@ phonetic_terminals) !g frontier_size frontier_size tasks in
-  Printf.printf "Decoder: %s\n" (string_of_expression decoder)
+  Printf.printf "Decoder: %s\n" (string_of_expression decoder) *)
 ;;
 
 
