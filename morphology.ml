@@ -143,6 +143,26 @@ let top_nouns = [
   "b ue r d";
   "h c r s";
   "b aj s I k ue l";
+  "k a r";
+  "t r ue k";
+  "b uu k";
+  "b ue n ae n ae";
+  "k r ae k ue r";
+  "aj s k r i m";
+  "p i t s ue";
+  "sh u";
+  "I r";
+  "aj";
+  "h E r";
+  "t ow";
+  "k ue p";
+  "p I l ow";
+  "t E l ue f ow n";
+  "t u th b r ue sh";
+  "b ae th ue b";
+  "b E d";
+  "t i v i";
+  "th ae ng k j u";
 ]
 
 (* most common singular nouns produced by thirty months old *)
@@ -167,6 +187,26 @@ let top_singular = [
   "b ue r d";
   "h c r s";
   "b aj s I k ue l";
+  "k a r";
+  "t r ue k";
+  "b uu k";
+  "b ue n ae n ae";
+  "k r ae k ue r";
+  "aj s k r i m";
+  "p i t s ue";
+  "sh u";
+  "I r";
+  "aj";
+  "h E r";
+  "t ow";
+  "k ue p";
+  "p I l ow";
+  "t E l ue f ow n";
+  "t u th b r ue sh";
+  "b ae th ue b";
+  "b E d";
+  "t i v i";
+  "th ae ng k j u";
 ]
 
 (* most common singular nouns produced by thirty months old *)
@@ -191,6 +231,26 @@ let top_plural = [
   "b ue r d z";
   "h c r s ue z";
   "b aj s I k ue l z";
+  "k a r z";
+  "t r ue k s";
+  "b uu k s";
+  "b ue n ae n ae z";
+  "k r ae k ue r z";
+  "aj s k r i m z";
+  "p i t s ue z";
+  "sh u z";
+  "I r z";
+  "aj z";
+  "h E r z";
+  "t ow z";
+  "k ue p s";
+  "p I l ow z";
+  "t E l ue f ow n z";
+  "t u th b r ue sh ue s";
+  "b ae th ue b z";
+  "b E d z";
+  "t i v i z";
+  "th ae ng k j u z";
 ]
 
 let doubled_words = 
