@@ -106,6 +106,10 @@ let strident = function
   | Consonant(AlveolarPalatal,Fricative,_) -> true
   | _ -> false
 
+let is_voiced = function
+  | Consonant(_,_,Unvoiced) -> false
+  | _ -> true
+
 let transfer_voice p1 p2 = 
   match (p1,p2) with
   | (Consonant(p,m,_), Consonant(_,_,v)) -> Consonant(p,m,v)
@@ -137,12 +141,23 @@ register_primitive "strident" [phones;] (fun arguments ->
       | _ -> None
     with _ -> None)
 
+let l_is_voiced = Terminal("is-voiced", (make_ground "phone") @> t1 @> t1 @> t1,
+                          lift_predicate is_voiced
+                         );;
+register_primitive "is-voiced" [phones;] (fun arguments -> 
+    try
+      match arguments with
+      | [Some(p);] -> 
+        Some(if is_voiced !(Obj.magic p) then c_K else c_F)
+      | _ -> None
+    with _ -> None)
+
 let phonetic_terminals = [c_S;c_B;c_C;c_I;c_K;c_F;
                          c_null;c_append;c_cons;c_last_one;
-                         l_transfer_voice;l_strident;]
+                         (*l_transfer_voice;*)l_is_voiced;l_strident;]
                          @ phones;;
 register_terminals phonetic_terminals;;
-
+register_terminals [l_transfer_voice;];;
 
 (* are 2 phonemes similar enough that we should consider using one to search for the other? *)
 let phonetic_neighbors p1 p2 = 

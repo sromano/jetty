@@ -79,7 +79,7 @@ let top_case = [
   "i t s";
   "g ow z";
   "f a l z";
-  "h ue g s";
+  "h ue g z";
   "k I s ue z";
   "w a k s";
   "l ue v z";
@@ -158,11 +158,11 @@ let top_nouns = [
   "k ue p";
   "p I l ow";
   "t E l ue f ow n";
-  "t u th b r ue sh";
+(*  "t u th b r ue sh";
   "b ae th ue b";
   "b E d";
   "t i v i";
-  "th ae ng k j u";
+  "th ae ng k j u"; *)
 ]
 
 (* most common singular nouns produced by thirty months old *)
@@ -296,22 +296,24 @@ let pluralize = expression_of_string
 (*     "((S @1) ((B (transfer-voice /s/)) last-one))" *)
 
 let morphology () = 
-  let lambda = 1.5 in
-  let alpha = 1. in
-  let frontier_size = 1000 in
+  let lambda = 15.0 in
+  let alpha = 7.0 in
+  let frontier_size = 10000 in
   let g = ref @@ make_flat_library phonetic_terminals (* load_library "log/super_1_grammar" *) in 
   let tasks = 
-    List.map2_exn top_plural top_singular make_word_task in
- List.iter2_exn tasks (List.zip_exn top_singular top_plural) ~f:(fun t (s,p) -> 
+    List.map2_exn top_plural top_singular make_word_task @ 
+    List.map2_exn top_case top_verbs make_word_task
+  in
+(* List.iter2_exn tasks (List.zip_exn top_singular top_plural) ~f:(fun t (s,p) -> 
     let grammar = modify_grammar !g t in
     let p = Application(pluralize, make_phonetic s) in
     Printf.printf "plural %s > %f\n " s (get_some @@ likelihood_option grammar (t.task_type @> t.task_type) pluralize);
-    Printf.printf "%s > %f\n " s (get_some @@ likelihood_option grammar t.task_type p));
-(*  for i = 1 to 10 do
+    Printf.printf "%s > %f\n " s (get_some @@ likelihood_option grammar t.task_type p)); *)
+  for i = 1 to 10 do
     Printf.printf "\n \n \n Iteration %i \n" i;
-    g := lower_bound_refinement_iteration ("log/super_"^string_of_int i)
+    g := lower_bound_refinement_iteration ("log/plural_"^string_of_int i)
       lambda alpha frontier_size tasks (!g)
-  done; *)
+  done;
 (*   let decoder =
     reduce_symbolically (make_flat_library @@ phonetic_terminals) !g frontier_size frontier_size tasks in
   Printf.printf "Decoder: %s\n" (string_of_expression decoder) *)
