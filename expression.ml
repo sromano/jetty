@@ -320,6 +320,11 @@ let infer_graph_types dagger =
 let expression_of_int i = Terminal(Int.to_string i,tint,Obj.magic (ref i));;
 let expression_of_float i = Terminal(Float.to_string i,treal,Obj.magic (ref i));;
 
+let rec expression_has_identifier v = function
+  | Terminal(b,_,_) -> b = v
+  | Application(l,r) -> 
+    expression_has_identifier v l || expression_has_identifier v r
+
 
 let test_expression () =
   let t1 = TID(0) in

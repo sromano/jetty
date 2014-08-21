@@ -363,11 +363,38 @@ let load_library f =
   with End_of_file -> 
     (log log_application, List.map !productions (fun (e,w) -> (e, (w,infer_type e))))
 
+let rec remove_lambda v = function
+  | Terminal(b,_,_) when b = v -> c_I
+  | Application(f,Terminal(b,_,_)) when b = v -> 
+    if expression_has_identifier v f
+    then Application(Application(c_S,remove_lambda v f),c_I)
+    else f
+  | Application(Terminal(b,_,_),f) when b = v ->
+    if expression_has_identifier v f
+    then Application(Application(c_S,c_I),remove_lambda v f)
+    else Application(Application(c_S,c_I),f)
+  | Application(f,x) -> 
+    begin
+      match (expression_has_identifier v f,
+            expression_has_identifier v x) with
+      | (true,true) -> 
+        Application(Application(c_S,remove_lambda v f),
+                   remove_lambda v x)
+      | (false,true) -> 
+        Application(Application(c_B,f),remove_lambda v x)
+      | (true,false) -> 
+        Application(Application(c_C,remove_lambda v f),x)
+      | (false, false) -> 
+        Application(c_K,Application(f,x))
+    end
+  (* only possibility is terminal not matching v *)
+  | t -> Application(c_K,t)
 
 
 let test_library () = 
   List.map ["I";"((C +) 1)";"(K (+ (0 S)))"]
     (fun s -> print_string (string_of_expression @@ expression_of_string s); print_newline ());;
+
 
 
 (* test_library ();; *)

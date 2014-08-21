@@ -292,7 +292,8 @@ let make_word_task word stem =
     score = LogLikelihood(ll); proposal = Some(prop,extras); }
 
 let pluralize = expression_of_string
-  "((S @) ((B ((C cons) null)) ((B (transfer-voice /s/)) last-one))"
+  "((S @) ((B ((C cons) null)) ((B ((C ((C is-voiced) /z/)) /s/)) last-one)))"
+(*   "((S @) ((B ((C cons) null)) ((B (transfer-voice /s/)) last-one))" *)
 (*     "((S @1) ((B (transfer-voice /s/)) last-one))" *)
 
 let morphology () = 
@@ -320,4 +321,24 @@ let morphology () =
 ;;
 
 
-morphology ();;
+(* morphology ();; *)
+
+let sanity_likelihood () = 
+  Printf.printf "%s\n" (string_of_expression @@ remove_lambda "?" @@ expression_of_string "((@ ?) ((cons (((is-voiced (last-one ?)) /z/) /s/)) null))");
+  let g = ref @@ make_flat_library phonetic_terminals in 
+  let tasks = 
+    List.map2_exn top_plural top_singular make_word_task @ 
+    List.map2_exn top_case top_verbs make_word_task
+  in
+  List.iter tasks ~f:(fun t -> 
+    let g = make_flat_library (phonetic_terminals @ 
+			       (get_some t.proposal |>
+			       snd |> List.map ~f:fst)) in
+    let stem = t.proposal |> get_some |> snd |> List.hd_exn |> fst in
+    let e = Application(pluralize,stem) in
+    let l = get_some @@ likelihood_option g t.task_type e in
+    Printf.printf "%s\t%s\t%f\n" t.name (string_of_expression e) l)
+;;
+
+sanity_likelihood ();;
+
