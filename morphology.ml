@@ -262,39 +262,21 @@ let make_word_task word stem =
   let e = make_phonetic word in
   let affix = make_phonetic @@ String.concat ~sep:" " @@ 
     List.drop word_parts @@ List.length stem_parts in
-  let relevant_phones : phone list = safe_get_some "make_work_task: None" @@ 
-    run_expression affix in
   let correct_phones : phone list = safe_get_some "make_work_task: None" @@ run_expression e in
-  let prop = (fun e w -> 
-    match e with
-    | Terminal(_,TCon("phone",[]),p) -> 
-    let p : phone = !(Obj.magic p) in
-    if List.exists relevant_phones (phonetic_neighbors p)
-    then w
-    else w-.10000.
-    | _ -> w) in  
+  let prop = (fun e w -> w) in
   let ll e =
     match run_expression e with
     | Some(ps) when ps = correct_phones -> 0.0
     | _ -> Float.neg_infinity
   in
-  let wl = String.length word in
-(*   let prefixes = String.split word ' ' |> 
-                 map_list (String.concat ~sep:" ") |> 
-                 List.filter ~f:(fun s -> String.length s > 0 && String.length s < wl) |> 
-                 List.map ~f:make_phonetic in
-  let suffixes = String.split word ' ' |> List.rev |> 
-                 map_list (fun l -> String.concat ~sep:" " @@ List.rev l) |> 
-                 List.filter ~f:(fun s -> String.length s > 0 && String.length s < wl) |> 
-                 List.map ~f:make_phonetic in *)
-  let extras = [make_phonetic stem,0.] in
+  let extras = [make_phonetic stem,0.;affix,0.] in
   { name = word; task_type = TCon("list",[make_ground "phone"]); 
     score = LogLikelihood(ll); proposal = Some(prop,extras); }
 
-let pluralize = expression_of_string
-  "((S @) ((B ((C cons) null)) ((B ((C ((C is-voiced) /z/)) /s/)) last-one)))"
-(*   "((S @) ((B ((C cons) null)) ((B (transfer-voice /s/)) last-one))" *)
-(*     "((S @1) ((B (transfer-voice /s/)) last-one))" *)
+let pluralize = 
+  expression_of_string "((@ ?) (((is-voiced ((cons /z/) null)) ((cons /s/) null)) (last-one ?)))" |> 
+  remove_lambda "?"
+
 
 let morphology () = 
   let lambda = 15.0 in
@@ -305,11 +287,6 @@ let morphology () =
     List.map2_exn top_plural top_singular make_word_task @ 
     List.map2_exn top_case top_verbs make_word_task
   in
-(* List.iter2_exn tasks (List.zip_exn top_singular top_plural) ~f:(fun t (s,p) -> 
-    let grammar = modify_grammar !g t in
-    let p = Application(pluralize, make_phonetic s) in
-    Printf.printf "plural %s > %f\n " s (get_some @@ likelihood_option grammar (t.task_type @> t.task_type) pluralize);
-    Printf.printf "%s > %f\n " s (get_some @@ likelihood_option grammar t.task_type p)); *)
   for i = 1 to 10 do
     Printf.printf "\n \n \n Iteration %i \n" i;
     g := lower_bound_refinement_iteration ("log/plural_"^string_of_int i)
@@ -324,8 +301,7 @@ let morphology () =
 (* morphology ();; *)
 
 let sanity_likelihood () = 
-  Printf.printf "%s\n" (string_of_expression @@ remove_lambda "?" @@ expression_of_string "((@ ?) ((cons (((is-voiced (last-one ?)) /z/) /s/)) null))");
-  let g = ref @@ make_flat_library phonetic_terminals in 
+  Printf.printf "%s\n" (string_of_expression pluralize);
   let tasks = 
     List.map2_exn top_plural top_singular make_word_task @ 
     List.map2_exn top_case top_verbs make_word_task
@@ -333,10 +309,12 @@ let sanity_likelihood () =
   List.iter tasks ~f:(fun t -> 
     let g = make_flat_library (phonetic_terminals @ 
 			       (get_some t.proposal |>
-			       snd |> List.map ~f:fst)) in
+			       snd |> List.map ~f:fst) @ 
+                              [expression_of_string "((cons /s/) null)";
+                              expression_of_string "((cons /z/) null)"]) in
     let stem = t.proposal |> get_some |> snd |> List.hd_exn |> fst in
     let e = Application(pluralize,stem) in
-    let l = get_some @@ likelihood_option g t.task_type e in
+    let l = safe_get_some "mythology likelihood" @@ likelihood_option g t.task_type e in
     Printf.printf "%s\t%s\t%f\n" t.name (string_of_expression e) l)
 ;;
 

@@ -141,17 +141,18 @@ register_primitive "strident" [phones;] (fun arguments ->
       | _ -> None
     with _ -> None)
 
-let l_is_voiced = Terminal("is-voiced", (make_ground "phone") @> t1 @> t1 @> t1,
-                          lift_predicate is_voiced
+let l_is_voiced = Terminal("is-voiced", t1 @> t1 @> make_ground "phone" @> t1,
+                          lift_reversed_predicate is_voiced
                          );;
-register_primitive "is-voiced" [phones;] (fun arguments -> 
+register_terminal l_is_voiced;;
+(* register_primitive "is-voiced" [phones;] (fun arguments -> 
     try
       match arguments with
       | [Some(p);] -> 
         Some(if is_voiced !(Obj.magic p) then c_K else c_F)
       | _ -> None
     with _ -> None)
-
+*)
 let phonetic_terminals = [c_S;c_B;c_C;c_I;c_K;c_F;
                          c_null;c_append;c_cons;c_last_one;
                          (*l_transfer_voice;*)l_is_voiced;l_strident;]

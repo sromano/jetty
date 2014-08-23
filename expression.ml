@@ -63,6 +63,10 @@ let lift_predicate p : unit ref = Obj.magic @@ ref (function
   | Some(x) -> Some(fun y -> Some(fun z -> 
     if p x then y else z)))
 
+let lift_reversed_predicate p : unit ref = Obj.magic @@ ref (fun x y -> function
+  | None -> None
+  | Some(thing) -> if p thing then x else y)
+
 
 let infer_type (e : expression) = 
   let rec infer c r = 
