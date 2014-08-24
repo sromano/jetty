@@ -298,7 +298,7 @@ let morphology () =
 ;;
 
 
-(* morphology ();; *)
+morphology ();;
 
 let sanity_likelihood () = 
   Printf.printf "%s\n" (string_of_expression pluralize);
@@ -318,5 +318,5 @@ let sanity_likelihood () =
     Printf.printf "%s\t%s\t%f\n" t.name (string_of_expression e) l)
 ;;
 
-sanity_likelihood ();;
+(* sanity_likelihood ();; *)
 
