@@ -20,6 +20,8 @@ let rec compare_expression (e1 : expression) (e2 : expression) : int =
       let cmp = compare_expression l l_ in
       if cmp = 0 then compare_expression r r_ else cmp
 
+let expression_equal e1 e2 = compare_expression e1 e2 = 0
+
 let is_terminal = function
   | Terminal(_,_,_) -> true
   | _ -> false
@@ -150,6 +152,17 @@ let reachable_expressions dagger expressions =
       | _ -> ()
     end in
   List.iter expressions reach; !reachable
+
+(* pulls the provided IDs out of the old expression graph and into a new one, *)
+(* facilitating garbage collection. *)
+(* Assumes that the IDs are tagged in a tuple. *)
+let gc_expression_graph dagger i = 
+  let new_dagger = make_expression_graph (List.length i) in
+  let new_indices = List.map i 
+      ~f:(fun j -> (insert_expression new_dagger (extract_expression dagger (fst j)),
+                   snd j)) in
+  (new_indices,new_dagger)
+
 
 let is_leaf_ID (g,_,_) i = 
   try

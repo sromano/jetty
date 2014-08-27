@@ -7,7 +7,8 @@ open Utils
 open Task
 
 
-let reduce_symmetries = true
+let reduce_symmetries = true;;
+let filter_enumerated = true;;
 
 
 let enumerate_bounded dagger (log_application,distribution) rt bound = 
@@ -95,6 +96,13 @@ let enumerate_frontiers_for_tasks grammar frontier_size tasks
         Printf.printf "Enumerating for task \"%s\"" t.name; print_newline ();
         let special_grammar = modify_grammar grammar t in
         let special_indices = enumerate_ID dagger special_grammar t.task_type frontier_size in
+        let l = task_likelihood t in
+        let (special_indices,dagger) =
+          if filter_enumerated 
+          then let i = 
+            List.filter special_indices ~f:(is_valid % l % extract_expression dagger % fst) in
+            gc_expression_graph dagger i
+          else (special_indices,dagger) in
 	scrub_graph dagger;
         (dagger, t.task_type, List.fold_left (List.map special_indices fst)
            ~f:Int.Set.add ~init:Int.Set.empty)) in

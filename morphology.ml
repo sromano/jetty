@@ -298,7 +298,7 @@ let morphology () =
 ;;
 
 
-morphology ();;
+(* morphology ();; *)
 
 let sanity_likelihood () = 
   Printf.printf "%s\n" (string_of_expression pluralize);
@@ -307,16 +307,18 @@ let sanity_likelihood () =
     List.map2_exn top_case top_verbs make_word_task
   in
   List.iter tasks ~f:(fun t -> 
-    let g = make_flat_library (phonetic_terminals @ 
+    let g = t |> modify_grammar (* (make_flat_library phonetic_terminals) *) (load_library "log/plural_1_grammar")
+(* 
+make_flat_library (phonetic_terminals @ 
 			       (get_some t.proposal |>
 			       snd |> List.map ~f:fst) @ 
                               [expression_of_string "((cons /s/) null)";
-                              expression_of_string "((cons /z/) null)"]) in
+                              expression_of_string "((cons /z/) null)"])  *) in
     let stem = t.proposal |> get_some |> snd |> List.hd_exn |> fst in
     let e = Application(pluralize,stem) in
     let l = safe_get_some "mythology likelihood" @@ likelihood_option g t.task_type e in
     Printf.printf "%s\t%s\t%f\n" t.name (string_of_expression e) l)
 ;;
 
-(* sanity_likelihood ();; *)
+sanity_likelihood ();;
 

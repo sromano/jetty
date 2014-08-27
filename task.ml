@@ -13,12 +13,20 @@ type task =
     score : task_objective;
     proposal : ((expression -> float -> float) * (expression*float) list) option; }
 
+let task_likelihood t = 
+  match t.score with
+  | LogLikelihood(f) -> f
+  | _ -> raise (Failure "task_likelihood: seed")
+
 let modify_grammar grammar t =
   let propose = fst @@ safe_get_some "modify_grammar propose" t.proposal 
   and extra = List.map (snd @@ safe_get_some "modify_grammar extra" t.proposal)
       ~f:(fun (e,w) -> (e,(w,infer_type e))) in
   let special_weights =
-    extra @ List.map (snd grammar) (fun (e, (w,ty)) -> (e,(propose e w,ty))) in
+    extra @ 
+    (List.map (snd grammar) (fun (e, (w,ty)) -> (e,(propose e w,ty))) |> 
+     List.filter ~f:(not % List.Assoc.mem extra ~equal:expression_equal % fst))
+  in
   (fst grammar,special_weights)
 
 let score_programs dagger frontiers tasks = 

@@ -111,8 +111,8 @@ let fit_grammar smoothing (log_application,library) dagger program_types likelih
         let other_offsets = List.map others (fun (_,(_,_,o)) -> o) in
         let z = lse_list (List.map others (fun (_,(_,l,_)) -> l)) in
         let terminal_likelihood = log_terminal+.offset_Z-.z -.l in
-        List.iter offsets ~f:(fun (o,l) -> let u = counts.use_counts.(o) in
-                               counts.use_counts.(o) <- lse u (l+.terminal_likelihood+.weight));
+        List.iter offsets ~f:(fun (o,ol) -> let u = counts.use_counts.(o) in
+                               counts.use_counts.(o) <- lse u (ol+.terminal_likelihood+.weight));
         List.iter other_offsets ~f:(fun o -> let p = counts.possible_counts.(o) in
                                counts.possible_counts.(o) <- lse p (terminal_likelihood+.weight));
         counts.terminal_counts <- lse counts.terminal_counts (terminal_likelihood+.weight)
@@ -146,7 +146,8 @@ let fit_grammar smoothing (log_application,library) dagger program_types likelih
     end
   in 
   List.iter corpus ~f:(fun ((i,request),w) -> uses w i request);
-  let log_application = counts.application_counts -. counts.terminal_counts in
+  let log_application = counts.application_counts -. 
+                        lse counts.application_counts counts.terminal_counts in
   let distribution = List.map terminal_order (fun (i,(_,_,o)) -> 
       let p = counts.use_counts.(o) -. counts.possible_counts.(o)
       and e = extract_expression dagger i
