@@ -132,6 +132,12 @@ let expectation_maximization_iteration prefix
   (* save the grammar *)
   Out_channel.write_all (prefix^"_grammar") ~data:(string_of_library final_grammar);
   print_newline ();
+  (* save the best programs *)
+  let task_solutions = List.zip_exn tasks program_scores |> List.map ~f:(fun (t,solutions) ->
+      (t, List.map solutions (fun (i,s) -> 
+           (i,s+. (get_some @@ likelihood_option final_grammar t.task_type (extract_expression dagger i)))))) in
+  save_best_programs (prefix^"_programs") dagger task_solutions;
+  print_posterior_surrogate lambda dagger final_grammar task_solutions;
   final_grammar
 
 

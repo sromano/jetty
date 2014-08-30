@@ -279,17 +279,17 @@ let pluralize =
 
 
 let morphology () = 
-  let lambda = 15.0 in
+  let lambda = 3.0 in
   let alpha = 7.0 in
-  let frontier_size = 10000 in
+  let frontier_size = 500000 in
   let g = ref @@ make_flat_library phonetic_terminals (* load_library "log/super_1_grammar" *) in 
   let tasks = 
-    List.map2_exn top_plural top_singular make_word_task @ 
-    List.map2_exn top_case top_verbs make_word_task
+    List.map2_exn top_plural top_singular make_word_task
+(*     List.map2_exn top_case top_verbs make_word_task *)
   in
   for i = 1 to 10 do
     Printf.printf "\n \n \n Iteration %i \n" i;
-    g := lower_bound_refinement_iteration ("log/plural_"^string_of_int i)
+    g := expectation_maximization_iteration (* lower_bound_refinement_iteration *) ("log/plural_"^string_of_int i)
       lambda alpha frontier_size tasks (!g)
   done;
 (*   let decoder =
@@ -307,7 +307,7 @@ let sanity_likelihood () =
     List.map2_exn top_case top_verbs make_word_task
   in
   List.iter tasks ~f:(fun t -> 
-    let g = t |> modify_grammar (* (make_flat_library phonetic_terminals) *) (load_library "log/plural_1_grammar")
+    let g = t |> modify_grammar (* (make_flat_library phonetic_terminals) *) (load_library "log/plural_2_grammar")
 (* 
 make_flat_library (phonetic_terminals @ 
 			       (get_some t.proposal |>

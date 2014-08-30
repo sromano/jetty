@@ -18,6 +18,11 @@ let lower_bound_refinement_iteration
     prefix lambda smoothing frontier_size 
     tasks grammar = 
   let (frontiers,dagger) = enumerate_frontiers_for_tasks grammar frontier_size tasks in
+  (* if a primitive is never used in the solution, it might not end up in the library;
+   * this ensures that this won't happen *)
+  List.iter (snd grammar) ~f:(fun (e,_) -> 
+    if is_terminal e
+    then ignore(insert_expression dagger e));
   print_string "Scoring programs...";
   print_newline ();
   let program_scores = score_programs dagger frontiers tasks in
@@ -47,7 +52,8 @@ let lower_bound_refinement_iteration
   Out_channel.write_all (prefix^"_grammar") ~data:(string_of_library g);
   (* save the best programs *)
   let task_solutions = List.zip_exn tasks program_scores |> List.map ~f:(fun (t,solutions) ->
-    (t, List.map solutions (fun (i,s) -> 
-          (i,s+. (get_some @@ likelihood_option g t.task_type (extract_expression dagger i)))))) in
+      (t, List.map solutions (fun (i,s) -> 
+           (i,s+. (get_some @@ likelihood_option g t.task_type (extract_expression dagger i)))))) in
   save_best_programs (prefix^"_programs") dagger task_solutions;
+  print_posterior_surrogate lambda dagger g task_solutions;
   g
