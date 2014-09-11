@@ -10,7 +10,7 @@ open Frontier
 
 let make_decoder dagger i j = 
   (* arbitrary cutoffs *)
-  let max_wild = 1 in
+  let max_wild = 3 in
   let min_tame = 3 in
   let d = antiunify_expressions dagger i j in
   let rec count_terminals = function
