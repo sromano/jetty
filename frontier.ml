@@ -87,6 +87,6 @@ let print_posterior_surrogate lambda dagger grammar task_solutions =
       then l +. lse_list (List.map f ~f:(fun (i,s) -> 
           s+.get_some (likelihood_option grammar t.task_type (extract_expression dagger i))))
       else l) 
-  and prior = lambda *. Float.of_int (List.length @@ snd grammar) in
+  and prior = -. lambda *. Float.of_int (List.length @@ snd grammar) in
   Printf.printf "Log Prior (%f) + Log Likelihood (%f) = \n\t%f\n"
     prior likelihood (prior +. likelihood)

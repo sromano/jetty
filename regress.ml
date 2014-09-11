@@ -53,7 +53,7 @@ let make_regression_task polynomial_coefficients sin_coefficients cos_coefficien
         | (x::xs) -> 
 	  let q = Application(e,x) in
 	  match run_expression_for_interval 0.01 q with
-	    Some(r) when r = List.hd c -> t xs (List.tl_exn c)
+	    Some(r) when r = List.hd_exn c -> t xs (List.tl_exn c)
 	  | _ -> Float.neg_infinity
       in t expression_test_cases correct_values)
   in { name = n; task_type = treal @> treal; 
@@ -101,7 +101,7 @@ let regress () =
 	  interval)) interval)) interval) in
    for i = 1 to 8 do
     Printf.printf "\n \n \n Iteration %i \n" i;
-    g := expectation_maximization_iteration ("log/sin_"^string_of_int i) 1.5 1.0 10000 tasks (!g)
+    g := expectation_maximization_iteration ("log/sin_"^string_of_int i) 1.5 1.0 100000 tasks (!g)
   done;
   let decoder =
     reduce_symbolically (polynomial_library) !g 100000 0 tasks in
