@@ -102,10 +102,10 @@ let regress () =
 	  interval)) interval)) interval) in
    for i = 1 to 8 do
     Printf.printf "\n \n \n Iteration %i \n" i;
-    g := expectation_maximization_iteration ("log/sin_"^string_of_int i) 1.5 1.0 100000 tasks (!g)
+    g := expectation_maximization_iteration ("log/sin_"^string_of_int i) 1.5 1.0 1000000 tasks (!g)
   done;
   let decoder =
-    reduce_symbolically (polynomial_library) !g 100000 0 tasks in
+    reduce_symbolically (polynomial_library) !g 1000000 0 tasks in
   Printf.printf "Decoder: %s\n" (string_of_expression decoder)
 ;;
 
