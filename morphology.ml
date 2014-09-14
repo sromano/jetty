@@ -278,7 +278,7 @@ let pluralize =
   remove_lambda "?"
 
 
-let morphology () = 
+let plural_morphology () = 
   let lambda = 3.0 in
   let alpha = 7.0 in
   let frontier_size = 500000 in
@@ -298,7 +298,27 @@ let morphology () =
 ;;
 
 
-(* morphology ();; *)
+(* plural_morphology ();; *)
+let superlative_morphology () = 
+  let lambda = 3.0 in
+  let alpha = 7.0 in
+  let frontier_size = 100000 in
+  let g = ref @@ make_flat_library phonetic_terminals in 
+  let tasks = 
+    List.map2_exn top_superlative comparable_adjectives make_word_task
+  in
+  for i = 1 to 10 do
+    Printf.printf "\n \n \n Iteration %i \n" i;
+    g := expectation_maximization_iteration ("log/superlative_"^string_of_int i)
+      lambda alpha frontier_size tasks (!g)
+  done;
+  let decoder =
+    reduce_symbolically (make_flat_library @@ phonetic_terminals) !g frontier_size frontier_size tasks in
+  Printf.printf "Decoder: %s\n" (string_of_expression decoder)
+;;
+
+superlative_morphology ();;
+
 
 let sanity_likelihood () = 
   Printf.printf "%s\n" (string_of_expression pluralize);
@@ -320,5 +340,5 @@ make_flat_library (phonetic_terminals @
     Printf.printf "%s\t%s\t%f\n" t.name (string_of_expression e) l)
 ;;
 
-sanity_likelihood ();;
+(* sanity_likelihood ();; *)
 

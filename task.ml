@@ -31,7 +31,7 @@ let modify_grammar grammar t =
 
 let score_programs dagger frontiers tasks = 
   let start_time = time() in
-  let scores = List.map tasks (fun task -> 
+  let scores = parallel_map tasks ~f:(fun task -> 
       let ll = match task.score with
       | Seed(_) -> raise (Failure "score_programs: task has seed")
       | LogLikelihood(ll) -> ll in
