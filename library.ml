@@ -421,4 +421,4 @@ let debug_type () =
   Printf.printf "can see be used: %B\n" (can_unify requested_type (terminal_type c_C));
   
 ;;
-debug_type ();;
+(* debug_type ();; *)
