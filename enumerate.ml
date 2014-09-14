@@ -40,11 +40,13 @@ let enumerate_bounded dagger (log_application,distribution) rt bound =
                   ~f:(fun acc2 (x,(arg_l,arg_type)) -> 
                       try
                         let my_type = application_type fun_type arg_type in
-                        if reduce_symmetries && List.mem type_blacklist my_type
+                        let reified_type = instantiated_type my_type requestedType in
+                        if (reduce_symmetries && List.mem type_blacklist my_type) || not (is_some reified_type)
                         then acc2 
-                        else add_node acc2
+                        else 
+                          add_node acc2
                             (insert_expression_node dagger (ExpressionBranch(f,x)))
-                            (arg_l+.fun_l+.log_application) my_type
+                            (arg_l+.fun_l+.log_application) (get_some reified_type)
                       with _ -> acc2 (* type error *))
               with _ -> acc (* type error *))
     in
@@ -57,8 +59,12 @@ let enumerate_bounded dagger (log_application,distribution) rt bound =
       let availableTerminals = List.map availableTerminals (fun (t,(e,l)) -> (t,(e,l-.z))) in
       let availableTerminals = List.filter availableTerminals (fun (t,(_,l)) -> 0.0-.log_terminal-.l < budget) in
       List.fold_left availableTerminals ~init:applications ~f:(fun acc (t,(e,l)) -> 
+          let t = safe_get_some "enumeration: availableTerminals" (instantiated_type t requestedType) in
           add_node acc e (log_terminal+.l) t)
-  in Int.Map.map (enumerate true rt bound) fst
+  in Int.Map.map (enumerate true rt bound) fst |> Int.Map.mapi ~f:(fun ~key:i ~data:l -> 
+    (if not (can_unify rt (infer_type @@ extract_expression dagger i))
+     then Printf.printf "failure: %s\n" (string_of_expression @@ extract_expression dagger i));
+    l)
 
 
 (* iterative deepening version of enumerate_bounded *)

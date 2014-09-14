@@ -34,6 +34,14 @@ let terminal_thing = function
   | Terminal(_,_,t) -> t
   | _ -> raise (Failure "terminal_thing: not a terminal")
 
+let application_function = function
+  | Application(f,_) -> f
+  | _ -> raise (Failure "application_function: not an application")
+
+let application_argument = function
+  | Application(_,x) -> x
+  | _ -> raise (Failure "application_argument: not an application")
+
 let rec run_expression (e:expression) : 'a option = 
   match e with
   | Terminal(n,_,_) when n = "bottom" -> None
@@ -69,18 +77,18 @@ let lift_reversed_predicate p : unit ref = Obj.magic @@ ref (fun x -> Some(fun y
   | None -> None
   | Some(thing) -> if p thing then x else y)))
 
+let rec infer_context c r = 
+  match r with
+  | Terminal(_,t,_) -> instantiate_type c t
+  | Application(f,x) -> 
+    let (ft,c1) = infer_context c f in
+    let (xt,c2) = infer_context c1 x in
+    let (rt,c3) = makeTID c2 in
+    let c4 = unify c3 ft (make_arrow xt rt) in
+    chaseType c4 rt
 
 let infer_type (e : expression) = 
-  let rec infer c r = 
-    match r with
-      Terminal(_,t,_) -> instantiate_type c t
-    | Application(f,x) -> 
-	let (ft,c1) = infer c f in
-	let (xt,c2) = infer c1 x in
-	let (rt,c3) = makeTID c2 in
-	let c4 = unify c3 ft (make_arrow xt rt) in
-	chaseType c4 rt
-  in fst (infer (1,TypeMap.empty) e)
+  fst (infer_context (1,TypeMap.empty) e)
 
 
 let rec string_of_expression e = 

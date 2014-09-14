@@ -162,6 +162,14 @@ let rec next_type_variable t =
   | TCon(_,[]) -> 0
   | TCon(_,is) -> List.fold_left ~f:max ~init:0 (List.map is next_type_variable)
 
+(* tries to instantiate a universally quantified type with a given request *)
+let instantiated_type universal_type requested_type = 
+  try
+    let (universal_type,c) = instantiate_type empty_context universal_type in
+    let (requested_type,c) = instantiate_type c requested_type in
+    let c = unify c universal_type requested_type in
+    Some(canonical_type (fst (chaseType c universal_type)))
+  with _ -> None
 
 let application_type f x = 
   let (f,c1) = instantiate_type empty_context f in

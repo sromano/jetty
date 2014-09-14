@@ -47,6 +47,7 @@ let make_regression_task polynomial_coefficients sin_coefficients cos_coefficien
       let c = List.fold_left c ~f:(+.) ~init:0. in
       p +. s +. c) in
   let scoring_function = (fun (e : expression) -> 
+(*       Printf.printf "%s : %s\t%B\n" (string_of_expression e) (string_of_type @@ infer_type e) (can_unify (treal @> treal) (infer_type e)); flush stdout; *)
       let rec t y c = 
         match y with
 	  [] -> 0.0

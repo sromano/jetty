@@ -399,3 +399,26 @@ let test_library () =
 
 
 (* test_library ();; *)
+
+
+
+let debug_type () = 
+  let problems = ["(C C)";"((C C) S)";"(C ((C C) S))";
+                  "((C ((C C) S)) I)";"(((C ((C C) S)) I) C)";] 
+                 |> List.map ~f:expression_of_string in
+  List.iter problems ~f:(fun e -> 
+      Printf.printf "%s : \t%s\n" (string_of_expression e) 
+        (string_of_type @@ infer_type e));
+  let left_type = expression_of_string "((C ((C C) S)) I)" |> infer_type in
+  let requested_type = argument_request (treal @> treal) left_type in
+  Printf.printf "request for C: %s\n" (string_of_type requested_type);
+  Printf.printf "can see be used: %B\n" (can_unify requested_type (terminal_type c_C));
+  let (left_type,c) = infer_context (1,TypeMap.empty) (expression_of_string "((C ((C C) S)) I)") in
+  let (rt,c2) = makeTID c in
+  let c3 = unify c2 left_type (make_arrow rt (make_arrow treal treal)) in
+  let (requested_type,c4) = chaseType c3 rt in
+  Printf.printf "request for C: %s\n" (string_of_type requested_type);
+  Printf.printf "can see be used: %B\n" (can_unify requested_type (terminal_type c_C));
+  
+;;
+debug_type ();;
