@@ -28,6 +28,7 @@ let make_polynomial_task a b c =
 
 
 let poly () = 
+  let frontier_size = Int.of_string (Sys.argv.(1)) in
   let g = ref (polynomial_library) in
   let interval = 5--9 in
   let tasks = 
@@ -36,8 +37,8 @@ let poly () =
            interval)) interval) in
   for i = 1 to 8 do
     Printf.printf "\n \n \n Iteration %i \n" i;
-    g := lower_bound_refinement_iteration ("log/polynomial_"^string_of_int i)
-        1.5 1.0 20000 tasks (!g)
+    g := expectation_maximization_iteration ("log/polynomial_"^string_of_int i)
+        1.5 1.0 frontier_size tasks (!g)
   done;
   (*  g := load_library "log/iter_1_grammar" ;
       let decoder =

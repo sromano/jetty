@@ -299,6 +299,7 @@ let plural_morphology () =
 
 
 (* plural_morphology ();; *)
+
 let superlative_morphology () = 
   let lambda = 3.0 in
   let alpha = 7.0 in
@@ -317,7 +318,28 @@ let superlative_morphology () =
   Printf.printf "Decoder: %s\n" (string_of_expression decoder)
 ;;
 
-superlative_morphology ();;
+(* superlative_morphology ();; *)
+
+
+let comparative_morphology () = 
+  let lambda = 3.0 in
+  let alpha = 7.0 in
+  let frontier_size = 100000 in
+  let g = ref @@ make_flat_library phonetic_terminals in 
+  let tasks = 
+    List.map2_exn top_comparative comparable_adjectives make_word_task
+  in
+  for i = 1 to 10 do
+    Printf.printf "\n \n \n Iteration %i \n" i;
+    g := expectation_maximization_iteration ("log/comparative_"^string_of_int i)
+      lambda alpha frontier_size tasks (!g)
+  done;
+  let decoder =
+    reduce_symbolically (make_flat_library @@ phonetic_terminals) !g frontier_size frontier_size tasks in
+  Printf.printf "Decoder: %s\n" (string_of_expression decoder)
+;;
+
+comparative_morphology ();;
 
 
 let sanity_likelihood () = 
