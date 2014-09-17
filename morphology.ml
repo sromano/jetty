@@ -283,7 +283,7 @@ let morphology_learner stem transform =
   let g0 = make_flat_library phonetic_terminals in
   let g = ref g0 in 
   let tasks = 
-    List.map2_exn top_plural top_singular make_word_task
+    List.map2_exn transform stem make_word_task
   in
   for i = 1 to 10 do
     Printf.printf "\n \n \n Iteration %i \n" i;
