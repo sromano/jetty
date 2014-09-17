@@ -78,7 +78,7 @@ let make_r2r n f =
        score = LogLikelihood(scoring_function); proposal = None; }
 
 let higher_order () =
-  let frontier_size = 10000 in
+  let frontier_size = Int.of_string (Sys.argv.(2)) in
   let fs = [(sin,"sin");(cos,"cos");((fun x -> x*.x),"square")] in
   let tasks = List.concat @@ List.map (0--9) ~f:(fun a ->
       let a = Float.of_int a in
@@ -87,27 +87,41 @@ let higher_order () =
   let g = ref fourier_library in
   for i = 1 to 8 do
     Printf.printf "\n \n \n Iteration %i \n" i;
-    g := lower_bound_refinement_iteration ("log/regress_"^string_of_int i) 1.5 1.0 frontier_size tasks (!g)
+    g := expectation_maximization_iteration ("log/regress_"^string_of_int i) 1.5 1.0 frontier_size tasks (!g)
   done;
+  let decoder =
+    reduce_symbolically fourier_library !g frontier_size frontier_size tasks in
+  Printf.printf "Decoder: %s\n" (string_of_expression decoder)
 ;;
 
 
 let regress () = 
   let g = ref fourier_library in
+  let frontier_size = Int.of_string (Sys.argv.(2)) in
+  let process_task a b c = 
+    match Sys.argv.(1) with
+    | "sin" -> make_regression_task [] [a;b;c] []
+    | "cos" -> make_regression_task [] [] [a;b;c]
+    | "quadratic" -> make_regression_task [a;b;c] [] [] 
+    | _ -> raise (Failure "process_task")
+  in
   let interval = 0--9 in
   let tasks = 
     List.concat (List.map ~f:(fun a ->
       List.concat (List.map ~f:(fun b ->
-	(List.map ~f:(fun c -> make_regression_task [] [a;b;c] [])
+	(List.map ~f:(fun c -> process_task a b c)
 	  interval)) interval)) interval) in
    for i = 1 to 8 do
     Printf.printf "\n \n \n Iteration %i \n" i;
-    g := expectation_maximization_iteration ("log/sin_"^string_of_int i) 1.5 1.0 1000000 tasks (!g)
+    g := expectation_maximization_iteration ("log/regress_"^string_of_int i) 1.5 1.0 frontier_size tasks (!g)
   done;
   let decoder =
-    reduce_symbolically (polynomial_library) !g 1000000 0 tasks in
+    reduce_symbolically fourier_library !g frontier_size frontier_size tasks in
   Printf.printf "Decoder: %s\n" (string_of_expression decoder)
 ;;
 
-
-regress ();;
+let () = 
+  match Sys.argv.(1) with
+  | "hi" -> higher_order ()
+  | _ -> regress ()
+;;

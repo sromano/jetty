@@ -30,7 +30,7 @@ let make_polynomial_task a b c =
 let poly () = 
   let frontier_size = Int.of_string (Sys.argv.(1)) in
   let g = ref (polynomial_library) in
-  let interval = 5--9 in
+  let interval = 0--9 in
   let tasks = 
     List.concat (List.map ~f:(fun b ->
 	(List.map ~f:(fun c -> make_polynomial_task 0 b c)
