@@ -263,6 +263,15 @@ let substitute_wildcard original w new_W =
 let rec bottomless = function
   | Application(f,x) -> bottomless f && bottomless x
   | Terminal(n,_,_) -> not (n = "bottom")
+(* 
+let rec all_antiunifications dagger i j = function
+  | 0 -> 
+    if i == j then Int.Set.singleton j else Int.Set.empty
+  | 1 -> 
+    if i == j 
+    then Int.Set.singleton j else Int.Set.empty
+
+ *)        
 
 let rec antiunify_expressions dagger i j = 
   if i = j 
