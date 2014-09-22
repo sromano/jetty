@@ -201,3 +201,13 @@ let parallel_map l ~f =
     in 
     flush stdout;
     Array.to_list output_array |> List.map ~f:(safe_get_some "parallel_map")
+
+
+let string_proper_prefix p s = 
+  let rec loop n = 
+    (n >= String.length p) ||
+    (p.[n] = s.[n] && loop (n+1))
+  in 
+  String.length p < String.length s && loop 0
+
+
