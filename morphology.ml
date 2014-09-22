@@ -471,11 +471,11 @@ let make_word_task word stem =
   let word_parts = String.split word ' ' in
   let stem_parts = String.split stem ' ' in
   let e = make_phonetic word in
-  let extras = (make_phonetic stem,0.) ::
-               if string_proper_prefix stem word 
-               then [(make_phonetic @@ String.concat ~sep:" " @@ 
-                      List.drop word_parts @@ List.length stem_parts, 0.)]
-               else [] 
+  let extras = 
+    if string_proper_prefix stem word 
+    then [(make_phonetic stem,0.);(make_phonetic @@ String.concat ~sep:" " @@ 
+                                   List.drop word_parts @@ List.length stem_parts, 0.)]
+    else [(make_phonetic word,0.)] 
   in
   let correct_phones : phone list = safe_get_some "make_work_task: None" @@ run_expression e in
   let prop = (fun e w -> w) in
