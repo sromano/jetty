@@ -518,6 +518,7 @@ let () =
   | "superlative" -> morphology_learner comparable_adjectives top_superlative
   | "gerund" -> morphology_learner top_verbs top_gerunds
   | "past" -> morphology_learner top_verbs top_past
+  | "case" -> morphology_learner top_verbs top_case
   | _ -> raise (Failure "morphology")
 ;;
 
