@@ -491,6 +491,11 @@ let pluralize =
   expression_of_string "((@ ?) (((is-voiced ((cons /z/) null)) ((cons /s/) null)) (last-one ?)))" |> 
   remove_lambda "?"
 
+let pasteurize = 
+  expression_of_string "((@ ?) (((is-voiced ((cons /d/) null)) ((cons /t/) null)) (last-one ?)))" |> 
+  remove_lambda "?"
+
+
 let morphology_learner stem transform = 
   let name = Sys.argv.(1) in
   let lambda = Float.of_string Sys.argv.(3) in
@@ -506,12 +511,13 @@ let morphology_learner stem transform =
     g := expectation_maximization_iteration ("log/"^name^"_"^string_of_int i)
       lambda alpha frontier_size tasks (!g)
   done;
-  let decoder =
+  Printf.printf "Skipping decoder...\n"
+(*   let decoder =
     reduce_symbolically g0 !g frontier_size frontier_size tasks in
   Printf.printf "Decoder: %s\n" (string_of_expression decoder)
-;;
+ *);;
   
-let () = 
+let choose_learner () = 
   match Sys.argv.(1) with
   | "plural" -> morphology_learner top_singular top_plural
   | "comparative" -> morphology_learner comparable_adjectives top_comparative
@@ -522,6 +528,7 @@ let () =
   | _ -> raise (Failure "morphology")
 ;;
 
+choose_learner ();;
 
 
 
@@ -530,26 +537,31 @@ let () =
 
 
 
-(* 
+
 let sanity_likelihood () = 
   Printf.printf "%s\n" (string_of_expression pluralize);
+  let g = (load_library "/home/kevin/morphology_plural_100000_2.0_2.0/plural_10_grammar") in
+  Printf.printf "%f\n" @@ safe_get_some "mythology likelihood" @@ likelihood_option g (t1 @> TCon("list",[make_ground "phone"])) pluralize;
+  Printf.printf "%s\n" (string_of_expression pasteurize);
+  let g = (load_library "/home/kevin/morphology_past_100000_2.0_2.0/past_10_grammar") in
+  Printf.printf "%f\n" @@ safe_get_some "mythology likelihood" @@ likelihood_option g (t1 @> TCon("list",[make_ground "phone"])) pasteurize;;
+
+(* 
   let tasks = 
     List.map2_exn top_plural top_singular make_word_task @ 
     List.map2_exn top_case top_verbs make_word_task
   in
   List.iter tasks ~f:(fun t -> 
-    let g = t |> modify_grammar (* (make_flat_library phonetic_terminals) *) (load_library "log/plural_2_grammar")
-(* 
-make_flat_library (phonetic_terminals @ 
+      let g = t |> modify_grammar g
+              make_flat_library (phonetic_terminals @ 
 			       (get_some t.proposal |>
 			       snd |> List.map ~f:fst) @ 
                               [expression_of_string "((cons /s/) null)";
-                              expression_of_string "((cons /z/) null)"])  *) in
+                              expression_of_string "((cons /z/) null)"])  in
     let stem = t.proposal |> get_some |> snd |> List.hd_exn |> fst in
     let e = Application(pluralize,stem) in
     let l = safe_get_some "mythology likelihood" @@ likelihood_option g t.task_type e in
     Printf.printf "%s\t%s\t%f\n" t.name (string_of_expression e) l)
 ;;
-
-sanity_likelihood ();; *)
-
+ *)
+(* sanity_likelihood ();; *)
