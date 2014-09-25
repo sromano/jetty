@@ -8,7 +8,7 @@ open Utils
 open Library
 open Ec
 open Symbolic_dimensionality_reduction
-
+open Noisy_reduction
 
 let make_regression_task polynomial_coefficients sin_coefficients cos_coefficients = 
   let polynomial_string = String.concat ~sep:" + " @@ 
@@ -93,7 +93,7 @@ let higher_order () =
     g := expectation_maximization_iteration ("log/"^name^"_"^string_of_int i) lambda alpha frontier_size tasks (!g)
   done;
   let decoder =
-    reduce_symbolically fourier_library !g frontier_size frontier_size tasks in
+    noisy_reduce_symbolically fourier_library !g frontier_size tasks in
   Printf.printf "Decoder: %s\n" (string_of_expression decoder)
 ;;
 
@@ -122,7 +122,7 @@ let regress () =
     g := expectation_maximization_iteration ("log/"^name^"_"^string_of_int i) lambda alpha frontier_size tasks (!g)
   done;
   let decoder =
-    reduce_symbolically fourier_library !g frontier_size frontier_size tasks in
+    noisy_reduce_symbolically fourier_library !g frontier_size tasks in
   Printf.printf "Decoder: %s\n" (string_of_expression decoder)
 ;;
 
