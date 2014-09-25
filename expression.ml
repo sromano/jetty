@@ -134,6 +134,11 @@ let rec extract_expression g i =
       Application(extract_expression g f, extract_expression g x)
   | None -> raise (Failure "extract_expression")
 
+let extract_expression_node g i = 
+  let (i2n,_,_) = g in
+  match Hashtbl.find i2n i with
+  | Some(n) -> n
+  | _ -> raise (Failure "extract_expression_node")
 
 let expression_graph_size (_,_,s) = !s
 

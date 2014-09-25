@@ -8,6 +8,7 @@ open Expression
 open Type
 open Utils
 open Symbolic_dimensionality_reduction
+open Noisy_reduction
 open Em
 
 
@@ -511,11 +512,10 @@ let morphology_learner stem transform =
     g := expectation_maximization_iteration ("log/"^name^"_"^string_of_int i)
       lambda alpha frontier_size tasks (!g)
   done;
-  Printf.printf "Skipping decoder...\n"
-(*   let decoder =
-    reduce_symbolically g0 !g frontier_size frontier_size tasks in
+  let decoder =
+    noisy_reduce_symbolically g0 !g frontier_size tasks in
   Printf.printf "Decoder: %s\n" (string_of_expression decoder)
- *);;
+;;
   
 let choose_learner () = 
   match Sys.argv.(1) with
