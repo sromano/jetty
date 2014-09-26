@@ -532,6 +532,16 @@ let morphology_Grapher stem transform g ds =
 let super_decoders = [
   "I";
   "((C @) ((cons /ue/) ((cons /s/) ((cons /t/) null))))"];;
+let plural_decoders = [
+  "I";
+  "((C @) ((cons /s/) null))";
+  "((C @) ((cons /z/) null))";
+  string_of_expression pluralize;];;
+let past_decoders = [
+  "I";
+  "((C @) ((cons /t/) null))";
+  "((C @) ((cons /d/) null))";
+  string_of_expression pasteurize;];;
 
 
 let choose_learner () = 
@@ -543,6 +553,8 @@ let choose_learner () =
   | "past" -> morphology_learner top_verbs top_past
   | "case" -> morphology_learner top_verbs top_case
   | "plotSuper" -> morphology_Grapher comparable_adjectives top_superlative "grammars/super" super_decoders
+  | "plotPast" -> morphology_Grapher top_verbs top_past "grammars/past" past_decoders
+  | "plotPlural" -> morphology_Grapher top_singular top_plural "grammars/plural" plural_decoders
   | _ -> raise (Failure "morphology")
 ;;
 
