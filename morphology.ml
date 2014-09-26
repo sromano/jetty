@@ -516,7 +516,24 @@ let morphology_learner stem transform =
     noisy_reduce_symbolically g0 !g frontier_size tasks in
   Printf.printf "Decoder: %s\n" (string_of_expression decoder)
 ;;
-  
+
+let morphology_Grapher stem transform g ds = 
+  let ds = List.map ds ~f:expression_of_string in
+  let g = load_library g in
+  let tasks = List.map2_exn transform stem make_word_task in
+  List.iter ds ~f:(fun d -> 
+    Printf.printf "Decoder: %s\n" (string_of_expression d);
+    let ps = noisy_decoder_posterior (make_flat_library phonetic_terminals) g 100000 tasks d 1000 in
+    List.iter ps ~f:(fun p -> Printf.printf "%f, " p);
+    Printf.printf "\n\n")
+;;
+
+
+let super_decoders = [
+  "I";
+  "((C @) ((cons /ue/) ((cons /s/) ((cons /t/) null))))"];;
+
+
 let choose_learner () = 
   match Sys.argv.(1) with
   | "plural" -> morphology_learner top_singular top_plural
@@ -525,6 +542,7 @@ let choose_learner () =
   | "gerund" -> morphology_learner top_verbs top_gerunds
   | "past" -> morphology_learner top_verbs top_past
   | "case" -> morphology_learner top_verbs top_case
+  | "plotSuper" -> morphology_Grapher comparable_adjectives top_superlative "grammars/super" super_decoders
   | _ -> raise (Failure "morphology")
 ;;
 

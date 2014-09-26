@@ -76,3 +76,46 @@ let noisy_reduce_symbolically g0 g frontier_size tasks =
   let d = time_it "Found noisy decoder"
       (fun () -> best_noisy_decoder dagger g0 request task_solutions) in
   extract_expression dagger d
+
+
+(* enumerates frontiers that only use the given decoder *)
+let decoder_frontiers g frontier_size tasks decoder = 
+  let requested_type = (List.hd_exn tasks).task_type in
+  let decoder_type = instantiated_type (infer_type decoder) (TID(next_type_variable requested_type)
+                                                             @> requested_type) in
+  match decoder_type with
+  | Some(TCon(k,[argument_type;_])) when k = "->" -> 
+    let tasks = List.map tasks ~f:(fun t -> 
+        { name = t.name;
+          task_type = argument_type;
+          score = LogLikelihood(fun x -> task_likelihood t (Application(decoder,x)));
+          proposal = t.proposal; }) in
+    let (dagger, fs) = make_frontiers frontier_size frontier_size g tasks in
+    let d = insert_expression dagger decoder in
+    (dagger, List.map fs (List.map ~f:(fun (f,_) -> 
+         insert_expression_node dagger (ExpressionBranch(d,f)))))
+  | _ -> (make_expression_graph 10, List.map tasks ~f:(fun _ -> []))
+
+
+(* When 1..(#tasks) are sampled randomly without replacement, *)
+(* what is the expected decoder posterior? *)
+let noisy_decoder_posterior g0 g frontier_size tasks decoder number_samples = 
+  let requested_type = (List.hd_exn tasks).task_type in
+  let (dagger, fs) = make_frontiers frontier_size frontier_size g tasks in
+  let task_solutions = List.map fs ~f:(fun f -> Int.Set.of_list (List.map ~f:fst f)) in
+  let (decoder_dagger, decoder_solutions) = decoder_frontiers g frontier_size tasks decoder in
+  let task_solutions = List.map2_exn task_solutions decoder_solutions ~f:(fun set -> 
+      List.fold_left ~init:set ~f:(fun s j -> 
+          Int.Set.add s @@ insert_expression dagger @@ extract_expression decoder_dagger j)) |> 
+                       List.map ~f:Int.Set.to_list in
+  let task_solutions = List.map task_solutions ~f:(fun ps -> 
+      (ps, List.map ps ~f:(fun p ->
+           likelihood_option g0 requested_type (extract_expression dagger p) |>
+           safe_get_some "noisy_decoder_posterior")
+           |> lse_list)) in
+  let prior = noisy_decoder_prior dagger g0 requested_type @@ 
+    insert_expression dagger decoder in
+  List.map (1 -- (List.length tasks)) ~f:(fun task_set_size ->
+    avg @@ List.map (1 -- number_samples) ~f:(fun _ -> 
+          let subset = random_subset task_solutions task_set_size in
+          noisy_decoder_likelihood dagger requested_type g0 (insert_expression dagger decoder) subset))

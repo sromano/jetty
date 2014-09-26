@@ -210,4 +210,19 @@ let string_proper_prefix p s =
   in 
   String.length p < String.length s && loop 0
 
+let rec remove_index i l = 
+  match (i,l) with
+  | (0,x::xs) -> (x,xs)
+  | (i,x::xs) -> let (j,ys) = remove_index (i-1) xs in
+    (j,x::ys)
+  | _ -> raise (Failure "remove_index")
 
+let rec random_subset l = function
+  | 0 -> l
+  | s -> 
+    let i = Random.int (List.length l) in
+    let (ith,r) = remove_index i l in
+    ith :: (random_subset r (s-1))
+
+let avg l = 
+  List.fold_left ~init:0.0 ~f:(+.) l /. (Float.of_int @@ List.length l)
