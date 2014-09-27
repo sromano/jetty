@@ -522,9 +522,7 @@ let morphology_Grapher stem transform g ds =
   let g = load_library g in
   let tasks = List.map2_exn transform stem make_word_task in
   List.iter ds ~f:(fun d -> 
-    Printf.printf "Decoder: %s\n" (string_of_expression d);
-    let ps = noisy_decoder_posterior (make_flat_library phonetic_terminals) g 100000 tasks d 1000 in
-    List.iter ps ~f:(fun p -> Printf.printf "%f, " p);
+    noisy_decoder_posterior (make_flat_library phonetic_terminals) g 100000 tasks d ;
     Printf.printf "\n\n")
 ;;
 
