@@ -499,19 +499,20 @@ let pasteurize =
 
 let morphology_learner stem transform = 
   let name = Sys.argv.(1) in
-  let lambda = Float.of_string Sys.argv.(3) in
-  let alpha = Float.of_string Sys.argv.(4) in
   let frontier_size = Int.of_string Sys.argv.(2) in
-  let g0 = make_flat_library phonetic_terminals in
-  let g = ref g0 in 
   let tasks = 
     List.map2_exn transform stem make_word_task
   in
-  for i = 1 to 10 do
-    Printf.printf "\n \n \n Iteration %i \n" i;
-    g := expectation_maximization_iteration ("log/"^name^"_"^string_of_int i)
-      lambda alpha frontier_size tasks (!g)
-  done;
+  let g0 = make_flat_library phonetic_terminals in
+  let g = ref g0 in 
+  if not (string_proper_prefix "grammars/" name) (* don't have a grammar provided for us, learn it *)
+  then let lambda = Float.of_string Sys.argv.(3) in
+    let alpha = Float.of_string Sys.argv.(4) in
+    for i = 1 to 10 do
+      Printf.printf "\n \n \n Iteration %i \n" i;
+      g := expectation_maximization_iteration ("log/"^name^"_"^string_of_int i)
+          lambda alpha frontier_size tasks (!g)
+    done;
   let decoder =
     noisy_reduce_symbolically g0 !g frontier_size tasks in
   Printf.printf "Decoder: %s\n" (string_of_expression decoder)
@@ -525,16 +526,6 @@ let morphology_Grapher stem transform g ds =
     noisy_decoder_posterior (make_flat_library phonetic_terminals) g 100000 tasks d ;
     Printf.printf "\n\n")
 ;;
-
-let morphology_reducer stem transform g = 
-  let g = load_library g in
-  let g0 = make_flat_library phonetic_terminals in
-  let tasks = List.map2_exn transform stem make_word_task in
-  let decoder =
-    noisy_reduce_symbolically g0 g 100000 tasks in
-  Printf.printf "Decoder: %s\n" (string_of_expression decoder)
-;;
-
 
 let super_decoders = [
   "I";
@@ -562,7 +553,6 @@ let choose_learner () =
   | "plotSuper" -> morphology_Grapher comparable_adjectives top_superlative "grammars/super" super_decoders
   | "plotPast" -> morphology_Grapher top_verbs top_past "grammars/past" past_decoders
   | "plotPlural" -> morphology_Grapher top_singular top_plural "grammars/plural" plural_decoders
-  | "reducePast" -> morphology_reducer top_verbs top_past "grammars/past"
   | _ -> raise (Failure "morphology")
 ;;
 
