@@ -488,9 +488,16 @@ let make_word_task word stem =
   { name = word; task_type = TCon("list",[make_ground "phone"]); 
     score = LogLikelihood(ll); proposal = Some(prop,extras); }
 
+let strident_transform = 
+  expression_of_string "((@ ?) (((is-strident ((cons /ue/) null)) null) (last-one ?)))" |> 
+  remove_lambda "?"
+
 let pluralize = 
   expression_of_string "((@ ?) (((is-voiced ((cons /z/) null)) ((cons /s/) null)) (last-one ?)))" |> 
   remove_lambda "?"
+
+let big_pluralize = 
+  Application(Application(c_B,pluralize),strident_transform)
 
 let pasteurize = 
   expression_of_string "((@ ?) (((is-voiced ((cons /d/) null)) ((cons /t/) null)) (last-one ?)))" |> 
@@ -553,6 +560,8 @@ let choose_learner () =
   | "plotSuper" -> morphology_Grapher comparable_adjectives top_superlative "grammars/super" super_decoders
   | "plotPast" -> morphology_Grapher top_verbs top_past "grammars/past" past_decoders
   | "plotPlural" -> morphology_Grapher top_singular top_plural "grammars/plural" plural_decoders
+  | "plotBigPlural" -> morphology_Grapher top_singular top_plural "grammars/plural" 
+                         [string_of_expression big_pluralize]
   | _ -> raise (Failure "morphology")
 ;;
 
