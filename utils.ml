@@ -197,7 +197,8 @@ let parallel_map l ~f =
     let input_array = Array.of_list l in
     let output_array = Array.create (Array.length input_array) None in
     let output_array = 
-      pmap ~processes:(!number_of_cores) (fun x -> Some(f x)) (Array.get input_array) output_array
+      pmap ~processes:(min (Array.length input_array) !number_of_cores)
+	(fun x -> Some(f x)) (Array.get input_array) output_array
     in 
     flush stdout;
     Array.to_list output_array |> List.map ~f:(safe_get_some "parallel_map")

@@ -77,7 +77,8 @@ let best_noisy_decoder dagger g request task_solutions =
   let minimum_uses = Int.of_float @@ minimum_M *. (Int.to_float @@ List.length task_solutions) in
   let candidate_decoders = Int.Set.to_list @@ Int.Set.filter candidate_decoders
       ~f:(fun d -> minimum_uses < List.count task_decoders ~f:(fun ds -> Int.Set.mem ds d)) in
-  Printf.printf "printed down to %i " (List.length candidate_decoders); print_newline ();
+  Printf.printf "paired down to %i " (List.length candidate_decoders); print_newline ();
+  List.iter candidate_decoders ~f:(fun d -> print_string @@ string_of_expression @@ extract_expression dagger d);
   (* pick the best decoder *)
   fst @@ List.hd_exn @@ List.sort ~cmp:(fun (_,p) (_,q) -> compare q p) @@ 
     parallel_map candidate_decoders ~f:(fun d -> 
