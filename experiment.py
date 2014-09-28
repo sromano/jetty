@@ -20,7 +20,7 @@ while p < len(sys.argv):
 # file name under which saved the logs
 name = build_target + parameters
 name = name.replace(" ","_")
-
+name = name.replace("/","_")
 
 script_lines = """cd ~/
 git clone https://github.com/ellisk42/jetty.git
@@ -31,7 +31,7 @@ make %s
 mv log %s
 tar -czf %s.tgz %s
 uuencode %s.tgz %s.tgz | mailx -s %s ellisk42@gmail.com
-#sudo shutdown -h now""" % (build_target, parameters, name, name, name, name, name, name)
+sudo shutdown -h now""" % (build_target, parameters, name, name, name, name, name, name)
 
 script = ""
 for l in script_lines.split("\n"):
