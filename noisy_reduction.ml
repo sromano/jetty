@@ -65,16 +65,19 @@ let noisy_decoder_prior dagger g request d =
 
 let best_noisy_decoder dagger g request task_solutions = 
   let solutions = compute_solution_evidence dagger g request task_solutions in
+  Printf.printf "computed evidence"; print_newline ();
   let task_decoders = List.map task_solutions 
       ~f:(List.fold_left ~init:Int.Set.empty ~f:(fun s p -> 
         match extract_expression_node dagger p with
         | ExpressionBranch(f,_) -> Int.Set.add s f
         | _ -> s)) in
   let candidate_decoders = Int.Set.union_list task_decoders in
+  Printf.printf "got %i decoders" (Int.Set.length candidate_decoders); print_newline ();
   (* collect those decoders that are used at least minimum_M times *)
   let minimum_uses = Int.of_float @@ minimum_M *. (Int.to_float @@ List.length task_solutions) in
   let candidate_decoders = Int.Set.to_list @@ Int.Set.filter candidate_decoders
       ~f:(fun d -> minimum_uses < List.count task_decoders ~f:(fun ds -> Int.Set.mem ds d)) in
+  Printf.printf "printed down to %i " (List.length candidate_decoders); print_newline ();
   (* pick the best decoder *)
   fst @@ List.hd_exn @@ List.sort ~cmp:(fun (_,p) (_,q) -> compare q p) @@ 
     parallel_map candidate_decoders ~f:(fun d -> 
