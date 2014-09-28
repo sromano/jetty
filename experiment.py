@@ -8,7 +8,7 @@ import sys
 import time
 import os
 
-machine_type = 'c3.8xlarge'
+machine_type = 'r3.4xlarge' #'c3.8xlarge'
 
 build_target = sys.argv[1]
 parameters = ""

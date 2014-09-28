@@ -78,22 +78,26 @@ let make_r2r n f =
        score = LogLikelihood(scoring_function); proposal = None; }
 
 let higher_order () =
-  let name = Sys.argv.(1) in
-  let lambda = Float.of_string Sys.argv.(3) in
-  let alpha = Float.of_string Sys.argv.(4) in
-  let frontier_size = Int.of_string (Sys.argv.(2)) in
+  let name = Sys.argv.(1) ^ Sys.argv.(2) in
+  let inner = Sys.argv.(2).[0] = 'i' in
+  let lambda = Float.of_string Sys.argv.(4) in
+  let alpha = Float.of_string Sys.argv.(5) in
+  let frontier_size = Int.of_string (Sys.argv.(3)) in
   let fs = [(sin,"sin");(cos,"cos");((fun x -> x*.x),"square")] in
   let tasks = List.concat @@ List.map (0--9) ~f:(fun a ->
       let a = Float.of_int a in
       List.map fs ~f:(fun (f,n) ->
-          make_r2r (n ^ "(" ^ Float.to_string a ^ "x)") (fun x -> f (a*.x)))) in
+          if inner then
+            make_r2r (n ^ "(" ^ Float.to_string a ^ "x)") (fun x -> f (a*.x))
+          else
+            make_r2r (Float.to_string a ^ n ^ "(x)") (fun x -> a*. f (x)))) in
   let g = ref fourier_library in
   for i = 1 to 8 do
     Printf.printf "\n \n \n Iteration %i \n" i;
     g := expectation_maximization_iteration ("log/"^name^"_"^string_of_int i) lambda alpha frontier_size tasks (!g)
   done;
   let decoder =
-    noisy_reduce_symbolically fourier_library !g frontier_size tasks in
+    noisy_reduce_symbolically ~arity:2 fourier_library !g frontier_size tasks in
   Printf.printf "Decoder: %s\n" (string_of_expression decoder)
 ;;
 
