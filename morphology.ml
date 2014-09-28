@@ -489,7 +489,7 @@ let make_word_task word stem =
     score = LogLikelihood(ll); proposal = Some(prop,extras); }
 
 let strident_transform = 
-  expression_of_string "((@ ?) (((is-strident ((cons /ue/) null)) null) (last-one ?)))" |> 
+  expression_of_string "((@ ?) (((strident ((cons /ue/) null)) null) (last-one ?)))" |> 
   remove_lambda "?"
 
 let pluralize = 
