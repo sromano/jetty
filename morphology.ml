@@ -526,6 +526,15 @@ let morphology_Grapher stem transform g ds =
     Printf.printf "\n\n")
 ;;
 
+let morphology_reducer stem transform g = 
+  let g = load_library g in
+  let g0 = make_flat_library phonetic_terminals in
+  let tasks = List.map2_exn transform stem make_word_task in
+  let decoder =
+    noisy_reduce_symbolically g0 g 100000 tasks in
+  Printf.printf "Decoder: %s\n" (string_of_expression decoder)
+;;
+
 
 let super_decoders = [
   "I";
@@ -553,6 +562,7 @@ let choose_learner () =
   | "plotSuper" -> morphology_Grapher comparable_adjectives top_superlative "grammars/super" super_decoders
   | "plotPast" -> morphology_Grapher top_verbs top_past "grammars/past" past_decoders
   | "plotPlural" -> morphology_Grapher top_singular top_plural "grammars/plural" plural_decoders
+  | "reducePast" -> morphology_reducer top_verbs top_past "grammars/past"
   | _ -> raise (Failure "morphology")
 ;;
 
