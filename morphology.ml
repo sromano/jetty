@@ -552,10 +552,13 @@ let past_decoders = [
 let choose_learner () = 
   match Sys.argv.(1) with
   | "plural" -> morphology_learner top_singular top_plural
+  | "grammars/plural" -> morphology_learner top_singular top_plural
   | "comparative" -> morphology_learner comparable_adjectives top_comparative
   | "superlative" -> morphology_learner comparable_adjectives top_superlative
+  | "grammars/super" -> morphology_learner comparable_adjectives top_superlative
   | "gerund" -> morphology_learner top_verbs top_gerunds
   | "past" -> morphology_learner top_verbs top_past
+  | "grammars/past" -> morphology_learner top_verbs top_past
   | "case" -> morphology_learner top_verbs top_case
   | "plotSuper" -> morphology_Grapher comparable_adjectives top_superlative "grammars/super" super_decoders
   | "plotPast" -> morphology_Grapher top_verbs top_past "grammars/past" past_decoders
@@ -567,38 +570,3 @@ let choose_learner () =
 
 choose_learner ();;
 
-
-
-
-
-
-
-
-
-let sanity_likelihood () = 
-  Printf.printf "%s\n" (string_of_expression pluralize);
-  let g = (load_library "/home/kevin/morphology_plural_100000_2.0_2.0/plural_10_grammar") in
-  Printf.printf "%f\n" @@ safe_get_some "mythology likelihood" @@ likelihood_option g (t1 @> TCon("list",[make_ground "phone"])) pluralize;
-  Printf.printf "%s\n" (string_of_expression pasteurize);
-  let g = (load_library "/home/kevin/morphology_past_100000_2.0_2.0/past_10_grammar") in
-  Printf.printf "%f\n" @@ safe_get_some "mythology likelihood" @@ likelihood_option g (t1 @> TCon("list",[make_ground "phone"])) pasteurize;;
-
-(* 
-  let tasks = 
-    List.map2_exn top_plural top_singular make_word_task @ 
-    List.map2_exn top_case top_verbs make_word_task
-  in
-  List.iter tasks ~f:(fun t -> 
-      let g = t |> modify_grammar g
-              make_flat_library (phonetic_terminals @ 
-			       (get_some t.proposal |>
-			       snd |> List.map ~f:fst) @ 
-                              [expression_of_string "((cons /s/) null)";
-                              expression_of_string "((cons /z/) null)"])  in
-    let stem = t.proposal |> get_some |> snd |> List.hd_exn |> fst in
-    let e = Application(pluralize,stem) in
-    let l = safe_get_some "mythology likelihood" @@ likelihood_option g t.task_type e in
-    Printf.printf "%s\t%s\t%f\n" t.name (string_of_expression e) l)
-;;
- *)
-(* sanity_likelihood ();; *)
