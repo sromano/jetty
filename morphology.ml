@@ -519,7 +519,8 @@ let morphology_learner stem transform =
       Printf.printf "\n \n \n Iteration %i \n" i;
       g := expectation_maximization_iteration ("log/"^name^"_"^string_of_int i)
           lambda alpha frontier_size tasks (!g)
-    done;
+    done
+  else g := load_library name;
   let decoder =
     noisy_reduce_symbolically g0 !g frontier_size tasks in
   Printf.printf "Decoder: %s\n" (string_of_expression decoder)
