@@ -18,13 +18,13 @@ let enumerate_bounded dagger (log_application,distribution) rt bound =
   let type_blacklist = TID(0) :: ([c_S;c_B;c_C;c_K;c_F;c_I] |> List.map ~f:terminal_type) in
   let identity_ID = insert_expression dagger c_I in
   let rec enumerate can_identify requestedType budget = 
-    let add_node acc e l c = 
+    let add_node acc e l it gt = 
       try
-        let (other_l,other_context) = Int.Map.find_exn acc e in
+        let (other_l,oit,ogt) = Int.Map.find_exn acc e in
         if l > other_l
-        then Int.Map.add acc e (l,c)
+        then Int.Map.add acc e (l,it,gt)
         else acc
-      with Not_found -> Int.Map.add acc e (l,c)
+      with Not_found -> Int.Map.add acc e (l,it,gt)
     in
     let applications = 
       if budget < -.log_application
@@ -32,21 +32,24 @@ let enumerate_bounded dagger (log_application,distribution) rt bound =
       else let f_request = TID(next_type_variable requestedType) @> requestedType in
         let fs = enumerate false f_request (budget+.log_application) in
         List.fold_left (Int.Map.to_alist fs) ~init:Int.Map.empty
-          ~f:(fun acc (f,(fun_l,fun_type)) -> 
+          ~f:(fun acc (f,(fun_l,fun_type,fun_general_type)) -> 
               try
                 let x_request = argument_request requestedType fun_type in
                 let xs = enumerate true x_request (budget+.log_application+.fun_l) in
                 List.fold_left (Int.Map.to_alist xs) ~init:acc
-                  ~f:(fun acc2 (x,(arg_l,arg_type)) -> 
+                  ~f:(fun acc2 (x,(arg_l,arg_type,arg_general_type)) -> 
                       try
                         let my_type = application_type fun_type arg_type in
+                        let my_general_type = application_type fun_general_type arg_general_type in
                         let reified_type = instantiated_type my_type requestedType in
                         if (reduce_symmetries && List.mem type_blacklist my_type) || not (is_some reified_type)
+                           || (reduce_symmetries && List.mem type_blacklist my_general_type)
                         then acc2 
                         else 
                           add_node acc2
                             (insert_expression_node dagger (ExpressionBranch(f,x)))
                             (arg_l+.fun_l+.log_application) (get_some reified_type)
+                            my_general_type
                       with _ -> acc2 (* type error *))
               with _ -> acc (* type error *))
     in
@@ -59,12 +62,13 @@ let enumerate_bounded dagger (log_application,distribution) rt bound =
       let availableTerminals = List.map availableTerminals (fun (t,(e,l)) -> (t,(e,l-.z))) in
       let availableTerminals = List.filter availableTerminals (fun (t,(_,l)) -> 0.0-.log_terminal-.l < budget) in
       List.fold_left availableTerminals ~init:applications ~f:(fun acc (t,(e,l)) -> 
-          let t = safe_get_some "enumeration: availableTerminals" (instantiated_type t requestedType) in
-          add_node acc e (log_terminal+.l) t)
-  in Int.Map.map (enumerate true rt bound) fst |> Int.Map.mapi ~f:(fun ~key:i ~data:l -> 
-    (if not (can_unify rt (infer_type @@ extract_expression dagger i))
-     then Printf.printf "failure: %s\n" (string_of_expression @@ extract_expression dagger i));
-    l)
+          let it = safe_get_some "enumeration: availableTerminals" (instantiated_type t requestedType) in
+          add_node acc e (log_terminal+.l) it t)
+  in Int.Map.map (enumerate true rt bound) (fun (l,_,_) -> l) |>
+     Int.Map.mapi ~f:(fun ~key:i ~data:l -> 
+         (if not (can_unify rt (infer_type @@ extract_expression dagger i))
+          then Printf.printf "failure: %s\n" (string_of_expression @@ extract_expression dagger i));
+         l)
 
 
 (* iterative deepening version of enumerate_bounded *)
