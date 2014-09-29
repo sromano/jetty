@@ -9,6 +9,8 @@ open Library
 open Ec
 open Symbolic_dimensionality_reduction
 open Noisy_reduction
+open Type
+
 
 let make_regression_task polynomial_coefficients sin_coefficients cos_coefficients = 
   let polynomial_string = String.concat ~sep:" + " @@ 
@@ -135,3 +137,15 @@ let () =
   | "hi" -> higher_order ()
   | _ -> regress ()
 ;;
+
+let sanity_check g = 
+  let g = load_library g in
+  let t = t1 @> t2 @> treal @> treal in
+  let ds = ["((+ b) ((* a) x))"; "((B ((S *) I)) ((+ b) ((* a) x)))"] |> 
+  List.map ~f:(remove_lambda "x" % remove_lambda "a" % remove_lambda "b" % expression_of_string) in
+  List.iter ds ~f:(fun d -> 
+    Printf.printf "%s\n\t%f\n\t%f\n\n"
+    (string_of_expression d)
+    (get_some  @@ likelihood_option g t d)
+    (get_some  @@ likelihood_option g (treal @> treal) @@  Application(Application(d,expression_of_float 3.),
+                                                                  expression_of_float 5.)))
