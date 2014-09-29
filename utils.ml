@@ -118,6 +118,9 @@ let update_progress_bar bar new_progress =
 
 (* paralleled map *)
 let pmap ?processes:(processes=4) ?bsize:(bsize=0) f input output =
+  if processes = 0 then begin
+        Printf.printf "WARNING: processes = 0\n"; flush stdout
+  end ;
   let bsize = match bsize with
     | 0 -> Array.length output / processes
     | x -> x
@@ -192,7 +195,10 @@ let parallel_map l ~f =
     counted_CPUs := true
   end;
   if 1 = !number_of_cores || List.length l < 2
-  then List.map l ~f:f
+  then begin
+    Printf.printf "Skipping parallelism"; print_newline ();
+    List.map l ~f:f
+  end
   else
     let input_array = Array.of_list l in
     let output_array = Array.create (Array.length input_array) None in
