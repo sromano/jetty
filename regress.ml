@@ -73,7 +73,7 @@ let make_r2r n f =
         | (x::xs) -> 
 	  let q = Application(e,x) in
 	  match run_expression_for_interval 0.01 q with
-	    Some(r) when r = List.hd c -> t xs (List.tl_exn c)
+	    Some(r) when r = List.hd_exn c -> t xs (List.tl_exn c)
 	  | _ -> Float.neg_infinity
       in t expression_test_cases correct_values)
   in { name = n; task_type = treal @> treal; 
@@ -82,9 +82,9 @@ let make_r2r n f =
 let higher_order () =
   let name = Sys.argv.(1) ^ Sys.argv.(2) in
   let inner = Sys.argv.(2).[0] = 'i' in
+  let frontier_size = Int.of_string (Sys.argv.(3)) in
   let lambda = Float.of_string Sys.argv.(4) in
   let alpha = Float.of_string Sys.argv.(5) in
-  let frontier_size = Int.of_string (Sys.argv.(3)) in
   let fs = [(sin,"sin");(cos,"cos");((fun x -> x*.x),"square")] in
   let tasks = List.concat @@ List.map (0--9) ~f:(fun a ->
       let a = Float.of_int a in
@@ -94,7 +94,7 @@ let higher_order () =
           else
             make_r2r (Float.to_string a ^ n ^ "(x)") (fun x -> a*. f (x)))) in
   let g = ref fourier_library in
-  for i = 1 to 8 do
+  for i = 1 to 5 do
     Printf.printf "\n \n \n Iteration %i \n" i;
     g := expectation_maximization_iteration ("log/"^name^"_"^string_of_int i) lambda alpha frontier_size tasks (!g)
   done;
@@ -132,20 +132,24 @@ let regress () =
   Printf.printf "Decoder: %s\n" (string_of_expression decoder)
 ;;
 
+let sanity_check g = 
+  let g = load_library g in
+  let t = t1 @> t2 @> treal @> treal in
+  let ds = ["((+. ?b) ((*. ?a) ?x))"; "((B ((S *.) I)) ((+. ?b) ((*. ?a) ?x)))"] |> 
+           List.map ~f:(remove_lambda "?x" % remove_lambda "?a" % remove_lambda "?b" % expression_of_string) in
+  List.iter ds ~f:(fun d -> 
+      print_endline         (string_of_expression d);
+      Printf.printf "%s\n\t%f\n\t%f\n\n"
+        (string_of_expression d)
+        (get_some  @@ likelihood_option g t d)
+        (get_some  @@ likelihood_option g (treal @> treal) @@  Application(Application(d,expression_of_float 3.),
+                                                                  expression_of_float 5.)));;
+
+(* sanity_check "log/hio_3_grammar";; *)
+
 let () = 
   match Sys.argv.(1) with
   | "hi" -> higher_order ()
   | _ -> regress ()
 ;;
 
-let sanity_check g = 
-  let g = load_library g in
-  let t = t1 @> t2 @> treal @> treal in
-  let ds = ["((+ b) ((* a) x))"; "((B ((S *) I)) ((+ b) ((* a) x)))"] |> 
-  List.map ~f:(remove_lambda "x" % remove_lambda "a" % remove_lambda "b" % expression_of_string) in
-  List.iter ds ~f:(fun d -> 
-    Printf.printf "%s\n\t%f\n\t%f\n\n"
-    (string_of_expression d)
-    (get_some  @@ likelihood_option g t d)
-    (get_some  @@ likelihood_option g (treal @> treal) @@  Application(Application(d,expression_of_float 3.),
-                                                                  expression_of_float 5.)))
