@@ -51,20 +51,20 @@ let argument_likelihoods dagger arity grammar argument_types task_solutions d =
     if a = 0
     then if e = d then Some([]) else None
     else match extract_expression_node dagger e with
-    | ExpressionBranch(f,x) -> begin
-      match matches_decoder (a-1) f with
-      | Some(rest) -> Some(x::rest)
-      | _ -> None
-    end
-    | _ -> None in
+      | ExpressionBranch(f,x) -> begin
+          match matches_decoder (a-1) f with
+          | Some(rest) -> Some(x::rest)
+          | _ -> None
+        end
+      | _ -> None in
   task_solutions |> List.map ~f:(fun programs -> 
       List.fold_left programs ~init:Float.neg_infinity
         ~f:(fun l p -> 
             match matches_decoder arity p with
             | Some(arguments) -> 
-              lse l @@ lse_list @@ List.map2_exn arguments argument_types ~f:(fun a t -> 
-                likelihood_option grammar t (extract_expression dagger a) |> 
-                safe_get_some "noisy_decoder_likelihood")
+              lse l @@ List.fold2_exn arguments argument_types ~init:0. ~f:(fun acc a t -> 
+                  acc +. (likelihood_option grammar t (extract_expression dagger a) |> 
+                          safe_get_some "noisy_decoder_likelihood"))
             | _ -> l))
 
 (* actually a lower bound on the likelihood *)
