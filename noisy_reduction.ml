@@ -76,6 +76,10 @@ let noisy_decoder_likelihood dagger arity requested_type grammar d solutions =
     (* count the number of uses of the decoder *)
     let decoder_uses = List.count al ~f:is_valid in
     let m = (Int.to_float decoder_uses) /. (Int.to_float @@ List.length solutions) in
+    Printf.printf "%s\t%f\t%s\n" (string_of_expression @@ extract_expression dagger d)
+      m
+      (List.map argument_types ~f:string_of_type |> 
+       String.concat ~sep:"  ");
     let log_m = log m in
     let log_1m = log (1. -. m) in
     let task_likelihood (_,e) a = 

@@ -94,7 +94,7 @@ let higher_order () =
           else
             make_r2r (Float.to_string a ^ n ^ "(x)") (fun x -> a*. f (x)))) in
   let g = ref fourier_library in
-  for i = 1 to 5 do
+  for i = 1 to 1 do
     Printf.printf "\n \n \n Iteration %i \n" i;
     g := expectation_maximization_iteration ("log/"^name^"_"^string_of_int i) lambda alpha frontier_size tasks (!g)
   done;
