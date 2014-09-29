@@ -128,24 +128,25 @@ let regress () =
     g := expectation_maximization_iteration ("log/"^name^"_"^string_of_int i) lambda alpha frontier_size tasks (!g)
   done;
   let decoder =
-    noisy_reduce_symbolically fourier_library !g frontier_size tasks in
+    noisy_reduce_symbolically ~arity:2 fourier_library !g frontier_size tasks in
   Printf.printf "Decoder: %s\n" (string_of_expression decoder)
 ;;
 
 let sanity_check g = 
   let g = load_library g in
   let t = t1 @> t2 @> treal @> treal in
-  let ds = ["((+. ?b) ((*. ?a) ?x))"; "((B ((S *.) I)) ((+. ?b) ((*. ?a) ?x)))"] |> 
+  let ds = [(* "((+. ?b) ((*. ?a) ?x))"; "((B ((S *.) I)) ((+. ?b) ((*. ?a) ?x)))" *)
+  "((*. ?a) (?b ?x))"] |> 
            List.map ~f:(remove_lambda "?x" % remove_lambda "?a" % remove_lambda "?b" % expression_of_string) in
   List.iter ds ~f:(fun d -> 
       print_endline         (string_of_expression d);
       Printf.printf "%s\n\t%f\n\t%f\n\n"
         (string_of_expression d)
         (get_some  @@ likelihood_option g t d)
-        (get_some  @@ likelihood_option g (treal @> treal) @@  Application(Application(d,expression_of_float 3.),
+        (get_some  @@ likelihood_option g (treal @> treal) @@  Application(Application(d,c_sin ),
                                                                   expression_of_float 5.)));;
 
-(* sanity_check "log/hio_3_grammar";; *)
+(* sanity_check "grammars/hio";; *)
 
 let () = 
   match Sys.argv.(1) with

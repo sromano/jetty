@@ -122,7 +122,7 @@ let noisy_reduce_symbolically ?arity:(arity = 1) g0 g frontier_size tasks =
   let task_solutions = List.map fs (List.map ~f:fst) in
   let request = (List.hd_exn tasks).task_type in
   let (d,p) = time_it "Found noisy decoder"
-      (fun () -> best_noisy_decoder ~arity:1 dagger g0 request task_solutions) in
+      (fun () -> best_noisy_decoder ~arity:arity dagger g0 request task_solutions) in
   Printf.printf "Unormalized log posterior is %f\n" p;
   extract_expression dagger d
 
