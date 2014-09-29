@@ -191,7 +191,7 @@ let parallel_map l ~f =
     Printf.printf "Counted %i CPUs" !number_of_cores; print_newline ();
     counted_CPUs := true
   end;
-  if 1 = !number_of_cores
+  if 1 = !number_of_cores || List.length l < 2
   then List.map l ~f:f
   else
     let input_array = Array.of_list l in
