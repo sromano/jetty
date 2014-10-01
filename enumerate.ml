@@ -87,7 +87,7 @@ let enumerate_frontiers_for_tasks grammar frontier_size tasks
         Printf.printf "Enumerating for task \"%s\"" t.name; print_newline ();
         let special_grammar = modify_grammar grammar t in
         let l = task_likelihood t in
-        let prune d j = is_valid @@ l @@ extract_expression d j in
+        let prune d j = not @@ is_valid @@ l @@ extract_expression d j in
         let special_indices = enumerate_ID ~prune dagger special_grammar t.task_type frontier_size in
 (* no longer needed due to pruning
         let (special_indices,dagger) =
