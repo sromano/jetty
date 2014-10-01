@@ -10,80 +10,61 @@ open Task
 let reduce_symmetries = true;;
 let filter_enumerated = true;;
 
-
-let enumerate_bounded dagger (log_application,distribution) rt bound = 
+let do_not_prune _ (i : int) = false;;
+let enumerate_bounded ?prune:(prune = do_not_prune) (* testing of expressions as they are generated *)
+    dagger (log_application,distribution) rt bound = 
   let log_terminal = log (1.0-. exp log_application) in
   let terminals = List.map distribution (fun (e,(l,t)) ->
       (t,(insert_expression dagger e, l))) in
   let type_blacklist = TID(0) :: ([c_S;c_B;c_C;c_K;c_F;c_I] |> List.map ~f:terminal_type) in
   let identity_ID = insert_expression dagger c_I in
-  let rec enumerate can_identify requestedType budget = 
-    let add_node acc e l it gt = 
-      try
-        let (other_l,oit,ogt) = Int.Map.find_exn acc e in
-        if l > other_l
-        then Int.Map.add acc e (l,it,gt)
-        else acc
-      with Not_found -> Int.Map.add acc e (l,it,gt)
-    in
-    let applications = 
-      if budget < -.log_application
-      then Int.Map.empty
-      else let f_request = TID(next_type_variable requestedType) @> requestedType in
-        let fs = enumerate false f_request (budget+.log_application) in
-        List.fold_left (Int.Map.to_alist fs) ~init:Int.Map.empty
-          ~f:(fun acc (f,(fun_l,fun_type,fun_general_type)) -> 
-              try
-                let x_request = argument_request requestedType fun_type in
-                let xs = enumerate true x_request (budget+.log_application+.fun_l) in
-                List.fold_left (Int.Map.to_alist xs) ~init:acc
-                  ~f:(fun acc2 (x,(arg_l,arg_type,arg_general_type)) -> 
-                      try
-                        let my_type = application_type fun_type arg_type in
-                        let my_general_type = application_type fun_general_type arg_general_type in
-                        let reified_type = instantiated_type my_type requestedType in
-                        if (reduce_symmetries && List.mem type_blacklist my_type) || not (is_some reified_type)
-                           || (reduce_symmetries && List.mem type_blacklist my_general_type)
-                        then acc2 
-                        else 
-                          add_node acc2
-                            (insert_expression_node dagger (ExpressionBranch(f,x)))
-                            (arg_l+.fun_l+.log_application) (get_some reified_type)
-                            my_general_type
-                      with _ -> acc2 (* type error *))
-              with _ -> acc (* type error *))
-    in
+  let rec enumerate can_identify requestedType budget k = 
+    (* first do the terminals *)
     let availableTerminals = List.filter terminals (fun (t,(e,_)) -> 
         can_unify t requestedType && (not (reduce_symmetries) || can_identify || e <> identity_ID)) in
-    match availableTerminals with
-    | [] -> applications
-    | _ ->
-      let z = lse_list (List.map availableTerminals (fun (_,(_,l)) -> l)) in
-      let availableTerminals = List.map availableTerminals (fun (t,(e,l)) -> (t,(e,l-.z))) in
-      let availableTerminals = List.filter availableTerminals (fun (t,(_,l)) -> 0.0-.log_terminal-.l < budget) in
-      List.fold_left availableTerminals ~init:applications ~f:(fun acc (t,(e,l)) -> 
-          let it = safe_get_some "enumeration: availableTerminals" (instantiated_type t requestedType) in
-          add_node acc e (log_terminal+.l) it t)
-  in Int.Map.map (enumerate true rt bound) (fun (l,_,_) -> l) |>
-     Int.Map.mapi ~f:(fun ~key:i ~data:l -> 
-         (if not (can_unify rt (infer_type @@ extract_expression dagger i))
-          then Printf.printf "failure: %s\n" (string_of_expression @@ extract_expression dagger i));
-         l)
+    let z = lse_list (List.map availableTerminals (fun (_,(_,l)) -> l)) in
+    let availableTerminals = List.map availableTerminals (fun (t,(e,l)) -> (t,(e,l-.z))) in
+    let availableTerminals = List.filter availableTerminals (fun (t,(_,l)) -> 0.0-.log_terminal-.l < budget) in
+    List.iter availableTerminals ~f:(fun (t,(e,l)) -> 
+        let it = safe_get_some "enumeration: availableTerminals" (instantiated_type t requestedType) in
+        k e (log_terminal+.l) it t);
+    if budget > -.log_application then 
+    let f_request = TID(next_type_variable requestedType) @> requestedType in
+    enumerate false f_request (budget+.log_application) (fun f fun_l fun_type fun_general_type -> 
+        try
+          let x_request = argument_request requestedType fun_type in
+          enumerate true x_request (budget+.log_application+.fun_l) (fun x arg_l arg_type arg_general_type -> 
+              try
+                let my_type = application_type fun_type arg_type in
+                let my_general_type = application_type fun_general_type arg_general_type in
+                let reified_type = instantiated_type my_type requestedType in
+                if not ((reduce_symmetries && List.mem type_blacklist my_type) || not (is_some reified_type)
+                        || (reduce_symmetries && List.mem type_blacklist my_general_type))
+                then k (insert_expression_node dagger (ExpressionBranch(f,x)))
+                    (arg_l+.fun_l+.log_application) (get_some reified_type)
+                    my_general_type
+              with _ -> () (* type error *))
+        with _ -> () (* type error *))
+  in
+  let hits = Int.Table.create () in
+  enumerate true rt bound (fun i _ _ _ -> 
+      if not (prune dagger i) then
+        Hashtbl.replace hits ~key:i ~data:true
+      else ());
+  Hashtbl.keys hits ;;
 
 
 (* iterative deepening version of enumerate_bounded *)
-let enumerate_ID dagger library t frontier_size = 
+let enumerate_ID ?prune:(prune = do_not_prune) dagger library t frontier_size = 
   let rec iterate bound = 
-    let indices = enumerate_bounded dagger library t bound in
-    if !number_of_cores = 1 || Int.Map.length indices >= frontier_size then begin
-      Printf.printf "Type %s \t Bound %f \t  => %i / %i programs" (string_of_type t) bound (Int.Map.length indices) frontier_size;
+    let indices = enumerate_bounded ~prune dagger library t bound in
+    if !number_of_cores = 1 || List.length indices >= frontier_size then begin
+      Printf.printf "Type %s \t Bound %f \t  => %i / %i programs" (string_of_type t) bound (List.length indices) frontier_size;
       print_newline ()
     end;
-    if Int.Map.length indices < frontier_size
+    if List.length indices < frontier_size
     then iterate (bound+.0.5)
-    else 
-      Int.Map.to_alist indices |> List.sort 
-        ~cmp:(fun (_,p) (_,q) -> compare q p) (* |> Fn.flip List.take frontier_size*)
+    else indices
   in iterate (1.5 *. log (Float.of_int frontier_size))
 
 
@@ -105,16 +86,18 @@ let enumerate_frontiers_for_tasks grammar frontier_size tasks
         let dagger = make_expression_graph 10000 in
         Printf.printf "Enumerating for task \"%s\"" t.name; print_newline ();
         let special_grammar = modify_grammar grammar t in
-        let special_indices = enumerate_ID dagger special_grammar t.task_type frontier_size in
         let l = task_likelihood t in
+        let prune d j = is_valid @@ l @@ extract_expression d j in
+        let special_indices = enumerate_ID ~prune dagger special_grammar t.task_type frontier_size in
+(* no longer needed due to pruning
         let (special_indices,dagger) =
           if filter_enumerated 
           then let i = 
             List.filter special_indices ~f:(is_valid % l % extract_expression dagger % fst) in
             gc_expression_graph dagger i
-          else (special_indices,dagger) in
+          else (special_indices,dagger) in  *)
 	scrub_graph dagger;
-        (dagger, t.task_type, List.fold_left (List.map special_indices fst)
+        (dagger, t.task_type, List.fold_left special_indices
            ~f:Int.Set.add ~init:Int.Set.empty)) in
     List.map parallel_results ~f:(fun (d,t,i) ->
       dirty_graph d;
@@ -125,7 +108,7 @@ let enumerate_frontiers_for_tasks grammar frontier_size tasks
   let start_time = time() in
   let indices = List.zip_exn types @@ 
     List.map indices (fun iDs -> 
-        List.fold_left (List.map iDs fst) ~init:Int.Set.empty ~f:Int.Set.add) in
+        List.fold_left iDs ~init:Int.Set.empty ~f:Int.Set.add) in
   (* combines special indices with normal indices *)
   let indices = List.fold_left special_indices ~f:(fun i (ty,j) -> 
       i |> List.map ~f:(fun (ty2,j2) -> if ty = ty2
@@ -140,7 +123,7 @@ let enumerate_frontiers_for_tasks grammar frontier_size tasks
   (indices |> List.map ~f:(fun (t,s) -> (t,Int.Set.to_list s)), dagger)
 
 
-
+(* 
 let test_enumerate () = 
   let dagger = make_expression_graph 10000 in
   let indices = enumerate_bounded dagger polynomial_library (make_arrow tint tint) 11.49 in
@@ -155,3 +138,4 @@ let test_enumerate () =
       kansas  ))
 
 (* test_enumerate ();; *)
+ *)

@@ -103,6 +103,30 @@ let higher_order () =
   Printf.printf "Decoder: %s\n" (string_of_expression decoder)
 ;;
 
+let linear () =
+  let name = Sys.argv.(1) ^ Sys.argv.(2) in
+  let squared = Sys.argv.(2).[0] = 's' in
+  let frontier_size = Int.of_string (Sys.argv.(3)) in
+  let lambda = Float.of_string Sys.argv.(4) in
+  let alpha = Float.of_string Sys.argv.(5) in
+  let tasks = List.concat @@ List.map (0--9) ~f:(fun a ->
+      let a = Float.of_int a in
+      List.map (0--9) ~f:(fun b ->
+          let b = Float.of_int b in
+          if squared then
+            make_r2r ("(" ^ Float.to_string a ^ "x+"^Float.to_string b ^")^2") (fun x -> (a*.x+.b)*.(a*.x+.b))
+          else
+            make_r2r ("(" ^ Float.to_string a ^ "x+"^Float.to_string b ^")") (fun x -> (a*.x+.b)))) in
+  let g = ref fourier_library in
+  for i = 1 to 5 do
+    Printf.printf "\n \n \n Iteration %i \n" i;
+    g := expectation_maximization_iteration ("log/"^name^"_"^string_of_int i) lambda alpha frontier_size tasks (!g)
+  done;
+  let decoder =
+    noisy_reduce_symbolically ~arity:2 fourier_library !g frontier_size tasks in
+  Printf.printf "Decoder: %s\n" (string_of_expression decoder)
+;;
+
 
 let regress () = 
   let name = Sys.argv.(1) in
@@ -151,6 +175,7 @@ let sanity_check g =
 let () = 
   match Sys.argv.(1) with
   | "hi" -> higher_order ()
+  | "linear" -> linear ()
   | _ -> regress ()
 ;;
 
