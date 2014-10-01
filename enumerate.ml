@@ -13,6 +13,7 @@ let filter_enumerated = true;;
 let do_not_prune _ (i : int) = false;;
 let enumerate_bounded ?prune:(prune = do_not_prune) (* testing of expressions as they are generated *)
     dagger (log_application,distribution) rt bound = 
+  let number_pruned = ref 0 in
   let log_terminal = log (1.0-. exp log_application) in
   let terminals = List.map distribution (fun (e,(l,t)) ->
       (t,(insert_expression dagger e, l))) in
@@ -50,16 +51,17 @@ let enumerate_bounded ?prune:(prune = do_not_prune) (* testing of expressions as
   enumerate true rt bound (fun i _ _ _ -> 
       if not (prune dagger i) then
         Hashtbl.replace hits ~key:i ~data:true
-      else ());
-  Hashtbl.keys hits ;;
+      else incr number_pruned);
+  (Hashtbl.keys hits, !number_pruned)
 
 
 (* iterative deepening version of enumerate_bounded *)
 let enumerate_ID ?prune:(prune = do_not_prune) dagger library t frontier_size = 
   let rec iterate bound = 
-    let indices = enumerate_bounded ~prune dagger library t bound in
-    if !number_of_cores = 1 || List.length indices >= frontier_size then begin
-      Printf.printf "Type %s \t Bound %f \t  => %i / %i programs" (string_of_type t) bound (List.length indices) frontier_size;
+    let (indices, number_pruned) = enumerate_bounded ~prune dagger library t bound in
+    if !number_of_cores = 1 || List.length indices + number_pruned >= frontier_size then begin
+      Printf.printf "Type %s \t Bound %f \t  => %i (%i) / %i programs" (string_of_type t) bound 
+        (List.length indices) (List.length indices + number_pruned) frontier_size;
       print_newline ()
     end;
     if List.length indices < frontier_size
