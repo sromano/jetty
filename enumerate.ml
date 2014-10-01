@@ -10,19 +10,18 @@ open Task
 let reduce_symmetries = true;;
 let filter_enumerated = true;;
 
-let do_not_prune _ (i : int) = false;;
+let do_not_prune e = false;;
 let enumerate_bounded ?prune:(prune = do_not_prune) (* testing of expressions as they are generated *)
     dagger (log_application,distribution) rt bound = 
   let number_pruned = ref 0 in
   let log_terminal = log (1.0-. exp log_application) in
   let terminals = List.map distribution (fun (e,(l,t)) ->
-      (t,(insert_expression dagger e, l))) in
+      (t,(e, l))) in
   let type_blacklist = TID(0) :: ([c_S;c_B;c_C;c_K;c_F;c_I] |> List.map ~f:terminal_type) in
-  let identity_ID = insert_expression dagger c_I in
   let rec enumerate can_identify requestedType budget k = 
     (* first do the terminals *)
     let availableTerminals = List.filter terminals (fun (t,(e,_)) -> 
-        can_unify t requestedType && (not (reduce_symmetries) || can_identify || e <> identity_ID)) in
+        can_unify t requestedType && (not (reduce_symmetries) || can_identify || compare_expression c_I e <> 0)) in
     let z = lse_list (List.map availableTerminals (fun (_,(_,l)) -> l)) in
     let availableTerminals = List.map availableTerminals (fun (t,(e,l)) -> (t,(e,l-.z))) in
     let availableTerminals = List.filter availableTerminals (fun (t,(_,l)) -> 0.0-.log_terminal-.l < budget) in
@@ -41,7 +40,7 @@ let enumerate_bounded ?prune:(prune = do_not_prune) (* testing of expressions as
                 let reified_type = instantiated_type my_type requestedType in
                 if not ((reduce_symmetries && List.mem type_blacklist my_type) || not (is_some reified_type)
                         || (reduce_symmetries && List.mem type_blacklist my_general_type))
-                then k (insert_expression_node dagger (ExpressionBranch(f,x)))
+                then k (Application(f,x))
                     (arg_l+.fun_l+.log_application) (get_some reified_type)
                     my_general_type
               with _ -> () (* type error *))
@@ -49,8 +48,8 @@ let enumerate_bounded ?prune:(prune = do_not_prune) (* testing of expressions as
   in
   let hits = Int.Table.create () in
   enumerate true rt bound (fun i _ _ _ -> 
-      if not (prune dagger i) then
-        Hashtbl.replace hits ~key:i ~data:true
+      if not (prune i) then
+        Hashtbl.replace hits ~key:(insert_expression dagger i) ~data:true
       else incr number_pruned);
   (Hashtbl.keys hits, !number_pruned)
 
@@ -89,7 +88,7 @@ let enumerate_frontiers_for_tasks grammar frontier_size tasks
         Printf.printf "Enumerating for task \"%s\"" t.name; print_newline ();
         let special_grammar = modify_grammar grammar t in
         let l = task_likelihood t in
-        let prune d j = not @@ is_valid @@ l @@ extract_expression d j in
+        let prune j = not @@ is_valid @@ l j in
         let special_indices = enumerate_ID ~prune dagger special_grammar t.task_type frontier_size in
 (* no longer needed due to pruning
         let (special_indices,dagger) =
