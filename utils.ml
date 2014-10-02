@@ -233,3 +233,11 @@ let rec random_subset l = function
 
 let avg l = 
   List.fold_left ~init:0.0 ~f:(+.) l /. (Float.of_int @@ List.length l)
+
+let pi = 4.0 *. atan 1.0
+
+let normal s m =
+  let u, v = Random.float 1.0, Random.float 1.0
+  in let n = sqrt (-2.0 *. log u) *. cos (2.0 *. pi *. v)
+  in
+  s *. n +. m

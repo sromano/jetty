@@ -12,7 +12,29 @@ open Noisy_reduction
 open Type
 
 
-let make_regression_task polynomial_coefficients sin_coefficients cos_coefficients = 
+
+let make_r2r std n f =
+  let test_cases = List.map ((-5)--5) Float.of_int in
+  let expression_test_cases = List.map ~f:expression_of_float test_cases in
+  let correct_values = List.map test_cases ~f:(fun x ->
+      normal std 0. +. f x) in
+  let scoring_function = (fun (e : expression) -> 
+      let rec t y c = 
+        match y with
+	| [] -> 0.0
+        | (x::xs) -> 
+	  let q = Application(e,x) in
+	  match run_expression_for_interval 0.01 q with
+	  | Some(r)  -> 
+            let err = List.hd_exn c -. r in
+            -. err*.err/.(2.*.std*.std) +. t xs (List.tl_exn c)
+	  | _ -> Float.neg_infinity
+      in t expression_test_cases correct_values)
+  in { name = n; task_type = treal @> treal; 
+       score = LogLikelihood(scoring_function); proposal = None; }
+
+
+let make_regression_task std polynomial_coefficients sin_coefficients cos_coefficients = 
   let polynomial_string = String.concat ~sep:" + " @@ 
     List.mapi polynomial_coefficients (fun power c -> 
       match (power,c) with
@@ -36,9 +58,7 @@ let make_regression_task polynomial_coefficients sin_coefficients cos_coefficien
       | (_,1) -> "cos(" ^ string_of_int (w+1) ^ ")"
       | _ -> string_of_int c ^  "cos(" ^ string_of_int (w+1) ^ ")") in
   let n = String.concat ~sep:" + " [polynomial_string;sin_string;cos_string;] in
-  let test_cases = List.map (0--5) Float.of_int in
-  let expression_test_cases = List.map ~f:expression_of_float test_cases in
-  let correct_values = List.map test_cases (fun x -> 
+  let f x =
       let p = List.mapi polynomial_coefficients (fun power c -> Float.of_int c *. (x ** (Float.of_int power))) in
       let p = List.fold_left p ~f:(+.) ~init:0. in
       let s = List.mapi sin_coefficients (fun w c ->
@@ -47,37 +67,9 @@ let make_regression_task polynomial_coefficients sin_coefficients cos_coefficien
       let c = List.mapi cos_coefficients (fun w c ->
           Float.of_int c *. (cos (x *. (Float.of_int w +. 1.)))) in
       let c = List.fold_left c ~f:(+.) ~init:0. in
-      p +. s +. c) in
-  let scoring_function = (fun (e : expression) -> 
-(*       Printf.printf "%s : %s\t%B\n" (string_of_expression e) (string_of_type @@ infer_type e) (can_unify (treal @> treal) (infer_type e)); flush stdout; *)
-      let rec t y c = 
-        match y with
-	  [] -> 0.0
-        | (x::xs) -> 
-	  let q = Application(e,x) in
-	  match run_expression_for_interval 0.01 q with
-	    Some(r) when r = List.hd_exn c -> t xs (List.tl_exn c)
-	  | _ -> Float.neg_infinity
-      in t expression_test_cases correct_values)
-  in { name = n; task_type = treal @> treal; 
-       score = LogLikelihood(scoring_function); proposal = None; }
+      p +. s +. c in
+  make_r2r std n f
 
-let make_r2r n f =
-  let test_cases = List.map (0--5) Float.of_int in
-  let expression_test_cases = List.map ~f:expression_of_float test_cases in
-  let correct_values = List.map test_cases f in
-  let scoring_function = (fun (e : expression) -> 
-      let rec t y c = 
-        match y with
-	  [] -> 0.0
-        | (x::xs) -> 
-	  let q = Application(e,x) in
-	  match run_expression_for_interval 0.01 q with
-	    Some(r) when r = List.hd_exn c -> t xs (List.tl_exn c)
-	  | _ -> Float.neg_infinity
-      in t expression_test_cases correct_values)
-  in { name = n; task_type = treal @> treal; 
-       score = LogLikelihood(scoring_function); proposal = None; }
 
 let higher_order () =
   let name = Sys.argv.(1) ^ Sys.argv.(2) in
@@ -90,9 +82,9 @@ let higher_order () =
       let a = Float.of_int a in
       List.map fs ~f:(fun (f,n) ->
           if inner then
-            make_r2r (n ^ "(" ^ Float.to_string a ^ "x)") (fun x -> f (a*.x))
+            make_r2r 0.25 (n ^ "(" ^ Float.to_string a ^ "x)") (fun x -> f (a*.x))
           else
-            make_r2r (Float.to_string a ^ n ^ "(x)") (fun x -> a*. f (x)))) in
+            make_r2r 1. (Float.to_string a ^ n ^ "(x)") (fun x -> a*. f (x)))) in
   let g = ref fourier_library in
   for i = 1 to 1 do
     Printf.printf "\n \n \n Iteration %i \n" i;
@@ -114,9 +106,9 @@ let linear () =
       List.map (0--9) ~f:(fun b ->
           let b = Float.of_int b in
           if squared then
-            make_r2r ("(" ^ Float.to_string a ^ "x+"^Float.to_string b ^")^2") (fun x -> (a*.x+.b)*.(a*.x+.b))
+            make_r2r 2. ("(" ^ Float.to_string a ^ "x+"^Float.to_string b ^")^2") (fun x -> (a*.x+.b)*.(a*.x+.b))
           else
-            make_r2r ("(" ^ Float.to_string a ^ "x+"^Float.to_string b ^")") (fun x -> (a*.x+.b)))) in
+            make_r2r 1. ("(" ^ Float.to_string a ^ "x+"^Float.to_string b ^")") (fun x -> (a*.x+.b)))) in
   let g = ref fourier_library in
   for i = 1 to 5 do
     Printf.printf "\n \n \n Iteration %i \n" i;
@@ -136,9 +128,9 @@ let regress () =
   let frontier_size = Int.of_string (Sys.argv.(2)) in
   let process_task a b c = 
     match Sys.argv.(1) with
-    | "sin" -> make_regression_task [] [a;b;c] []
-    | "cos" -> make_regression_task [] [] [a;b;c]
-    | "quadratic" -> make_regression_task [a;b;c] [] [] 
+    | "sin" -> make_regression_task 0.5 [] [a;b;c] []
+    | "cos" -> make_regression_task 0.5 [] [] [a;b;c]
+    | "quadratic" -> make_regression_task 0.5 [a;b;c] [] [] 
     | _ -> raise (Failure "process_task")
   in
   let interval = 0--9 in
