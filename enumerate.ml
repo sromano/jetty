@@ -63,7 +63,7 @@ let enumerate_ID ?prune:(prune = do_not_prune) dagger library t frontier_size =
         (List.length indices) (List.length indices + number_pruned) frontier_size;
       print_newline ()
     end;
-    if List.length indices < frontier_size
+    if List.length indices + number_pruned < frontier_size
     then iterate (bound+.0.5)
     else indices
   in iterate (1.5 *. log (Float.of_int frontier_size))
