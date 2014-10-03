@@ -30,8 +30,8 @@ make %s
 ./test %s > log/output 2> log/errors
 mv log %s
 tar -czf %s.tgz %s
-uuencode %s.tgz %s.tgz | mailx -s %s ellisk42@gmail.com
-sudo shutdown -h now""" % (build_target, parameters, name, name, name, name, name, name)
+(uuencode %s.tgz %s.tgz ; cat %s/output) | mailx -s %s ellisk42@gmail.com
+sudo shutdown -h now""" % (build_target, parameters, name, name, name, name, name, name, name)
 
 script = ""
 for l in script_lines.split("\n"):

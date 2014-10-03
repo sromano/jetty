@@ -35,10 +35,11 @@ let score_programs dagger frontiers tasks =
       let ll = match task.score with
       | Seed(_) -> raise (Failure "score_programs: task has seed")
       | LogLikelihood(ll) -> ll in
-      List.filter ~f:(compose is_valid snd)
-        (List.map ~f:(fun i -> 
-             let e = extract_expression dagger i in
-             (i,ll e)) (List.Assoc.find_exn frontiers task.task_type))) in
+      List.filter_map (List.Assoc.find_exn frontiers task.task_type)
+        ~f:(fun i -> 
+            let e = extract_expression dagger i in
+            let l = ll e in
+            if is_valid l then Some((i,l)) else None)) in
   let end_time = time() in
   Printf.printf "Scored programs in %f seconds." (end_time-.start_time); print_newline ();
   scores
