@@ -140,3 +140,29 @@ let test_enumerate () =
 
 (* test_enumerate ();; *)
  *)
+
+
+(* computes likelihood of MAP parse *)
+let rec map_likelihood g request e = 
+  let (log_application,library) = g in
+  let log_terminal = log (1.0 -. exp log_application) in
+  (* get all of the different types we can choose from *)
+  let terminal_types =
+    List.map library ~f:(fun (_,(l,t)) -> (t,l)) in
+  let terminal_probability = 
+    let numerator = List.fold_left library ~init:Float.neg_infinity ~f:(fun a (j,(l,_)) -> 
+        if expression_equal e j then max a l else a) in
+    if is_invalid numerator
+    then Float.neg_infinity
+    else let z = lse_list (List.map ~f:snd (List.filter terminal_types ~f:(fun (t,_) -> 
+        can_unify t request))) in
+      numerator+.log_terminal-.z
+  in match e with
+  | Application(f,x) -> 
+    let left_request = TID(next_type_variable request) @> request in
+    let right_type = infer_type f in
+    let right_request = argument_request request right_type in
+    let application_probability = log_application+. map_likelihood g left_request f
+                                  +. map_likelihood g right_request x in
+    max terminal_probability application_probability
+  | _ -> terminal_probability

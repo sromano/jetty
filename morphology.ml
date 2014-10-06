@@ -10,7 +10,7 @@ open Utils
 open Symbolic_dimensionality_reduction
 open Noisy_reduction
 open Em
-
+open Enumerate
 
 (* most common adjective stems produced by thirty months old *)
 let top_adjectives = [
@@ -570,6 +570,7 @@ let choose_learner () =
 ;;
 
 choose_learner ();;
+
 (* 
 let () = 
   let g = load_library "grammars/past" in
@@ -577,7 +578,8 @@ let () =
   List.iter2_exn tasks top_singular ~f:(fun t s ->
     let g = modify_grammar g t in
     Printf.printf "%s \t%f\n" s
-      (get_some @@ likelihood_option g t.task_type (Application(pasteurize,
-                                                               make_phonetic s)))
-    );;
+      (map_likelihood g t.task_type (Application(pasteurize,
+                                                 make_phonetic s))
+      ));;
+
  *)
