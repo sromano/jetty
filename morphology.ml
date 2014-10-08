@@ -569,17 +569,17 @@ let choose_learner () =
   | _ -> raise (Failure "morphology")
 ;;
 
-choose_learner ();;
+(* choose_learner ();; *)
 
-(* 
+
 let () = 
   let g = load_library "grammars/past" in
-  let tasks = List.map2_exn top_plural top_singular make_word_task in
-  List.iter2_exn tasks top_singular ~f:(fun t s ->
+  let tasks = List.map2_exn top_verbs top_past make_word_task in
+  List.iter2_exn tasks top_verbs ~f:(fun t s ->
     let g = modify_grammar g t in
     Printf.printf "%s \t%f\n" s
       (map_likelihood g t.task_type (Application(pasteurize,
                                                  make_phonetic s))
       ));;
 
- *)
+ 

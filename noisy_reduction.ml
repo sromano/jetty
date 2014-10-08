@@ -59,10 +59,10 @@ let argument_likelihoods dagger arity grammar argument_types task_solutions d =
       | _ -> None in
   task_solutions |> List.map ~f:(fun programs -> 
       List.fold_left programs ~init:Float.neg_infinity
-        ~f:(fun l p -> 
+        ~f:(fun l (p,score) -> 
             match matches_decoder arity p with
             | Some(arguments) -> 
-              lse l @@ List.fold2_exn arguments argument_types ~init:0. ~f:(fun acc a t -> 
+              lse l @@ score +. List.fold2_exn arguments argument_types ~init:0. ~f:(fun acc a t -> 
                   acc +. (likelihood_option grammar t (extract_expression dagger a) |> 
                           safe_get_some "noisy_decoder_likelihood"))
             | _ -> l))
@@ -93,9 +93,10 @@ let noisy_decoder_likelihood dagger arity requested_type grammar d solutions =
 (* annotates solutions with the likelihood that any of the programs will be hit *)
 let compute_solution_evidence dagger grammar request task_solutions = 
   List.map task_solutions ~f:(fun ps -> 
-      (ps, List.map ps ~f:(fun p -> 
-           likelihood_option grammar request (extract_expression dagger p) |> 
-           safe_get_some "compute_solution_evidence") |> lse_list))
+      (ps, List.map ps ~f:(fun (p,l) -> 
+           let prior = likelihood_option grammar request (extract_expression dagger p) |> 
+                       safe_get_some "compute_solution_evidence" in
+           prior+.l) |> lse_list))
 
 let noisy_decoder_prior dagger arity g request d = 
   likelihood_option g (arity_pad arity request) (extract_expression dagger d)
@@ -105,7 +106,7 @@ let best_noisy_decoder ?arity:(arity = 1) dagger g request task_solutions =
   let solutions = compute_solution_evidence dagger g request task_solutions in
   Printf.printf "computed evidence"; print_newline ();
   let task_decoders = List.map task_solutions 
-      ~f:(List.fold_left ~init:Int.Set.empty ~f:(fun s p -> 
+      ~f:(List.fold_left ~init:Int.Set.empty ~f:(fun s (p,_) -> 
         match extract_potential_decoder dagger arity p with
         | Some(f) -> Int.Set.add s f
         | _ -> s)) in
@@ -126,8 +127,7 @@ let best_noisy_decoder ?arity:(arity = 1) dagger g request task_solutions =
     (d, noisy_decoder_prior dagger arity g request d +. noisy_decoder_likelihood dagger arity request g d solutions))  
 
 let noisy_reduce_symbolically ?arity:(arity = 1) g0 g frontier_size tasks = 
-  let (dagger, fs) = make_frontiers frontier_size frontier_size g tasks in
-  let task_solutions = List.map fs (List.map ~f:fst) in
+  let (dagger, task_solutions) = make_frontiers frontier_size frontier_size g tasks in
   let request = (List.hd_exn tasks).task_type in
   let (d,p) = time_it "Found noisy decoder"
       (fun () -> best_noisy_decoder ~arity:arity dagger g0 request task_solutions) in
@@ -155,6 +155,7 @@ let decoder_frontiers g frontier_size tasks decoder =
 (* When 1..(#tasks) are sampled randomly without replacement, *)
 (* what is the expected decoder posterior? *)
 (* Prints out enough information that we can put it into Matlab or something *)
+(* NB: Assumes that there is no noise model *)
 let noisy_decoder_posterior g0 g frontier_size tasks decoder = 
   let requested_type = (List.hd_exn tasks).task_type in
   let (dagger, fs) = make_frontiers frontier_size frontier_size g tasks in
@@ -164,6 +165,7 @@ let noisy_decoder_posterior g0 g frontier_size tasks decoder =
       List.fold_left ~init:set ~f:(fun s j -> 
           Int.Set.add s @@ insert_expression dagger @@ extract_expression decoder_dagger j)) |> 
                        List.map ~f:Int.Set.to_list in
+  let task_solutions = List.map task_solutions ~f:(List.map ~f:(fun p -> (p,0.0))) in
   let solutions = compute_solution_evidence dagger g0 requested_type task_solutions in
   let prior = noisy_decoder_prior dagger 1 g0 requested_type @@ 
     insert_expression dagger decoder in
