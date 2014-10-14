@@ -253,6 +253,16 @@ let fourier_library =
   make_flat_library @@ [c_S;c_B;c_C;c_I;c_plus_dot;c_times_dot;c_sin;c_cos;] @ c_reals;;
 
 
+let c_inner_product = Terminal("dot",
+                              (TCon("list",[treal])) @> 
+                              (TCon("list",[treal])) @> 
+                              treal,
+                              lift_binary @@ fun x y ->
+                              (try
+                                 List.fold2_exn ~init:0. ~f:(fun a b c -> a+.b*.c) x y
+                               with _ -> 0.0));;
+
+
 let list_type = if phonetic_list then make_ground "phone" else t1;;
 let c_null = Terminal("null",canonical_type (TCon("list",[list_type])),Obj.magic (ref []));;
 let c_cons = Terminal("cons",
@@ -275,6 +285,9 @@ let c_last_one = Terminal("last-one",
                           canonical_type @@ make_arrow (TCon("list",[list_type])) list_type,
                           lift_unary last_one);;
 
+let math_list_library = 
+    make_flat_library @@ [c_S;c_B;c_C;c_I;c_plus_dot;c_times_dot;c_sin;
+                          c_cos;c_null;c_cons;c_inner_product] @ c_reals;;
 
 let string_of_library (log_application,bindings) = 
   String.concat ~sep:"\n"
@@ -284,7 +297,7 @@ let string_of_library (log_application,bindings) =
 
 let all_terminals = ref (List.map ([c_K;c_S;c_B;c_C;c_I;c_bottom;
                           c_sin;c_cos;c_times_dot;c_plus_dot;c_plus;c_times;
-                          c_null;c_append;c_rcons;c_cons;c_append1;c_last_one]
+                          c_null;c_append;c_rcons;c_cons;c_append1;c_last_one;c_inner_product;]
                                    @ c_numbers @ c_reals)
                            (fun e -> (string_of_expression e,e)));;
 let register_terminal t = 

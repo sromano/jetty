@@ -569,9 +569,9 @@ let choose_learner () =
   | _ -> raise (Failure "morphology")
 ;;
 
-(* choose_learner ();; *)
+choose_learner ();;
 
-
+(* 
 let () = 
   let g = load_library "grammars/past" in
   let tasks = List.map2_exn top_verbs top_past make_word_task in
@@ -583,3 +583,4 @@ let () =
       ));;
 
  
+ *)

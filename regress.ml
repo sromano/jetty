@@ -164,10 +164,22 @@ let sanity_check g =
 
 (* sanity_check "grammars/hio";; *)
 
+(* let list_check () = 
+  let e = expression_of_string "((dot ((cons 1.) ((cons ?x) ((cons (sin ?x)) null)))) ?c)" |>
+          remove_lambda "?x" |> remove_lambda "?c" in
+  print_string @@ (string_of_expression e);
+  print_newline ();
+  print_string @@ string_of_type @@ infer_type e;
+  let t = (TCon("list",[treal])) @> treal @> treal in
+  Printf.printf "%f\n" (get_some @@ likelihood_option math_list_library t e);;
+
+list_check ();;
+ *)
 let () = 
   match Sys.argv.(1) with
   | "hi" -> higher_order ()
   | "linear" -> linear ()
   | _ -> regress ()
 ;;
+
 
