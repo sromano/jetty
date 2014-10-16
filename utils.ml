@@ -92,6 +92,11 @@ let (--) i j =
     if n < i then acc else aux (n-1) (n :: acc)
   in aux j []
 
+let float_interval (i : float) (s : float) (j : float) : float list = 
+  let rec aux n acc =
+    if n < i then acc else aux (n-.s) (n :: acc)
+  in aux j []
+
 let time () = Time.to_float @@ Time.now ()
 
 let time_it description callback = 

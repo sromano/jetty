@@ -12,9 +12,9 @@ open Noisy_reduction
 open Type
 
 
+let default_test_cases = List.map ((-5)--5) Float.of_int;;
 
-let make_r2r std n f =
-  let test_cases = List.map ((-5)--5) Float.of_int in
+let make_r2r ?test_cases:(test_cases=default_test_cases) std n f =
   let expression_test_cases = List.map ~f:expression_of_float test_cases in
   let correct_values = List.map test_cases ~f:(fun x ->
       normal std 0. +. f x) in
@@ -82,7 +82,7 @@ let higher_order () =
       let a = Float.of_int a in
       List.map fs ~f:(fun (f,n) ->
           if inner then
-            make_r2r 0.25 (n ^ "(" ^ Float.to_string a ^ "x)") (fun x -> f (a*.x))
+            make_r2r ~test_cases:((float_interval -1.0 0.2 -1.0)) 0.25 (n ^ "(" ^ Float.to_string a ^ "x)") (fun x -> f (a*.x))
           else
             make_r2r 1. (Float.to_string a ^ n ^ "(x)") (fun x -> a*. f (x)))) in
   let g = ref fourier_library in
