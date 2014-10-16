@@ -54,7 +54,7 @@ let rec expectation_maximization_compress
                   hits likelihoods)))
     | _ -> ()
   in 
-  let rewards = parallel_map (List.zip_exn tasks task_posteriors) ~f:(fun (t,posterior) -> 
+  let rewards = List.map (* parallel_map *) (List.zip_exn tasks task_posteriors) ~f:(fun (t,posterior) -> 
       let r = make_candidate_rewards () in
       List.iter posterior (fun (i,w) -> reward_expression r w t.task_type i);
       r) in
