@@ -78,11 +78,12 @@ let higher_order () =
   let lambda = Float.of_string Sys.argv.(4) in
   let alpha = Float.of_string Sys.argv.(5) in
   let fs = [(sin,"sin");(cos,"cos");((fun x -> x*.x),"square")] in
+  let inner_test_cases = float_interval (-1.0) 0.2 1.0 in
   let tasks = List.concat @@ List.map (0--9) ~f:(fun a ->
       let a = Float.of_int a in
       List.map fs ~f:(fun (f,n) ->
           if inner then
-            make_r2r ~test_cases:((float_interval -1.0 0.2 -1.0)) 0.25 (n ^ "(" ^ Float.to_string a ^ "x)") (fun x -> f (a*.x))
+            make_r2r 0.25 (n ^ "(" ^ Float.to_string a ^ "x)") (fun x -> f (a*.x)) ~test_cases:inner_test_cases
           else
             make_r2r 1. (Float.to_string a ^ n ^ "(x)") (fun x -> a*. f (x)))) in
   let g = ref fourier_library in
