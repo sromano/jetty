@@ -38,14 +38,14 @@ let top_adjectives = [
 
 (* have comparative/superlative form *)
 let comparable_adjectives = 
-  List.filter top_adjectives (* remove words without comparative form *)
-    ~f:(not % List.mem ["b r ow k ue n";"g uu d";"ue s l i p";"h ue r t";])
+  (List.filter top_adjectives (* remove words without comparative form *)
+     ~f:(not % List.mem ["b r ow k ue n";"g uu d";"ue s l i p";"h ue r t";])) @ ["g uu d"]
 
 let top_comparative =
-  List.map comparable_adjectives ~f:(fun w -> w ^ " ue r")
+  List.map comparable_adjectives ~f:(fun w -> w ^ " ue r") @ ["b E t ue r"]
 
 let top_superlative =
-  List.map comparable_adjectives ~f:(fun w -> w ^ " ue s t")
+  (List.map comparable_adjectives ~f:(fun w -> w ^ " ue s t")) @ ["b E s t"]
 
 (* most common verb stems produced by thirty months old *)
 let top_verbs = [
@@ -505,6 +505,9 @@ let pasteurize =
 
 
 let morphology_learner stem transform = 
+  (* Memory hack - limit to top 25 words *)
+  let stem = List.take 25 stem in
+  let transform = List.take 25 transform in
   let name = Sys.argv.(1) in
   let frontier_size = Int.of_string Sys.argv.(2) in
   let tasks = 
