@@ -506,8 +506,8 @@ let pasteurize =
 
 let morphology_learner stem transform = 
   (* Memory hack - limit to top 25 words *)
-  let stem = List.take 25 stem in
-  let transform = List.take 25 transform in
+  let stem = List.take stem 25 in
+  let transform = List.take transform 25 in
   let name = Sys.argv.(1) in
   let frontier_size = Int.of_string Sys.argv.(2) in
   let tasks = 
