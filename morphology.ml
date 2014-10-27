@@ -496,6 +496,11 @@ let pluralize =
   expression_of_string "((@ ?) (((is-voiced ((cons /z/) null)) ((cons /s/) null)) (last-one ?)))" |> 
   remove_lambda "?"
 
+let weird_pluralize = 
+  expression_of_string 
+"((((is-voiced ((C @) ((cons /z/) null))) ((C @) ((cons /s/) null))) (last-one ?)) ?)" |> 
+  remove_lambda "?"
+
 let big_pluralize = 
   Application(Application(c_B,pluralize),strident_transform)
 
@@ -576,14 +581,15 @@ choose_learner ();;
 
 (* 
 let () = 
-  let g = load_library "grammars/past" in
-  let tasks = List.map2_exn top_verbs top_past make_word_task in
-  List.iter2_exn tasks top_verbs ~f:(fun t s ->
+  let g = make_flat_library phonetic_terminals in (* load_library "grammars/plural" in *)
+  Printf.printf "%f\n\n" (map_likelihood g (TCon("list",[list_type]) @> TCon("list",[list_type])) big_pluralize);
+  let tasks = List.map2_exn top_plural top_singular make_word_task in
+  List.iter2_exn tasks top_singular ~f:(fun t s ->
     let g = modify_grammar g t in
     Printf.printf "%s \t%f\n" s
-      (map_likelihood g t.task_type (Application(pasteurize,
+      (map_likelihood g t.task_type (Application(big_pluralize,
                                                  make_phonetic s))
       ));;
 
- 
+
  *)
