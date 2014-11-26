@@ -77,6 +77,14 @@ let lift_reversed_predicate p : unit ref = Obj.magic @@ ref (fun x -> Some(fun y
   | None -> None
   | Some(thing) -> if p thing then x else y)))
 
+let lift_reversed_predicate_2 p : unit ref = Obj.magic @@ ref (fun x -> Some(fun y -> Some(function
+  | None -> None
+  | Some(x1) -> Some(function
+      | None -> None
+      | Some(x2) -> if p x1 x2 then x else y))))
+
+
+
 let rec infer_context c r = 
   match r with
   | Terminal(_,t,_) -> instantiate_type c t

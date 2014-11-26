@@ -11,6 +11,8 @@ open Symbolic_dimensionality_reduction
 open Noisy_reduction
 open Em
 open Enumerate
+open Lambda_calculus
+
 
 (* most common adjective stems produced by thirty months old *)
 let top_adjectives = [
@@ -488,6 +490,24 @@ let make_word_task word stem =
   { name = word; task_type = TCon("list",[make_ground "phone"]); 
     score = LogLikelihood(ll); proposal = Some(prop,extras); }
 
+let make_word_regress_task word stem = 
+  let e = make_phonetic word in
+  let stem_phones = make_phonetic stem in
+  let extras = 
+    if string_proper_prefix stem word 
+    then []
+    else [(make_phonetic word,0.)] 
+  in
+  let correct_phones : phone list = safe_get_some "make_work_task: None" @@ run_expression e in
+  let prop = (fun e w -> w) in
+  let ll e =
+    match run_expression (Application(e,stem_phones)) with
+    | Some(ps) when ps = correct_phones -> 0.0
+    | _ -> Float.neg_infinity
+  in
+  { name = word; task_type = TCon("list",[make_ground "phone"]) @> TCon("list",[make_ground "phone"]); 
+    score = LogLikelihood(ll); proposal = None; (* Some(prop,extras); *) }
+
 let strident_transform = 
   expression_of_string "((@ ?) (((strident ((cons /ue/) null)) null) (last-one ?)))" |> 
   remove_lambda "?"
@@ -508,6 +528,9 @@ let pasteurize =
   expression_of_string "((@ ?) (((is-voiced ((cons /d/) null)) ((cons /t/) null)) (last-one ?)))" |> 
   remove_lambda "?"
 
+let weird_pasteurize = 
+  expression_of_string "((((is-voiced ((C @) ((cons /d/) null))) ((C @) ((cons /t/) null))) (last-one ?)) ?)" |> 
+  remove_lambda "?"
 
 let morphology_learner stem transform = 
   (* Memory hack - limit to top 25 words *)
@@ -517,6 +540,28 @@ let morphology_learner stem transform =
   let frontier_size = Int.of_string Sys.argv.(2) in
   let tasks = 
     List.map2_exn transform stem make_word_task
+  in
+  let g0 = make_flat_library phonetic_terminals in
+  let g = ref g0 in 
+  if not (string_proper_prefix "grammars/" name) (* don't have a grammar provided for us, learn it *)
+  then let lambda = Float.of_string Sys.argv.(3) in
+    let alpha = Float.of_string Sys.argv.(4) in
+    for i = 1 to 10 do
+      Printf.printf "\n \n \n Iteration %i \n" i;
+      g := expectation_maximization_iteration ("log/"^name^"_"^string_of_int i)
+          lambda alpha frontier_size tasks (!g)
+    done
+  else g := load_library name;
+  let decoder =
+    noisy_reduce_symbolically g0 !g frontier_size tasks in
+  Printf.printf "Decoder: %s\n" (string_of_expression decoder)
+;;
+
+let morphology_regress stem transform = 
+  let name = Sys.argv.(1) in
+  let frontier_size = Int.of_string Sys.argv.(2) in
+  let tasks = 
+    List.map2_exn transform stem make_word_regress_task
   in
   let g0 = make_flat_library phonetic_terminals in
   let g = ref g0 in 
@@ -561,12 +606,14 @@ let past_decoders = [
 let choose_learner () = 
   match Sys.argv.(1) with
   | "plural" -> morphology_learner top_singular top_plural
+  | "regress_plural" -> morphology_regress top_singular top_plural
   | "grammars/plural" -> morphology_learner top_singular top_plural
   | "comparative" -> morphology_learner comparable_adjectives top_comparative
   | "superlative" -> morphology_learner comparable_adjectives top_superlative
   | "grammars/super" -> morphology_learner comparable_adjectives top_superlative
   | "gerund" -> morphology_learner top_verbs top_gerunds
   | "past" -> morphology_learner top_verbs top_past
+  | "regress_past" -> morphology_regress top_verbs top_past
   | "grammars/past" -> morphology_learner top_verbs top_past
   | "case" -> morphology_learner top_verbs top_case
   | "plotSuper" -> morphology_Grapher comparable_adjectives top_superlative "grammars/super" super_decoders
@@ -581,15 +628,33 @@ choose_learner ();;
 
 (* 
 let () = 
-  let g = make_flat_library phonetic_terminals in (* load_library "grammars/plural" in *)
-  Printf.printf "%f\n\n" (map_likelihood g (TCon("list",[list_type]) @> TCon("list",[list_type])) big_pluralize);
-  let tasks = List.map2_exn top_plural top_singular make_word_task in
-  List.iter2_exn tasks top_singular ~f:(fun t s ->
-    let g = modify_grammar g t in
-    Printf.printf "%s \t%f\n" s
-      (map_likelihood g t.task_type (Application(big_pluralize,
-                                                 make_phonetic s))
-      ));;
+  let g = load_library "log/regress_past_1_grammar" in
+  Printf.printf "past regress: %f\n\n" (map_likelihood g (TCon("list",[list_type]) @> TCon("list",[list_type])) weird_pasteurize);;
+ *)
 
 
+let harmonize = 
+  "((@ ?) ((((exists ((cons /E/) null)) ((cons /ue/) null)) front-vowel) ?))";;
+let reduplication = 
+  "((cons (car ?)) ((cons (car (cdr ?))) ?))";;
+let arabic = 
+  "((cons ?0) ((cons /a/) ((cons ?1) ((cons /i/) ((cons ?2) null)))))";;
+
+(* 
+let () = 
+  let terms = phonetic_terminals @ [c_exists;c_car;c_cdr;] in
+  let g = make_flat_library terms in 
+  let t = (TCon("list",[list_type]) @> TCon("list",[list_type])) in
+  List.iter [harmonize;reduplication] ~f:(fun e -> 
+      let cl = remove_lambda "?" (expression_of_string e) in
+      let db = indexed_of_string @@  "(% " ^ String.tr ~target:'?' ~replacement:'0' e ^ ")" in
+      
+      Printf.printf "%f vs %f\n" (map_likelihood g t cl) (indexed_likelihood (log 0.4, log 0.09, terms) t db);
+      flush stdout
+    );
+  let cl = expression_of_string arabic  |> remove_lambda "?2" |> remove_lambda "?1"|> remove_lambda "?0" in
+  let db = indexed_of_string @@  "(% (% (% " ^ String.filter arabic ~f:(fun c -> c <> '?') ^ ")))" in
+  let t = list_type @> list_type @> list_type @> TCon("list",[list_type]) in
+  Printf.printf "%f vs %f\n" (map_likelihood g t cl) (indexed_likelihood (log 0.4, log 0.09, terms) t db)
+;;
  *)

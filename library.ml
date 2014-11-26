@@ -284,6 +284,17 @@ let c_append = Terminal("@",
 let c_last_one = Terminal("last-one",
                           canonical_type @@ make_arrow (TCon("list",[list_type])) list_type,
                           lift_unary last_one);;
+let c_cdr = Terminal("cdr",
+                    canonical_type @@ make_arrow (TCon("list",[list_type])) (TCon("list",[list_type])),
+                    lift_unary List.tl_exn);;
+let c_car = Terminal("car",
+                    canonical_type @@ make_arrow (TCon("list",[list_type])) list_type,
+                    lift_unary List.hd_exn);;
+let c_exists = Terminal("exists",
+                        canonical_type @@ 
+                        t4 @> t4 @> (t2 @> t2 @> list_type @> t2) @> (TCon("list",[list_type])) @> t4,
+                        (* WARNING: p is handled incorrectly. Only good for type checking and likelihoods. *)
+                        lift_reversed_predicate_2 (fun p l -> List.exists ~f:p l));;
 
 let math_list_library = 
     make_flat_library @@ [c_S;c_B;c_C;c_I;c_plus_dot;c_times_dot;c_sin;
@@ -296,8 +307,8 @@ let string_of_library (log_application,bindings) =
           Printf.sprintf "\t %f \t %s : %s " w (string_of_expression e) (string_of_type t))));;
 
 let all_terminals = ref (List.map ([c_K;c_S;c_B;c_C;c_I;c_bottom;
-                          c_sin;c_cos;c_times_dot;c_plus_dot;c_plus;c_times;
-                          c_null;c_append;c_rcons;c_cons;c_append1;c_last_one;c_inner_product;]
+                          c_sin;c_cos;c_times_dot;c_plus_dot;c_plus;c_times;c_inner_product;
+                          c_null;c_append;c_rcons;c_cons;c_append1;c_last_one;c_exists;c_car;c_cdr;]
                                    @ c_numbers @ c_reals)
                            (fun e -> (string_of_expression e,e)));;
 let register_terminal t = 

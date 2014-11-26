@@ -2,6 +2,8 @@ c = corebuild
 
 morphology:
 	$(c) morphology.native; cp morphology.native test
+lambda:
+	$(c) lambda_calculus.native; cp lambda_calculus.native test
 polynomial:
 	$(c) polynomial.native; cp polynomial.native test
 regress:

@@ -106,6 +106,14 @@ let strident = function
   | Consonant(AlveolarPalatal,Fricative,_) -> true
   | _ -> false
 
+let front_vowel = function
+  | Vowel(V_i) -> true
+  | Vowel(V_I) -> true
+  | Vowel(V_E) -> true
+  | Vowel(V_ej) -> true
+  | Vowel(V_ae) -> true
+  | _ -> false
+
 let is_voiced = function
   | Consonant(_,_,Unvoiced) -> false
   | _ -> true
@@ -134,6 +142,10 @@ let l_strident = Terminal("strident", t1 @> t1 @> (make_ground "phone") @> t1,
                           lift_reversed_predicate strident
                          );;
 register_terminal l_strident;;
+let l_front_vowel = Terminal("front-vowel", t1 @> t1 @> (make_ground "phone") @> t1,
+                          lift_reversed_predicate front_vowel
+                         );;
+register_terminal l_front_vowel;;
 (* 
 register_primitive "strident" [phones;] (fun arguments -> 
     try
@@ -158,7 +170,7 @@ register_terminal l_is_voiced;;
 *)
 let phonetic_terminals = [c_S;c_B;c_C;c_I;(* c_K;c_F; *)
                          c_null;c_append;c_cons;c_last_one;
-                         (*l_transfer_voice;*)l_is_voiced;l_strident;]
+                         (*l_transfer_voice;*)l_is_voiced;l_strident;l_front_vowel]
                          @ phones;;
 register_terminals phonetic_terminals;;
 register_terminals [l_transfer_voice;];;
