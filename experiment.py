@@ -8,11 +8,11 @@ import sys
 import time
 import os
 
-machine_type = sys.argv[2] # 'c3.8xlarge' #'r3.4xlarge' r3.xlarge
+machine_type = sys.argv[1] # 'c3.8xlarge' #'r3.4xlarge' r3.xlarge
 
-build_target = sys.argv[1]
+build_target = sys.argv[2]
 parameters = ""
-p = 2
+p = 3
 while p < len(sys.argv):
     parameters = parameters+" "+sys.argv[p]
     p = p+1
@@ -32,6 +32,8 @@ mv log %s
 tar -czf %s.tgz %s
 (uuencode %s.tgz %s.tgz ; cat %s/output) | mailx -s %s ellisk42@gmail.com
 sudo shutdown -h now""" % (build_target, parameters, name, name, name, name, name, name, name)
+
+print script_lines
 
 script = ""
 for l in script_lines.split("\n"):
