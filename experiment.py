@@ -61,13 +61,14 @@ if True:
     print "Waiting for a minute..."
     time.sleep(60)
 
-# wrap the script so it will be executable
-script = script+"\nchmod +x ~/collect_data_and_die\necho \\\". /home/ubuntu/.opam/opam-init/init.sh > /dev/null 2> /dev/null || true\\\" > rapper\necho \\\"nohup ~/collect_data_and_die > /dev/null 2>&1 &\\\" >> rapper\nchmod +x rapper"
-
-print "Issuing command..."
-command = "ssh -o StrictHostKeyChecking=no -i ~/key.pem ubuntu@%s \"%s\"" % (h, script)
-os.system(command)
-
-print "Waiting for 5 seconds before launching wrapper..."
-time.sleep(5)
-os.system("ssh -o StrictHostKeyChecking=no -i ~/key.pem ubuntu@%s \"~/rapper\"" % (h))
+if False:
+    # wrap the script so it will be executable
+    script = script+"\nchmod +x ~/collect_data_and_die\necho \\\". /home/ubuntu/.opam/opam-init/init.sh > /dev/null 2> /dev/null || true\\\" > rapper\necho \\\"nohup ~/collect_data_and_die > /dev/null 2>&1 &\\\" >> rapper\nchmod +x rapper"
+    
+    print "Issuing command..."
+    command = "ssh -o StrictHostKeyChecking=no -i ~/key.pem ubuntu@%s \"%s\"" % (h, script)
+    os.system(command)
+    
+    print "Waiting for 5 seconds before launching wrapper..."
+    time.sleep(5)
+    os.system("ssh -o StrictHostKeyChecking=no -i ~/key.pem ubuntu@%s \"~/rapper\"" % (h))
