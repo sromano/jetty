@@ -534,8 +534,8 @@ let weird_pasteurize =
 
 let morphology_learner stem transform = 
   (* Memory hack - limit to top 25 words *)
-  let stem = List.take stem 25 in
-  let transform = List.take transform 25 in
+(*   let stem = List.take stem 25 in
+  let transform = List.take transform 25 in  *)
   let name = Sys.argv.(1) in
   let frontier_size = Int.of_string Sys.argv.(2) in
   let tasks = 
@@ -553,7 +553,7 @@ let morphology_learner stem transform =
     done
   else g := load_library name;
   let decoder =
-    noisy_reduce_symbolically g0 !g frontier_size tasks in
+    noisy_reduce_symbolically ~arity:0 g0 !g frontier_size tasks in
   Printf.printf "Decoder: %s\n" (string_of_expression decoder)
 ;;
 

@@ -128,6 +128,7 @@ let best_noisy_decoder ?arity:(arity = 1) dagger g request task_solutions =
 
 let noisy_reduce_symbolically ?arity:(arity = 1) g0 g frontier_size tasks = 
   let (dagger, task_solutions) = make_frontiers frontier_size frontier_size g tasks in
+  let task_solutions = List.filter task_solutions ~f:(fun ss -> List.length ss > 0) in
   let request = (List.hd_exn tasks).task_type in
   let (d,p) = time_it "Found noisy decoder"
       (fun () -> best_noisy_decoder ~arity:arity dagger g0 request task_solutions) in
