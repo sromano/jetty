@@ -614,6 +614,8 @@ let choose_learner () =
   | "gerund" -> morphology_learner top_verbs top_gerunds
   | "past" -> morphology_learner top_verbs top_past
   | "regress_past" -> morphology_regress top_verbs top_past
+  | "grammars/regress_past_9_grammar" -> morphology_learner top_verbs top_past
+  | "grammars/regress_past_1_grammar" -> morphology_learner top_verbs top_past
   | "grammars/past" -> morphology_learner top_verbs top_past
   | "case" -> morphology_learner top_verbs top_case
   | "plotSuper" -> morphology_Grapher comparable_adjectives top_superlative "grammars/super" super_decoders
