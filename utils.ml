@@ -1,5 +1,7 @@
 open Core.Std
 open Unix.Select_fds
+open Sys
+
 
 let compose f g = fun x -> f (g x);;
 let (%) = compose;;
@@ -246,3 +248,7 @@ let normal s m =
   in let n = sqrt (-2.0 *. log u) *. cos (2.0 *. pi *. v)
   in
   s *. n +. m
+
+let print_arguments () = 
+  Array.iter Sys.argv ~f:(fun a -> Printf.printf "%s " a);
+  print_newline ()

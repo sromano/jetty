@@ -604,6 +604,7 @@ let past_decoders = [
 
 
 let choose_learner () = 
+  print_arguments ();
   match Sys.argv.(1) with
   | "plural" -> morphology_learner top_singular top_plural
   | "regress_plural" -> morphology_regress top_singular top_plural
