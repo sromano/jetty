@@ -553,7 +553,7 @@ let morphology_learner stem transform =
     done
   else g := load_library name;
   let decoder =
-    noisy_reduce_symbolically ~arity:0 g0 !g frontier_size tasks in
+    noisy_reduce_symbolically g0 !g frontier_size tasks in
   Printf.printf "Decoder: %s\n" (string_of_expression decoder)
 ;;
 
@@ -575,7 +575,7 @@ let morphology_regress stem transform =
     done
   else g := load_library name;
   let decoder =
-    noisy_reduce_symbolically g0 !g frontier_size tasks in
+    noisy_reduce_symbolically ~arity:0 g0 !g frontier_size tasks in
   Printf.printf "Decoder: %s\n" (string_of_expression decoder)
 ;;
 
