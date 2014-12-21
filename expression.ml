@@ -55,6 +55,12 @@ let rec run_expression (e:expression) : 'a option =
 let run_expression_for_interval (time : float) (e : expression) : 'a option = 
   run_for_interval time (fun _ -> run_expression e)
 
+let lift_trinary k : unit ref = Obj.magic @@ ref (
+  fun x -> Some(fun y -> Some(fun z -> 
+      match (x,y,z) with
+      | (Some(a),Some(b),Some(c)) -> Some(k a b c)
+      | _ -> None)))
+
 
 let lift_binary k : unit ref = Obj.magic @@ ref (
   fun x -> Some(fun y -> 

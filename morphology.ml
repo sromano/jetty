@@ -559,16 +559,17 @@ let morphology_learner stem transform =
 
 let morphology_regress stem transform = 
   let name = Sys.argv.(1) in
-  let frontier_size = Int.of_string Sys.argv.(2) in
+  let basis = if 0 = String.compare Sys.argv.(2) "feature" then feature_terminals else phonetic_terminals in
+  let frontier_size = Int.of_string Sys.argv.(3) in
   let tasks = 
     List.map2_exn transform stem make_word_regress_task
   in
-  let g0 = make_flat_library phonetic_terminals in
+  let g0 = make_flat_library basis in
   let g = ref g0 in 
   if not (string_proper_prefix "grammars/" name) (* don't have a grammar provided for us, learn it *)
-  then let lambda = Float.of_string Sys.argv.(3) in
-    let alpha = Float.of_string Sys.argv.(4) in
-    for i = 1 to 10 do
+  then let lambda = Float.of_string Sys.argv.(4) in
+    let alpha = Float.of_string Sys.argv.(5) in
+    for i = 1 to 5 do
       Printf.printf "\n \n \n Iteration %i \n" i;
       g := expectation_maximization_iteration ("log/"^name^"_"^string_of_int i)
           lambda alpha frontier_size tasks (!g)

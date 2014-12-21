@@ -8,7 +8,12 @@ import sys
 import time
 import os
 
-machine_type = sys.argv[1] # 'c3.8xlarge' #'r3.4xlarge' r3.xlarge
+launch_machine = True
+if sys.argv.count("--no-launch") > 0:
+    launch_machine = False
+    sys.argv.remove("--no-launch")
+
+machine_type = sys.argv[1] # 'c3.8xlarge' #r3.4xlarge r3.xlarge
 
 build_target = sys.argv[2]
 parameters = ""
@@ -61,14 +66,16 @@ if True:
     print "Waiting for a minute..."
     time.sleep(60)
 
-if False:
-    # wrap the script so it will be executable
-    script = script+"\nchmod +x ~/collect_data_and_die\necho \\\". /home/ubuntu/.opam/opam-init/init.sh > /dev/null 2> /dev/null || true\\\" > rapper\necho \\\"nohup ~/collect_data_and_die > /dev/null 2>&1 &\\\" >> rapper\nchmod +x rapper"
-    
-    print "Issuing command..."
-    command = "ssh -o StrictHostKeyChecking=no -i ~/key.pem ubuntu@%s \"%s\"" % (h, script)
-    os.system(command)
-    
+
+# wrap the script so it will be executable
+script = script+"\nchmod +x ~/collect_data_and_die\necho \\\". /home/ubuntu/.opam/opam-init/init.sh > /dev/null 2> /dev/null || true\\\" > rapper\necho \\\"nohup ~/collect_data_and_die > /dev/null 2>&1 &\\\" >> rapper\nchmod +x rapper"
+print "Issuing command..."
+command = "ssh -o StrictHostKeyChecking=no -i ~/key.pem ubuntu@%s \"%s\"" % (h, script)
+os.system(command)
+if launch_machine:
     print "Waiting for 5 seconds before launching wrapper..."
     time.sleep(5)
     os.system("ssh -o StrictHostKeyChecking=no -i ~/key.pem ubuntu@%s \"~/rapper\"" % (h))
+else:
+    print "Skipping the launching of the wrapper."
+    print "ssh -i ~/key.pem ubuntu@%s" % (h)

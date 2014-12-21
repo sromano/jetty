@@ -5,7 +5,7 @@ open Type
 open Library
 open Partial_evaluation
 open Bottom_up
-
+open Enumerate
 
 (* consonants *)
 
@@ -33,7 +33,6 @@ type voice = Voiced | Unvoiced
 
 type consonant = place * manner * voice
 
-
 (* vowels *)
 type vowel = 
   | V_E | V_i | V_I | V_ej | V_ae | V_ue | V_v | V_aj 
@@ -49,6 +48,41 @@ let make_consonant (n : string) (f : consonant) : expression =
 
 let make_vowel (n : string) (v : vowel) : expression = 
   Terminal(make_phonetic n,make_ground "phone",Obj.magic @@ ref @@ Vowel(v))
+
+(* feature-based representation of phonemes *)
+let c_Bilabial = Terminal("Bilabial",make_ground "place",Obj.magic @@ ref Bilabial);;
+let c_LabialDental = Terminal("LabialDental",make_ground "place",Obj.magic @@ ref LabialDental);;
+let c_Interdental = Terminal("Interdental",make_ground "place",Obj.magic @@ ref Interdental);;
+let c_Alveolar = Terminal("Alveolar",make_ground "place",Obj.magic @@ ref Alveolar);;
+let c_AlveolarPalatal = Terminal("AlveolarPalatal",make_ground "place",Obj.magic @@ ref AlveolarPalatal);;
+let c_Palatal = Terminal("Palatal",make_ground "place",Obj.magic @@ ref Palatal);;
+let c_Velar = Terminal("Velar",make_ground "place",Obj.magic @@ ref Velar);;
+let c_Glottal = Terminal("Glottal",make_ground "place",Obj.magic @@ ref Glottal);;
+let c_Stop = Terminal("Stop",make_ground "manner",Obj.magic @@ ref Stop);;
+let c_Fricative = Terminal("Fricative",make_ground "manner",Obj.magic @@ ref Fricative);;
+let c_Nasal = Terminal("Nasal",make_ground "manner",Obj.magic @@ ref Nasal);;
+let c_Trill = Terminal("Trill",make_ground "manner",Obj.magic @@ ref Trill);;
+let c_Flap = Terminal("Flap",make_ground "manner",Obj.magic @@ ref Flap);;
+let c_Approximant = Terminal("Approximant",make_ground "manner",Obj.magic @@ ref Approximant);;
+let c_LateralApproximate = Terminal("LateralApproximate",make_ground "manner",Obj.magic @@ ref LateralApproximate);;
+let c_LateralFricative = Terminal("LateralFricative",make_ground "manner",Obj.magic @@ ref LateralFricative);;
+let c_Voiced = Terminal("Voiced",make_ground "voice",Obj.magic @@ ref Voiced);;
+let c_Unvoiced = Terminal("Unvoiced",make_ground "voice",Obj.magic @@ ref Unvoiced);;
+
+let phonetic_features = [c_Bilabial;c_LabialDental;c_Interdental;c_Alveolar;c_AlveolarPalatal;c_Palatal;
+                        c_Velar;c_Glottal;c_Stop;c_Fricative;c_Nasal;c_Trill;c_Flap;c_Approximant;
+                        c_LateralApproximate;c_LateralFricative;c_Voiced;c_Unvoiced;];;
+let c_consonant = Terminal("consonant",make_ground "place" @> make_ground "manner" @> make_ground "voice" @> 
+                                       make_ground "phone",
+                          lift_trinary @@ fun p m v ->
+                          Consonant(p,m,v));;
+let c_voice = Terminal("voice",make_ground "phone" @> make_ground "voice",
+                       Obj.magic @@ ref @@ fun p -> match p with
+  | None -> None
+  | Some(Consonant(_,_,v)) -> Some(v)
+  | Some(Vowel(_)) -> Some(Voiced));;
+register_terminals [c_consonant;c_voice];;
+
 
 (* library entries *)
 let c_p = make_consonant "p" (Bilabial,Stop,Unvoiced);;
@@ -168,11 +202,16 @@ register_terminal l_is_voiced;;
       | _ -> None
     with _ -> None)
 *)
+let feature_terminals = [c_S;c_B;c_C;c_I;(* c_K;c_F; *)
+                         c_null;c_append;c_rcons;c_cons;c_last_one;
+                         c_consonant;c_voice;l_strident;l_front_vowel]
+                         @ phonetic_features;;
 let phonetic_terminals = [c_S;c_B;c_C;c_I;(* c_K;c_F; *)
                          c_null;c_append;c_cons;c_last_one;
                          (*l_transfer_voice;*)l_is_voiced;l_strident;l_front_vowel]
                          @ phones;;
 register_terminals phonetic_terminals;;
+register_terminals phonetic_features;;
 register_terminals [l_transfer_voice;];;
 
 (* are 2 phonemes similar enough that we should consider using one to search for the other? *)
@@ -237,3 +276,18 @@ let test_backwards () =
 
 
 (*test_backwards ();;*)
+
+let test_features () = 
+  let learned = expression_of_string "((consonant Bilabial) Stop)" in
+  (* ((B ((B ((consonant Bilabial) Stop)) voice)) last-one) *)
+  let e = (expression_of_string @@ "((S (C rcons)) ((B ((B ((consonant Bilabial) Stop)) voice)) last-one))") in
+  Printf.printf "%s\n" (string_of_expression e);
+  let g = make_flat_library @@ learned :: feature_terminals in
+  let t = (TCon("list",[list_type]) @> TCon("list",[list_type])) in
+  Printf.printf "%f\n" @@ map_likelihood g t e;;
+
+(*  match run_expression e with
+  | Some(Consonant(Bilabial,Stop,Voiced)) -> Printf.printf "success\n";
+  | _ -> Printf.printf "nooo\n";; *)
+
+(* test_features ();; *)
