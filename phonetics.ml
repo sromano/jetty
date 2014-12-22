@@ -127,9 +127,11 @@ let v_cj = make_vowel "cj" V_cj;;
 let v_u = make_vowel "u" V_u;;
 let v_uu = make_vowel "uu" V_uu;;
 
-let phones = [c_s;c_z;c_t;c_d;c_r;c_n;c_m;c_k;c_g;c_w;c_l;c_p;c_b;c_f;c_v;c_th;c_Th;c_ut;c_q;c_h;
-              c_sh;c_zh;c_j;c_ng;c_uw;c_lo;
-              v_a;v_ej;v_E;v_ue;v_i;v_ae;v_ow;v_I;v_v;v_aj;v_aw;v_c;v_u;v_uu;];;
+let phone_consonants = [c_s;c_z;c_t;c_d;c_r;c_n;c_m;c_k;c_g;c_w;c_l;c_p;c_b;c_f;c_v;c_th;c_Th;c_ut;c_q;c_h;
+                        c_sh;c_zh;c_j;c_ng;c_uw;c_lo;];;
+let phone_vowels = [v_a;v_ej;v_E;v_ue;v_i;v_ae;v_ow;v_I;v_v;v_aj;v_aw;v_c;v_u;v_uu;];;
+let phones = phone_consonants @ phone_vowels;;
+
 let terminal_phone (p : phone) = 
   match List.find phones (fun q -> p = !(Obj.magic @@ terminal_thing q)) with
   | Some(s) -> s
@@ -205,7 +207,7 @@ register_terminal l_is_voiced;;
 let feature_terminals = [c_S;c_B;c_C;c_I;(* c_K;c_F; *)
                          c_null;c_append;c_rcons;c_cons;c_last_one;
                          c_consonant;c_voice;l_strident;l_front_vowel]
-                         @ phonetic_features;;
+                         @ phonetic_features @ phone_vowels;;
 let phonetic_terminals = [c_S;c_B;c_C;c_I;(* c_K;c_F; *)
                          c_null;c_append;c_cons;c_last_one;
                          (*l_transfer_voice;*)l_is_voiced;l_strident;l_front_vowel]
@@ -290,4 +292,4 @@ let test_features () =
   | Some(Consonant(Bilabial,Stop,Voiced)) -> Printf.printf "success\n";
   | _ -> Printf.printf "nooo\n";; *)
 
-(* test_features ();; *)
+test_features ();;
