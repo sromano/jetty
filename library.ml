@@ -84,7 +84,10 @@ type useCounts = {
    likelihood specifies the likelihood of each expression for each requested type
    corpus is a list of ((expression ID,requested type),weight)
    returns the grammar with the parameters fit *)
-let fit_grammar smoothing (log_application,library) dagger program_types likelihoods corpus = 
+let fit_grammar smoothing ?application_smoothing (log_application,library) dagger program_types likelihoods corpus = 
+  let application_smoothing = match application_smoothing with
+  | None -> smoothing
+  | Some(s) -> s in
   let log_terminal = log (1.0 -. exp log_application) in
   (* get all of the different terminals we can choose from;
      this ordering determines where they go in the use arrays
@@ -94,8 +97,8 @@ let fit_grammar smoothing (log_application,library) dagger program_types likelih
     List.mapi library ~f:(fun i (e,(l,t)) -> (insert_expression dagger e,
                                               (t, l, i))) in
   let number_terminals = List.length terminal_order in
-  let counts = { application_counts = log smoothing;
-                 terminal_counts = log smoothing;
+  let counts = { application_counts = log application_smoothing;
+                 terminal_counts = log application_smoothing;
                  use_counts = Array.create number_terminals (log smoothing);
                  possible_counts = Array.create number_terminals (log smoothing); } in
   let rec uses weight i request = 

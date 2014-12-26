@@ -13,7 +13,7 @@ open Bottom_up
 
 
 let rec expectation_maximization_compress 
-    lambda smoothing g0 dagger type_array requests candidates tasks program_scores = 
+    lambda smoothing application_smoothing g0 dagger type_array requests candidates tasks program_scores = 
   let likelihoods = program_likelihoods g0 dagger type_array requests in
   let task_posteriors = 
     List.map2_exn ~f:(fun task scores ->
@@ -80,26 +80,14 @@ let rec expectation_maximization_compress
   (* fit the continuous parameters of the new grammar *)
   let likelihoods = program_likelihoods new_grammar dagger type_array requests in
   print_string "Computed likelihoods."; print_newline ();
-  let final_grammar = fit_grammar smoothing new_grammar dagger type_array likelihoods corpus in
+  let final_grammar = fit_grammar smoothing ~application_smoothing new_grammar dagger type_array likelihoods corpus in
   print_string "Fit grammar."; print_newline ();
   (* check to see if we've hit a fixed point *)
   final_grammar
-(*    let final_productions = snd final_grammar |> ExpressionMap.bindings
-                          |> List.map fst |> List.sort compare_expression in
-  let initial_productions = snd g0 |> ExpressionMap.bindings |> 
-                            List.map fst |> List.sort compare_expression in
-  if list_equal compare_expression final_productions initial_productions
-  then final_grammar
-  else final_grammar (* begin
-    print_endline "Another compression iteration...";
-    expectation_maximization_compress lambda smoothing final_grammar dagger 
-      type_array requests candidates tasks program_scores
-  end *)
-    *)
   
 
 let expectation_maximization_iteration prefix
-    lambda smoothing frontier_size 
+    lambda smoothing ?application_smoothing frontier_size 
     tasks grammar = 
   let (frontiers,dagger) = enumerate_frontiers_for_tasks grammar frontier_size tasks in
   print_string "Scoring programs... \n";
@@ -127,7 +115,10 @@ let expectation_maximization_iteration prefix
   (*  let grammar = make_flat_library @@ List.filter is_terminal @@ List.map fst @@ 
     ExpressionMap.bindings @@ snd grammar in *)
   let candidates = candidate_fragments dagger @@ List.map program_scores (List.map ~f:fst) in
-  let final_grammar = expectation_maximization_compress lambda smoothing grammar dagger
+  let application_smoothing = match application_smoothing with
+  | None -> smoothing
+  | Some(s) -> s in
+  let final_grammar = expectation_maximization_compress lambda smoothing application_smoothing grammar dagger
       type_array requests candidates tasks program_scores in
   (* save the grammar *)
   Out_channel.write_all (prefix^"_grammar") ~data:(string_of_library final_grammar);
@@ -168,7 +159,7 @@ let backward_iteration
   let solutions = List.map task_solutions ((List.map ~f:fst) % snd) in
   let candidates = candidate_fragments dagger solutions in
   let g = expectation_maximization_compress
-      lambda smoothing grammar dagger type_array requests candidates tasks @@
+      lambda smoothing smoothing grammar dagger type_array requests candidates tasks @@
     List.map task_solutions snd in
 (*   let g = compress lambda smoothing dagger type_array requests task_solutions in *)
   (* save the grammar *)

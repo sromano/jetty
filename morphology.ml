@@ -569,10 +569,11 @@ let morphology_regress stem transform =
   if not (string_proper_prefix "grammars/" name) (* don't have a grammar provided for us, learn it *)
   then let lambda = Float.of_string Sys.argv.(4) in
     let alpha = Float.of_string Sys.argv.(5) in
+    let beta = Float.of_string Sys.argv.(6) in
     for i = 1 to 5 do
       Printf.printf "\n \n \n Iteration %i \n" i;
       g := expectation_maximization_iteration ("log/"^name^"_"^string_of_int i)
-          lambda alpha frontier_size tasks (!g)
+          ~application_smoothing:beta lambda alpha frontier_size tasks (!g)
     done
   else g := load_library name;
   let decoder =
