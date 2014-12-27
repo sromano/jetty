@@ -83,10 +83,10 @@ let noisy_decoder_likelihood dagger arity requested_type grammar d solutions =
     in
     let ll = List.map2_exn ~f:task_likelihood solutions al |> 
              List.fold_left ~init:0. ~f:(+.) in
-    Printf.printf "%s\t%f\t%s\t%f\n" (string_of_expression @@ extract_expression dagger d)
+(*     Printf.printf "%s\t%f\t%s\t%f\n" (string_of_expression @@ extract_expression dagger d)
       m
       (List.map argument_types ~f:string_of_type |> 
-       String.concat ~sep:"  ") ll;
+       String.concat ~sep:"  ") ll; *)
     ll
   | _ -> Float.neg_infinity
 
@@ -112,13 +112,13 @@ let best_noisy_decoder ?arity:(arity = 1) dagger g request task_solutions =
         | _ -> s)) in
   let candidate_decoders = Int.Set.union_list task_decoders in
   Printf.printf "got %i decoders" (Int.Set.length candidate_decoders); print_newline ();
-  Int.Set.iter candidate_decoders ~f:(fun d -> print_string @@ string_of_expression @@ extract_expression dagger d; print_newline ());
+  (* Int.Set.iter candidate_decoders ~f:(fun d -> print_string @@ string_of_expression @@ extract_expression dagger d; print_newline ()); *)
   (* collect those decoders that are used at least minimum_M times *)
   let minimum_uses = Int.of_float @@ minimum_M *. (Int.to_float @@ List.length task_solutions) in
   let candidate_decoders = Int.Set.to_list @@ Int.Set.filter candidate_decoders
       ~f:(fun d -> let d_uses = List.count task_decoders ~f:(fun ds -> Int.Set.mem ds d) in
-           Printf.printf "%s - %i/%i\n" 
-             (string_of_expression @@ extract_expression dagger d) d_uses minimum_uses;
+           (* Printf.printf "%s - %i/%i\n" 
+             (string_of_expression @@ extract_expression dagger d) d_uses minimum_uses; *)
            minimum_uses < d_uses) in
   Printf.printf "paired down to %i " (List.length candidate_decoders); print_newline ();
   (* pick the best decoder *)
