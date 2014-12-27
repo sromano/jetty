@@ -10,6 +10,8 @@ open Compress
 open Frontier
 open Bottom_up
 
+(* report how much reward is given to these *)
+let watch_trees = ["((B voice) last-one)"];;
 
 
 let rec expectation_maximization_compress 
@@ -61,6 +63,12 @@ let rec expectation_maximization_compress
   let candidate_rewards = make_candidate_rewards () in
   List.iter rewards ~f:(Hashtbl.iter ~f:(fun ~key:i ~data:r -> 
     Hashtbl.replace candidate_rewards ~key:i ~data:(lse r @@ Hashtbl.find_exn candidate_rewards i)));
+  (* Output the reward given for the watched trees *)
+  let watched_indexes = watch_trees |> 
+                        List.map ~f:(fun ts -> (ts, insert_expression dagger (expression_of_string ts))) in
+  Hashtbl.iter candidate_rewards ~f:(fun ~key:i ~data:r -> 
+    List.iter watched_indexes ~f:(fun (ts,j) -> 
+        if j = i then Printf.printf "Reward: %s\t%f\n" ts r));
   (* find those productions that have enough weight to make it into the library *)
   let productions =
     (Hashtbl.to_alist candidate_rewards |>
