@@ -6,8 +6,17 @@ open Library
 open Utils
 open Task
 
-(* let minimum_candidate_size = 5;; *)
+
 let minimum_occurrences = 2;; (* how many tasks a tree must occur in to make it into the grammar *)
+
+(* doesn't instantiate pairs of fragments *)
+let candidate_ground_fragments dagger solutions = 
+  let terminals = List.filter (0--(expression_graph_size dagger - 1)) (is_leaf_ID dagger) in
+  let candidates = reachable_expressions dagger @@ List.concat solutions in
+  let can = Int.Set.elements candidates |> List.filter ~f:(compose not @@ is_leaf_ID dagger) in
+  Printf.printf "\nGot %i (ground) candidates." (List.length can); print_newline (); can
+
+
 
 (* finds all of the fragments we might consider adding to the grammar
    this can handle the case when the programs have wildcards in them 

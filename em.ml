@@ -10,8 +10,8 @@ open Compress
 open Frontier
 open Bottom_up
 
-(* report how much reward is given to these *)
-let watch_trees = ["((B voice) last-one)"];;
+(* report how much reward is given to all subtrees of this *)
+let watch_subtrees = "((S (C rcons)) ((B ((consonant Alveolar) Stop)) ((B voice) last-one)))";;
 
 
 let rec expectation_maximization_compress 
@@ -64,11 +64,15 @@ let rec expectation_maximization_compress
   List.iter rewards ~f:(Hashtbl.iter ~f:(fun ~key:i ~data:r -> 
     Hashtbl.replace candidate_rewards ~key:i ~data:(lse r @@ Hashtbl.find_exn candidate_rewards i)));
   (* Output the reward given for the watched trees *)
+  let watch_trees = expression_of_string watch_subtrees |> insert_expression dagger |> List.return |> 
+                    reachable_expressions dagger |> Int.Set.to_list |> 
+                    List.filter ~f:(fun w -> not (is_leaf_ID dagger w)) in
   let watched_indexes = watch_trees |> 
-                        List.map ~f:(fun ts -> (ts, insert_expression dagger (expression_of_string ts))) in
-  Hashtbl.iter candidate_rewards ~f:(fun ~key:i ~data:r -> 
-    List.iter watched_indexes ~f:(fun (ts,j) -> 
-        if j = i then Printf.printf "Reward: %s\t%f\n" ts r));
+                        List.map ~f:(fun ts -> (ts, string_of_expression (extract_expression dagger ts))) in
+  List.iter watched_indexes ~f:(fun (w,s) -> 
+      match Hashtbl.find candidate_rewards w with
+      | Some(r) -> Printf.printf "Reward: %s\t%f\n" s r
+      | None -> Printf.printf "Reward: %s\tNone\n" s);
   (* find those productions that have enough weight to make it into the library *)
   let productions =
     (Hashtbl.to_alist candidate_rewards |>
@@ -122,7 +126,7 @@ let expectation_maximization_iteration prefix
   in
   (*  let grammar = make_flat_library @@ List.filter is_terminal @@ List.map fst @@ 
     ExpressionMap.bindings @@ snd grammar in *)
-  let candidates = candidate_fragments dagger @@ List.map program_scores (List.map ~f:fst) in
+  let candidates = candidate_ground_fragments dagger @@ List.map program_scores (List.map ~f:fst) in
   let application_smoothing = match application_smoothing with
   | None -> smoothing
   | Some(s) -> s in
