@@ -1,5 +1,6 @@
 open Core.Std
 
+open Frontier
 open Phonetics
 open Ec
 open Task
@@ -629,7 +630,7 @@ let choose_learner () =
   | _ -> raise (Failure "morphology")
 ;;
 
-choose_learner ();;
+(* choose_learner ();; *)
 
 (* 
 let () = 
@@ -663,3 +664,25 @@ let () =
   Printf.printf "%f vs %f\n" (map_likelihood g t cl) (indexed_likelihood (log 0.4, log 0.09, terms) t db)
 ;;
  *)
+
+let () = 
+  let tasks = 
+    List.map2_exn top_past top_verbs make_word_regress_task
+  in
+  let learned = load_library "grammars/regress_past_features" in
+  let correct = make_flat_library ((expression_of_string watch_subtrees) :: feature_terminals) in
+  let frontier_size = 100000 in
+  let get_solutions grammar =
+    let (frontiers,dagger) = enumerate_frontiers_for_tasks grammar frontier_size tasks in
+    print_string "Scoring programs... \n";
+    let program_scores = score_programs dagger frontiers tasks in
+    let task_solutions = List.zip_exn tasks program_scores |> List.map ~f:(fun (t,solutions) ->
+        (t, List.map solutions (fun (i,s) -> 
+             (i,s+. (get_some @@ likelihood_option grammar t.task_type (extract_expression dagger i)))))) in
+    print_posterior_surrogate 1.0 dagger grammar task_solutions
+  in
+  Printf.printf "Learned:\n";
+  get_solutions learned;
+  Printf.printf "Correct:\n";
+  get_solutions correct
+;;
