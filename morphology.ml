@@ -13,7 +13,7 @@ open Noisy_reduction
 open Em
 open Enumerate
 open Lambda_calculus
-
+open Crp
 
 (* most common adjective stems produced by thirty months old *)
 let top_adjectives = [
@@ -591,6 +591,15 @@ let morphology_Grapher stem transform g ds =
     Printf.printf "\n\n")
 ;;
 
+let morphology_sampler stem transform = 
+  let tasks = 
+    List.map2_exn transform stem make_word_regress_task
+  in
+  let a = Float.of_string Sys.argv.(2) in  
+  let iterations = Int.of_string Sys.argv.(3) in
+  ignore(run_Gibbs a feature_terminals tasks iterations)
+;;
+
 let super_decoders = [
   "I";
   "((C @) ((cons /ue/) ((cons /s/) ((cons /t/) null))))"];;
@@ -618,6 +627,7 @@ let choose_learner () =
   | "gerund" -> morphology_learner top_verbs top_gerunds
   | "past" -> morphology_learner top_verbs top_past
   | "regress_past" -> morphology_regress top_verbs top_past
+  | "past_sample" -> morphology_sampler top_verbs top_past
   | "grammars/regress_past_9_grammar" -> morphology_regress top_verbs top_past
   | "grammars/regress_past_1_grammar" -> morphology_regress top_verbs top_past
   | "grammars/past" -> morphology_learner top_verbs top_past

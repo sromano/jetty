@@ -149,16 +149,16 @@ let run_Gibbs alpha basis tasks iterations =
     (fun (a,b,_) -> (a,b))
   in 
   let rec find_best i r ps (best_posterior, best_frontiers) = 
-    if i = 0 then best_frontiers else
+    if i = 0 then (best_frontiers,snd best_posterior) else
       let r = restaurant_Gibbs alpha r tasks ps in
       let new_posterior = posterior ps in
       if new_posterior > best_posterior
       then find_best (i-1) r ps (new_posterior, Array.to_list ps)
       else find_best (i-1) r ps (best_posterior, best_frontiers)
   in
-  let best_frontier = find_best iterations r (Array.map tasks ~f:(fun _ -> None)) 
+  let (best_frontier,best_posterior) = find_best iterations r (Array.map tasks ~f:(fun _ -> None)) 
       ((0,log 0.0),Array.to_list tasks |> List.map ~f:(fun _ -> None)) in
-  Printf.printf "Finished Gibbs sampling; best solution was:\n";
+  Printf.printf "Finished Gibbs sampling; best solution (%f) was:\n" best_posterior;
   List.iter2_exn (Array.to_list tasks) best_frontier ~f:(fun t po -> 
       Printf.printf "%s\t" (t.name); 
     match po with
