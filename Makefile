@@ -1,5 +1,10 @@
 c = corebuild
 
+Chinese:
+	$(c) crp.native; cp crp.native test
+
+type:
+	$(c) type.native; cp type.native test
 morphology:
 	$(c) morphology.native; cp morphology.native test
 lambda:

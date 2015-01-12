@@ -630,7 +630,7 @@ let choose_learner () =
   | _ -> raise (Failure "morphology")
 ;;
 
-(* choose_learner ();; *)
+choose_learner ();;
 
 (* 
 let () = 
@@ -664,7 +664,7 @@ let () =
   Printf.printf "%f vs %f\n" (map_likelihood g t cl) (indexed_likelihood (log 0.4, log 0.09, terms) t db)
 ;;
  *)
-
+(* 
 let () = 
   let tasks = 
     List.map2_exn top_past top_verbs make_word_regress_task
@@ -686,3 +686,4 @@ let () =
   Printf.printf "Correct:\n";
   get_solutions correct
 ;;
+ *)
