@@ -55,5 +55,5 @@ let lower_bound_refinement_iteration
       (t, List.map solutions (fun (i,s) -> 
            (i,s+. (get_some @@ likelihood_option g t.task_type (extract_expression dagger i)))))) in
   save_best_programs (prefix^"_programs") dagger task_solutions;
-  print_posterior_surrogate lambda dagger g task_solutions;
+  ignore(bic_posterior_surrogate lambda dagger g task_solutions);
   g

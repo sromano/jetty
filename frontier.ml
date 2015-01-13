@@ -80,13 +80,17 @@ let make_frontiers size keep_size grammar tasks =
 
 
 (* spit out something that is similar to the posterior; *)
-(* note that were ignoring continuous parameters here. *)
-let print_posterior_surrogate lambda dagger grammar task_solutions = 
+let bic_posterior_surrogate ?print:(print = true) lambda dagger grammar task_solutions = 
   let likelihood = List.fold_left task_solutions ~init:0. ~f:(fun l (t,f) ->
       if List.length f > 0
       then l +. lse_list (List.map f ~f:(fun (i,s) -> 
           s+.get_some (likelihood_option grammar t.task_type (extract_expression dagger i))))
-      else l) 
-  and prior = -. lambda *. Float.of_int (List.length @@ snd grammar) in
-  Printf.printf "Log Prior (%f) + Log Likelihood (%f) = \n\t%f\n"
-    prior likelihood (prior +. likelihood)
+      else l) in
+  let m = Float.of_int (List.length @@ snd grammar) in
+  let n = List.fold_left ~init:0 task_solutions ~f:(fun n (_,f) ->
+    if List.length f > 0 then n + 1 else n) in
+  let prior = -. lambda *. m in
+  let bic = -.0.5 *. m *. (log @@ Float.of_int n) in
+  (if print then Printf.printf "Log Prior (%f) + Log Likelihood (%f) + BIC (%f) = \n\t%f\n"
+       prior likelihood bic (prior +. likelihood +. bic));
+  (prior +. likelihood +. bic)

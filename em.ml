@@ -140,7 +140,7 @@ let expectation_maximization_iteration prefix
       (t, List.map solutions (fun (i,s) -> 
            (i,s+. (get_some @@ likelihood_option final_grammar t.task_type (extract_expression dagger i)))))) in
   save_best_programs (prefix^"_programs") dagger task_solutions;
-  print_posterior_surrogate lambda dagger final_grammar task_solutions;
+  ignore(bic_posterior_surrogate lambda dagger final_grammar task_solutions);
   final_grammar
 
 
