@@ -111,7 +111,7 @@ let can_unify (t1 : tp) (t2 : tp) : bool =
       let t1 = fast_chase t1 in
       let t2 = fast_chase t2 in
       match (t1,t2) with
-      | (FID(i1),FID(i2)) when i1 = i2 -> true
+      | (FID(i1),FID(i2)) when phys_equal i1 i2 -> true
       | (FID(i),_) when fast_occurs i t2 -> false
       | (FID(i),_) -> i := Some(t2); true
       | (_,FID(i)) when fast_occurs i t1 -> false
@@ -205,7 +205,7 @@ let t2 = TID(2);;
 let t3 = TID(3);;
 let t4 = TID(4);;
 
-(*
+
 let test_type () = 
   print_string (string_of_bool (can_unify (t1 @> t1) (t0 @> (tint @> t0))))
   (* print_string (string_of_type @@ t1 @> (t2 @> t2) @> tint);
@@ -213,5 +213,4 @@ let test_type () =
   print_string (string_of_bool (can_unify (make_arrow t1 t1) (make_arrow (make_arrow t1 t2) t3)));
   print_string (string_of_bool (not (can_unify (make_arrow t1 t1) (make_arrow (make_arrow t1 t2) (make_ground "int"))))); *)
 ;;
-test_type ();;
- *)
+(* test_type ();; *)
