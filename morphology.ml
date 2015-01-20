@@ -571,15 +571,17 @@ let morphology_regress stem transform =
   then let lambda = Float.of_string Sys.argv.(4) in
     let alpha = Float.of_string Sys.argv.(5) in
     let beta = Float.of_string Sys.argv.(6) in
+    let ct = Int.of_string Sys.argv.(7) in
     for i = 1 to 5 do
       Printf.printf "\n \n \n Iteration %i \n" i;
-      g := expectation_maximization_iteration ("log/"^name^"_"^string_of_int i)
+      g := expectation_maximization_iteration ~compression_tries:ct ("log/"^name^"_"^string_of_int i)
           ~application_smoothing:beta lambda alpha frontier_size tasks (!g)
     done
   else g := load_library name;
-  let decoder =
+(*  let decoder =
     noisy_reduce_symbolically ~arity:0 g0 !g frontier_size tasks in
-  Printf.printf "Decoder: %s\n" (string_of_expression decoder)
+  Printf.printf "Decoder: %s\n" (string_of_expression decoder) *)
+  Printf.printf "that's all folks"
 ;;
 
 let morphology_Grapher stem transform g ds = 
