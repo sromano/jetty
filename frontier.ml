@@ -1,5 +1,6 @@
 open Core.Std
 
+open Type
 open Library
 open Task
 open Enumerate
@@ -9,10 +10,19 @@ open Utils
 open Expression
 
 
+let frontier_requests frontiers = 
+  List.fold_left frontiers
+    ~init:Int.Map.empty ~f:(fun requests (requested_type,frontier) -> 
+        List.fold_left frontier ~init:requests ~f:(fun (a : (tp list) Int.Map.t) (i : int) -> 
+            match Int.Map.find a i with
+	    | Some(old) -> 
+	      if List.mem old requested_type then a 
+              else Int.Map.add a ~key:i ~data:(requested_type::old)
+            | None -> Int.Map.add a ~key:i ~data:[requested_type]))
+
 (* wrapper over various enumeration and scoring functions *)
 (* returns a list of frontiers, one for each task *)
-(* each frontier is a list of tuples of (expression ID,score) *)
-(* for bottom-up, score is log prior; for top-down, its likelihood *)
+(* each frontier is a list of tuples of (expression ID,log likelihood,log prior) *)
 (* also returns an expression graph *)
 let make_frontiers size keep_size grammar tasks = 
   let (bottom_tasks,top_tasks) = List.partition_tf tasks (fun t -> 
@@ -36,6 +46,12 @@ let make_frontiers size keep_size grammar tasks =
         Printf.printf "Partial credit %i / %i" (number_of_partial-number_hit)
           (List.length top_tasks);
         print_newline ();
+        (* dynamic program for likelihoods *)
+        let requests = frontier_requests top_frontiers in
+        let likelihoods = program_likelihoods grammar dagger (infer_graph_types dagger) requests in
+        let top_program_scores = List.map2_exn tasks top_program_scores ~f:(fun t ss ->
+            List.map ss ~f:(fun (i,s) -> 
+                (i,s,Hashtbl.find_exn likelihoods (i,t.task_type)))) in
         (dagger, top_program_scores)
       end
   in let bottom_program_scores = 
@@ -50,20 +66,20 @@ let make_frontiers size keep_size grammar tasks =
               (template,apply_template target))) |> List.concat in
       print_endline "Generated rewrites, starting enumeration...";
       let graphs_and_frontiers = parallel_map bottom_tasks ~f:(fun t -> 
-        if !number_of_cores = 1 then begin
+          if !number_of_cores = 1 then begin
             Printf.printf "\nEnumerating (backwards) for %s..." t.name;
             print_newline ();
-        end;
-        let temp_dagger = make_expression_graph 10000 in
-        let i = insert_expression temp_dagger @@ match t.score with
-          | Seed(s) -> s
-          | LogLikelihood(_) -> raise (Failure "make_frontiers: partask has no seed") in
-        let f = backward_enumerate temp_dagger grammar rewrites size keep_size t.task_type i in
-        scrub_graph temp_dagger;
-        (temp_dagger,f)) in
+          end;
+          let temp_dagger = make_expression_graph 10000 in
+          let i = insert_expression temp_dagger @@ match t.score with
+            | Seed(s) -> s
+            | LogLikelihood(_) -> raise (Failure "make_frontiers: partask has no seed") in
+          let f = backward_enumerate temp_dagger grammar rewrites size keep_size t.task_type i in
+          scrub_graph temp_dagger;
+          (temp_dagger,f)) in
       List.map graphs_and_frontiers ~f:(fun (g,f) -> 
           dirty_graph g;
-          List.map f (fun (i,l) -> (insert_expression dagger @@ extract_expression g i,l)))      
+          List.map f (fun (i,l) -> (insert_expression dagger @@ extract_expression g i,0.0,l)))
     end
   in 
   (* coalesced top and bottom *)
@@ -88,7 +104,7 @@ let bic_posterior_surrogate ?print:(print = true) lambda dagger grammar task_sol
       else l) in
   let m = Float.of_int (List.length @@ snd grammar) in
   let n = List.fold_left ~init:0 task_solutions ~f:(fun n (_,f) ->
-    if List.length f > 0 then n + 1 else n) in
+      if List.length f > 0 then n + 1 else n) in
   let prior = -. lambda *. m in
   let bic = -.0.5 *. m *. (log @@ Float.of_int n) in
   (if print then Printf.printf "Log Prior (%f) + Log Likelihood (%f) + BIC (%f) = \n\t%f\n"

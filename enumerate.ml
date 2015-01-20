@@ -90,13 +90,6 @@ let enumerate_frontiers_for_tasks grammar frontier_size tasks
         let l = task_likelihood t in
         let prune j = not @@ is_valid @@ l j in
         let special_indices = enumerate_ID ~prune dagger special_grammar t.task_type frontier_size in
-(* no longer needed due to pruning
-        let (special_indices,dagger) =
-          if filter_enumerated 
-          then let i = 
-            List.filter special_indices ~f:(is_valid % l % extract_expression dagger % fst) in
-            gc_expression_graph dagger i
-          else (special_indices,dagger) in  *)
 	scrub_graph dagger;
         (dagger, t.task_type, List.fold_left special_indices
            ~f:Int.Set.add ~init:Int.Set.empty)) in

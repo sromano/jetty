@@ -59,7 +59,7 @@ let argument_likelihoods dagger arity grammar argument_types task_solutions d =
       | _ -> None in
   task_solutions |> List.map ~f:(fun programs -> 
       List.fold_left programs ~init:Float.neg_infinity
-        ~f:(fun l (p,score) -> 
+        ~f:(fun l (p,score,_) -> 
             match matches_decoder arity p with
             | Some(arguments) -> 
               lse l @@ score +. List.fold2_exn arguments argument_types ~init:0. ~f:(fun acc a t -> 
@@ -83,19 +83,13 @@ let noisy_decoder_likelihood dagger arity requested_type grammar d solutions =
     in
     let ll = List.map2_exn ~f:task_likelihood solutions al |> 
              List.fold_left ~init:0. ~f:(+.) in
-(*     Printf.printf "%s\t%f\t%s\t%f\n" (string_of_expression @@ extract_expression dagger d)
-      m
-      (List.map argument_types ~f:string_of_type |> 
-       String.concat ~sep:"  ") ll; *)
     ll
   | _ -> Float.neg_infinity
 
 (* annotates solutions with the likelihood that any of the programs will be hit *)
 let compute_solution_evidence dagger grammar request task_solutions = 
   List.map task_solutions ~f:(fun ps -> 
-      (ps, List.map ps ~f:(fun (p,l) -> 
-           let prior = likelihood_option grammar request (extract_expression dagger p) |> 
-                       safe_get_some "compute_solution_evidence" in
+      (ps, List.map ps ~f:(fun (p,l,prior) -> 
            prior+.l) |> lse_list))
 
 let noisy_decoder_prior dagger arity g request d = 
@@ -106,7 +100,7 @@ let best_noisy_decoder ?arity:(arity = 1) dagger g request task_solutions =
   let solutions = compute_solution_evidence dagger g request task_solutions in
   Printf.printf "computed evidence"; print_newline ();
   let task_decoders = List.map task_solutions 
-      ~f:(List.fold_left ~init:Int.Set.empty ~f:(fun s (p,_) -> 
+      ~f:(List.fold_left ~init:Int.Set.empty ~f:(fun s (p,_,_) -> 
         match extract_potential_decoder dagger arity p with
         | Some(f) -> Int.Set.add s f
         | _ -> s)) in
@@ -148,7 +142,7 @@ let decoder_frontiers g frontier_size tasks decoder =
           proposal = t.proposal; }) in
     let (dagger, fs) = make_frontiers frontier_size frontier_size g tasks in
     let d = insert_expression dagger decoder in
-    (dagger, List.map fs (List.map ~f:(fun (f,_) -> 
+    (dagger, List.map fs ~f:(List.map ~f:(fun (f,_,_) -> 
          insert_expression_node dagger (ExpressionBranch(d,f)))))
   | _ -> (make_expression_graph 10, List.map tasks ~f:(fun _ -> []))
 
@@ -160,21 +154,21 @@ let decoder_frontiers g frontier_size tasks decoder =
 let noisy_decoder_posterior g0 g frontier_size tasks decoder = 
   let requested_type = (List.hd_exn tasks).task_type in
   let (dagger, fs) = make_frontiers frontier_size frontier_size g tasks in
-  let task_solutions = List.map fs ~f:(fun f -> Int.Set.of_list (List.map ~f:fst f)) in
+  let task_solutions = List.map fs ~f:(fun f -> Int.Set.of_list (List.map ~f:(fun (i,_,_) -> i) f)) in
   let (decoder_dagger, decoder_solutions) = decoder_frontiers g frontier_size tasks decoder in
   let task_solutions = List.map2_exn task_solutions decoder_solutions ~f:(fun set -> 
       List.fold_left ~init:set ~f:(fun s j -> 
           Int.Set.add s @@ insert_expression dagger @@ extract_expression decoder_dagger j)) |> 
                        List.map ~f:Int.Set.to_list in
   let task_solutions = List.map task_solutions ~f:(List.map ~f:(fun p -> (p,0.0))) in
-  let solutions = compute_solution_evidence dagger g0 requested_type task_solutions in
+  let solutions = compute_solution_evidence dagger g0 requested_type fs in
   let prior = noisy_decoder_prior dagger 1 g0 requested_type @@ 
     insert_expression dagger decoder in
   (* compute evidence and argument likelihoods *)
   Printf.printf "Decoder %s, Prior = %f\n" (string_of_expression decoder) prior;
   match encoding_type 1 requested_type decoder with
   | Some([argument_type]) -> 
-    let al = argument_likelihoods dagger 1 g0 [argument_type] task_solutions @@ insert_expression dagger decoder in
+    let al = argument_likelihoods dagger 1 g0 [argument_type] fs @@ insert_expression dagger decoder in
     let el = List.map ~f:snd solutions in
     List.iter2_exn al el ~f:(fun a e -> 
         Printf.printf "[ %f %f ]\n" a e)

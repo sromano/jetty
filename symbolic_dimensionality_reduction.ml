@@ -108,7 +108,7 @@ let best_decoder dagger grammar request solutions =
 
 let reduce_symbolically base_grammar posterior_grammar frontier_size keep_size tasks = 
   let (dagger, fs) = make_frontiers frontier_size keep_size posterior_grammar tasks in
-  let task_solutions = List.map fs (List.map ~f:fst) in
+  let task_solutions = List.map fs ~f:(List.map ~f:(fun (i,_,_) -> i)) in
   let request = (List.hd_exn tasks).task_type in
   let d = time_it "Found decoder"
       (fun () -> best_decoder dagger base_grammar request task_solutions) in

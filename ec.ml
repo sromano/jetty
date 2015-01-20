@@ -36,14 +36,7 @@ let lower_bound_refinement_iteration
   Printf.printf "Partial credit %i / %i" (number_of_partial-number_hit) (List.length tasks);
   print_newline ();
   let type_array = infer_graph_types dagger in  
-  let requests = List.fold_left frontiers ~init:Int.Map.empty ~f:(fun requests (requested_type,frontier) -> 
-      List.fold_left frontier ~init:requests ~f:(fun (a : (tp list) Int.Map.t) (i : int) -> 
-          match Int.Map.find a i with
-	  | Some(old)  -> 
-            if List.mem old requested_type 
-	    then a else Int.Map.add a i (requested_type::old)
-          | None -> Int.Map.add a i [requested_type]))
-  in
+  let requests = frontier_requests frontiers in
   let task_solutions = List.filter ~f:(fun (_,s) -> List.length s > 0)
       (List.zip_exn tasks @@ List.map program_scores (List.filter ~f:(fun (_,s) -> is_valid s)))
   in

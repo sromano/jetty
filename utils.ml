@@ -26,6 +26,10 @@ let memorize f =
       ignore(Hashtbl.Poly.add table x y);
       y
 
+let maximum_by ~cmp l = 
+  List.fold_left ~init:(List.hd_exn l) (List.tl_exn l) ~f:(fun a b -> 
+      if cmp a b > 0
+      then a else b)
 
 let rec map_list f = function
   | [] -> [f []]
@@ -45,6 +49,12 @@ let index_of l x =
       [] -> raise (Failure "index_of: not found")
     | (y::ys) -> if y = x then a else loop (a+1) ys
   in loop 0 l
+
+let set_equal c x y = 
+  let x = List.sort ~cmp:c x
+  and y = List.sort ~cmp:c y in
+  List.compare ~cmp:c x y = 0
+
 
 let log2 = log 2.
 
