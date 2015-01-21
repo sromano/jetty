@@ -163,7 +163,7 @@ let run_Gibbs ?silent:(silent = false) alpha basis tasks iterations =
     match po with
     | None -> Printf.sprintf "%s\tMissed\n" (t.name)
     | Some(p) -> Printf.sprintf "%s\t%s\n" (t.name) (string_of_expression p)) in
-  let msg = l1 ^ String.concat "" ls in
+  let msg = l1 ^ String.concat ~sep:"" ls in
   (if not silent then print_string msg);
   (best_frontier,msg)
 
