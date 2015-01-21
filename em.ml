@@ -100,6 +100,7 @@ let expectation_maximization_iteration ?compression_tries:(compression_tries = 1
     | 2 -> (* uniform case *)
       (grammar, List.map program_scores ~f:(fun f -> 
            List.map f ~f:(fun (i,ll) -> (i,ll,0.0))))
+(*     | 3 ->  *) (* todo : weighted by g0 *)
     | _ -> (* random case *)
       (g0, List.map program_scores ~f:(fun f -> 
            List.map f ~f:(fun (i,ll) -> (i,ll,Random.float 1.0))))) in
