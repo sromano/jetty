@@ -599,7 +599,7 @@ let morphology_sampler stem transform =
   in
   let a = Float.of_string Sys.argv.(2) in  
   let iterations = Int.of_string Sys.argv.(3) in
-  ignore(run_Gibbs a feature_terminals tasks iterations)
+  run_parallel_Gibbs a feature_terminals tasks iterations
 ;;
 
 let super_decoders = [

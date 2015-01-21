@@ -135,8 +135,8 @@ let restaurant_Gibbs alpha ?tries:(tries = 10000) r task_array program_array =
   in
   replace tries
 
-(* Returns map estimate *)
-let run_Gibbs alpha basis tasks iterations = 
+(* Returns map estimate, output string *)
+let run_Gibbs ?silent:(silent = false) alpha basis tasks iterations = 
   let r = make_restaurant basis in
   let tasks = Array.of_list tasks in
   let posterior ps = 
@@ -158,14 +158,23 @@ let run_Gibbs alpha basis tasks iterations =
   in
   let (best_frontier,best_posterior) = find_best iterations r (Array.map tasks ~f:(fun _ -> None)) 
       ((0,log 0.0),Array.to_list tasks |> List.map ~f:(fun _ -> None)) in
-  Printf.printf "Finished Gibbs sampling; best solution (%f) was:\n" best_posterior;
-  List.iter2_exn (Array.to_list tasks) best_frontier ~f:(fun t po -> 
-      Printf.printf "%s\t" (t.name); 
+  let l1 = Printf.sprintf "Finished Gibbs sampling; best solution (%f) was:\n" best_posterior in
+  let ls = List.map2_exn (Array.to_list tasks) best_frontier ~f:(fun t po -> 
     match po with
-    | None -> Printf.printf "Missed\n"
-    | Some(p) -> Printf.printf "%s\n" (string_of_expression p));
-  best_frontier
-                      
+    | None -> Printf.sprintf "%s\tMissed\n" (t.name)
+    | Some(p) -> Printf.sprintf "%s\t%s\n" (t.name) (string_of_expression p)) in
+  let msg = l1 ^ String.concat "" ls in
+  (if not silent then print_string msg);
+  (best_frontier,msg)
+
+let run_parallel_Gibbs alpha basis tasks iterations = 
+  let cs = cpu_count () in
+  let seeds = List.map (1--cs) ~f:(fun _ -> Random.bits ()) in
+  let ss = parallel_map seeds ~f:(fun seed ->
+      Random.init seed;
+      run_Gibbs ~silent:true alpha basis tasks iterations) in
+  List.iter ss ~f:(fun (_,m) -> 
+    Printf.printf "\n%s\n\n" m)
       
 
 (* 
