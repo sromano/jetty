@@ -88,28 +88,29 @@ let expectation_maximization_iteration ?compression_tries:(compression_tries = 1
   (* compute likelihoods under grammar and then normalize the frontiers *)
   let type_array = infer_graph_types dagger in  
   let requests = frontier_requests frontiers in
-  let likelihoods = program_likelihoods grammar dagger type_array requests in
   let candidates = candidate_ground_fragments dagger @@ List.map program_scores (List.map ~f:fst) in
   let g0 = make_flat_library @@ List.filter ~f:is_terminal @@ List.map ~f:fst @@ snd grammar in
-  let g0_likelihoods = program_likelihoods g0 dagger type_array requests in
-  (* make a bunch of random frontiers *)
-  let random_frontiers = List.map (1--compression_tries) ~f:(fun t -> 
-    match t with
+  (* makes the nth (random) frontiers *)
+  let random_frontier n =
+    match n with
     | 1 ->  (* nonrandom case *)
+      let likelihoods = program_likelihoods grammar dagger type_array requests in
       (grammar, List.map2_exn tasks program_scores ~f:(fun t f -> 
            List.map f ~f:(fun (i,ll) -> (i,ll,Hashtbl.find_exn likelihoods (i,t.task_type)))))
     | 2 -> (* uniform case *)
       (grammar, List.map program_scores ~f:(fun f -> 
            List.map f ~f:(fun (i,ll) -> (i,ll,0.0))))
     | 3 ->  (* weighted by g0 *)
+      let g0_likelihoods = program_likelihoods g0 dagger type_array requests in
       (grammar, List.map2_exn tasks program_scores ~f:(fun t f -> 
            List.map f ~f:(fun (i,ll) -> (i,ll,Hashtbl.find_exn g0_likelihoods (i,t.task_type)))))
     | _ -> (* random case *)
       (g0, List.map program_scores ~f:(fun f -> 
-           List.map f ~f:(fun (i,ll) -> (i,ll,Random.float 1.0))))) in
-  let candidate_grammars = parallel_map random_frontiers ~f:(fun (g0,fs) -> 
-      expectation_maximization_compress lambda smoothing application_smoothing g0 dagger
-        type_array requests candidates tasks fs) in
+           List.map f ~f:(fun (i,ll) -> (i,ll,Random.float 1.0)))) in
+  let candidate_grammars = (* parallel_ *) List.map (1--compression_tries) ~f:(fun ct -> 
+    let (g0,fs) = random_frontier ct in
+    expectation_maximization_compress lambda smoothing application_smoothing g0 dagger
+      type_array requests candidates tasks fs) in
   let (final_grammar,_) = maximum_by ~cmp:(fun (_,a) (_,b) -> compare a b) candidate_grammars in
   (* save the grammar *)
   Out_channel.write_all (prefix^"_grammar") ~data:(string_of_library final_grammar);
