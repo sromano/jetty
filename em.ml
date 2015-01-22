@@ -91,6 +91,7 @@ let expectation_maximization_iteration ?compression_tries:(compression_tries = 1
   let likelihoods = program_likelihoods grammar dagger type_array requests in
   let candidates = candidate_ground_fragments dagger @@ List.map program_scores (List.map ~f:fst) in
   let g0 = make_flat_library @@ List.filter ~f:is_terminal @@ List.map ~f:fst @@ snd grammar in
+  let g0_likelihoods = program_likelihoods g0 dagger type_array requests in
   (* make a bunch of random frontiers *)
   let random_frontiers = List.map (1--compression_tries) ~f:(fun t -> 
     match t with
@@ -100,7 +101,9 @@ let expectation_maximization_iteration ?compression_tries:(compression_tries = 1
     | 2 -> (* uniform case *)
       (grammar, List.map program_scores ~f:(fun f -> 
            List.map f ~f:(fun (i,ll) -> (i,ll,0.0))))
-(*     | 3 ->  *) (* todo : weighted by g0 *)
+    | 3 ->  (* weighted by g0 *)
+      (grammar, List.map2_exn tasks program_scores ~f:(fun t f -> 
+           List.map f ~f:(fun (i,ll) -> (i,ll,Hashtbl.find_exn g0_likelihoods (i,t.task_type)))))
     | _ -> (* random case *)
       (g0, List.map program_scores ~f:(fun f -> 
            List.map f ~f:(fun (i,ll) -> (i,ll,Random.float 1.0))))) in
