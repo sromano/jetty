@@ -262,3 +262,51 @@ let normal s m =
 let print_arguments () = 
   Array.iter Sys.argv ~f:(fun a -> Printf.printf "%s " a);
   print_newline ()
+
+(* samplers adapted from gsl *)
+let rec uniform_positive () = 
+  let u = Random.float 1.0 in
+  if u > 0.0 then u else uniform_positive ()
+
+
+let rec sample_gamma a b = 
+  if a < 1.0
+  then
+    let u = uniform_positive () in
+    (sample_gamma (1.0 +. a) b) *. (u ** (1.0 /. a))
+  else
+    let d = a -. 1.0 /. 3.0 in
+    let c = (1.0 /. 3.0) /. sqrt d in
+    let rec loop () = 
+      let rec inner_loop () = 
+        let x = normal 1.0 0.0 in
+        let v = 1.0 +. c *. x in
+        if v > 0.0 then (v,x) else inner_loop ()
+      in
+      let (v,x) = inner_loop () in
+      let v = v*.v*.v in
+      let u = uniform_positive () in
+      if (u < 1.0 -. 0.0331 *. x *. x *. x *. x) ||
+         (log u < 0.5 *. x *. x +. d *. (1.0 -. v +. log v)) 
+      then b *. d *. v
+      else loop ()
+    in loop ()
+
+
+let sample_uniform_dirichlet a n = 
+  let ts = List.map (1--n) ~f:(fun _ -> sample_gamma a 1.0) in
+  let norm = List.fold_left ~init:0.0 ~f:(+.) ts  in
+  List.map ts ~f:(fun t -> t/.norm)
+
+(*
+let () = 
+  let a =2. in
+  let b = 2. in
+  let samples = List.map (1--1000) ~f:(fun _ -> let (x,y) =(sample_gamma a 1.0,sample_gamma b 1.0) in
+                                        x/.(x+.y)) in
+  let mean = (List.fold_left ~init:0.0 ~f:(+.) samples /. 1000.0) in
+  let variance =List.fold_left ~init:0.0 ~f:(+.) (List.map samples ~f:(fun s -> (s-.mean)*.(s-.mean)))
+                /. 1000.0  in
+  Printf.printf "mean: %f\n" mean;  
+  Printf.printf "variance: %f\n" variance;;
+*)

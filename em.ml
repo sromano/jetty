@@ -72,6 +72,7 @@ let rec expectation_maximization_compress
 
 let expectation_maximization_iteration ?compression_tries:(compression_tries = 1)
     prefix lambda smoothing ?application_smoothing:(application_smoothing = smoothing)
+    ?da:(da = 0.1) (* dirichlet for random frontiers *)
     frontier_size tasks grammar = 
   let (frontiers,dagger) = enumerate_frontiers_for_tasks grammar frontier_size tasks in
   print_string "Scoring programs... \n";
@@ -102,12 +103,14 @@ let expectation_maximization_iteration ?compression_tries:(compression_tries = 1
            List.map f ~f:(fun (i,ll) -> (i,ll,0.0))))
     | 3 ->  (* weighted by g0 *)
       let g0_likelihoods = program_likelihoods g0 dagger type_array requests in
-      (grammar, List.map2_exn tasks program_scores ~f:(fun t f -> 
+      (g0, List.map2_exn tasks program_scores ~f:(fun t f -> 
            List.map f ~f:(fun (i,ll) -> (i,ll,Hashtbl.find_exn g0_likelihoods (i,t.task_type)))))
     | _ -> (* random case *)
       (g0, List.map program_scores ~f:(fun f -> 
-           List.map f ~f:(fun (i,ll) -> (i,ll,Random.float 1.0)))) in
-  let candidate_grammars = (* parallel_ *) List.map (1--compression_tries) ~f:(fun ct -> 
+           let lps = List.length f |> sample_uniform_dirichlet da |> 
+                     List.map ~f:log in
+           List.map2_exn lps f ~f:(fun lp (i,ll) -> (i,ll,lp)))) in
+  let candidate_grammars = parallel_map (1--compression_tries) ~f:(fun ct -> 
     let (g0,fs) = random_frontier ct in
     expectation_maximization_compress lambda smoothing application_smoothing g0 dagger
       type_array requests candidates tasks fs) in

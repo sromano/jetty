@@ -572,10 +572,11 @@ let morphology_regress stem transform =
     let alpha = Float.of_string Sys.argv.(5) in
     let beta = Float.of_string Sys.argv.(6) in
     let ct = Int.of_string Sys.argv.(7) in
+    let da = Float.of_string Sys.argv.(8) in
     for i = 1 to 5 do
       Printf.printf "\n \n \n Iteration %i \n" i;
       g := expectation_maximization_iteration ~compression_tries:ct ("log/"^name^"_"^string_of_int i)
-          ~application_smoothing:beta lambda alpha frontier_size tasks (!g)
+          ~application_smoothing:beta ~da:da lambda alpha frontier_size tasks (!g)
     done
   else g := load_library name;
 (*  let decoder =
