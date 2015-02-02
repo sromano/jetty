@@ -298,6 +298,15 @@ let sample_uniform_dirichlet a n =
   let norm = List.fold_left ~init:0.0 ~f:(+.) ts  in
   List.map ts ~f:(fun t -> t/.norm)
 
+let make_random_seeds n = 
+  let rec seeds others m = 
+    if m = 0 then others else
+      let r = Random.bits () in
+      if List.mem others r then seeds others m
+          else seeds (r::others) (m-1)
+  in seeds [] n
+
+
 (*
 let () = 
   let a =2. in
@@ -310,3 +319,4 @@ let () =
   Printf.printf "mean: %f\n" mean;  
   Printf.printf "variance: %f\n" variance;;
 *)
+
