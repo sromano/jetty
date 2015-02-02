@@ -116,6 +116,7 @@ let expectation_maximization_iteration ?compression_tries:(compression_tries = 1
     let (g0,fs) = random_frontier ct sd in
     expectation_maximization_compress lambda smoothing application_smoothing g0 dagger
       type_array requests candidates tasks fs) in
+  print_endline "got_can_the_grammars";
   let (final_grammar,_) = maximum_by ~cmp:(fun (_,a) (_,b) -> compare a b) candidate_grammars in
   (* save the grammar *)
   Out_channel.write_all (prefix^"_grammar") ~data:(string_of_library final_grammar);
