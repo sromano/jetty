@@ -123,7 +123,9 @@ let expectation_maximization_iteration ?compression_tries:(compression_tries = 1
   (* save the best programs *)
   let task_solutions = List.zip_exn tasks program_scores |> List.map ~f:(fun (t,solutions) ->
       (t, List.map solutions (fun (i,s) -> 
-           (i,s+. (safe_get_some "em_best" @@ likelihood_option final_grammar t.task_type (extract_expression dagger i)))))) in
+           let e = extract_expression dagger i in
+           let error_message = "em_best: "^(string_of_expression e) in
+           (i,s+. (safe_get_some error_message @@ likelihood_option final_grammar t.task_type e))))) in
   save_best_programs (prefix^"_programs") dagger task_solutions;
   ignore(bic_posterior_surrogate lambda dagger final_grammar task_solutions);
   final_grammar
