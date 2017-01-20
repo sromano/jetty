@@ -107,7 +107,7 @@ let backward_children dagger grammar request rewrites j =
 
 
 module Frontier_node_cmp = Comparable.Make(struct
-    type t = int*float with sexp
+    type t = int*float [@@deriving sexp]
     let compare (i1,l1) (i2,l2) = 
       if l1 = l2 then i1-i2 else (if l1 > l2 then 1 else -1)
   end)

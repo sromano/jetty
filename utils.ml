@@ -53,7 +53,7 @@ let index_of l x =
 let set_equal c x y = 
   let x = List.sort ~cmp:c x
   and y = List.sort ~cmp:c y in
-  List.compare ~cmp:c x y = 0
+  List.compare c x y = 0
 
 
 let log2 = log 2.
