@@ -93,5 +93,5 @@ let train_recognition_model frontier_size grammar tasks features =
   let customLikelihoods = List.map2_exn customGrammars tasks ~f:(evaluate_grammar_for_task frontier_size) |>
   List.filter ~f:is_some |> List.map ~f:get_some in
   let originalLikelihoods = List.filter_map tasks ~f:(evaluate_grammar_for_task frontier_size grammar) in
-  Printf.printf "HIT: %d (new) vs %d (old)" (List.length customLikelihoods) (List.length originalLikelihoods);
-  Printf.printf "LL: %f (new) vs %f (old)" (avg customLikelihoods) (avg originalLikelihoods)
+  Printf.printf "HIT: %d (new) vs %d (old)\n" (List.length customLikelihoods) (List.length originalLikelihoods);
+  Printf.printf "LL: %f (new) vs %f (old)\n" (avg customLikelihoods) (avg originalLikelihoods)

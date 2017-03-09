@@ -13,7 +13,7 @@ open Helmholtz
 let make_polynomial_task a b c = 
   let n = Printf.sprintf "(%i x^2 + %i x + %i)" a b c in
   let test_cases : int list = 0--5 in
-  let features = [a;b;c] @ List.map test_cases ~f:(fun x -> a*x*x + b*x + c) in
+  let features = List.map test_cases ~f:(fun x -> a*x*x + b*x + c) in
   let scoring_function = (fun (e : expression) -> 
       let rec t y = 
         match y with
