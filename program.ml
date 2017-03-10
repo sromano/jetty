@@ -28,6 +28,10 @@ let rec evaluate (environment: 'b list) (p:program) : 'a =
 
 type grammar = Grammar of (program*tp) list
 
+let primitive_grammar primitives =
+  Grammar(List.map primitives ~f:(fun p -> match p with
+      |Primitive(_,t,_) -> (p,t)))
+
 let grammar_primitives g =  match g with |Grammar(l) -> l;;
 let unifying_expressions g environment request context : (program*tp*tContext) list =
   let candidates = grammar_primitives g @ List.mapi ~f:(fun j t -> (Index(j),t)) environment in
@@ -66,9 +70,9 @@ and
     List.concat
     
 let arithmetic_grammar =
-  Grammar([ (primitive "k0" tint 0, tint);
-            (primitive "k1" tint 1, tint);
-            (primitive "+" (tint @> tint @> tint) (+), (tint @> tint @> tint))])
+  primitive_grammar [ primitive "k0" tint 0;
+                      primitive "k1" tint 1;
+                      primitive "+" (tint @> tint @> tint) (+)]
 
 let () =
   let program = (Apply(Abstraction(Index(0)),(primitive "42" tint 42))) in
