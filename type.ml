@@ -14,6 +14,18 @@ let empty_context = (0,TypeMap.empty);;
 let make_arrow t q = TCon("->", [t;q]);;
 let (@>) = make_arrow;;
 
+let rec arguments_and_return_of_type t =
+  match t with
+  | TCon("->",[p;q]) ->
+    let (arguments,return) = arguments_and_return_of_type q in
+    (p::arguments,return)
+  | _ -> ([],t)
+
+let rec right_of_arrow t =
+  match t with
+  | TCon("->",[_;p]) -> p
+(*   | _ -> raise (Failure "arguments_and_return_of_type") *)
+
 let rec string_of_type (t : tp) : string = 
   match t with
   | TID(i) -> string_of_int i

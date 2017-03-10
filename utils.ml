@@ -1,6 +1,10 @@
 open Core.Std
 open Unix.Select_fds
 open Sys
+open Obj
+
+let magical = Obj.magic;;
+
 
 
 let compose f g = fun x -> f (g x);;
