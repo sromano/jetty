@@ -68,6 +68,8 @@ let lse x y =
   then x +. log (1.0 +. exp (y-.x))
   else y +. log (1.0 +. exp (x-.y))
 
+let softMax = lse
+
 
 let lse_list (l : float list) : float = 
   List.fold_left l ~f:lse ~init:Float.neg_infinity
