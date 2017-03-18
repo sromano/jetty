@@ -1,5 +1,8 @@
 c = corebuild
 
+test:
+	$(c) -package glpk test.native
+
 Chinese:
 	$(c) crp.native; cp crp.native test
 

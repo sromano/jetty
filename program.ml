@@ -9,6 +9,18 @@ type program =
   | Apply of program*program
   | Primitive of unit ref * tp * string
 
+let is_index = function
+  |Index(_) -> true
+  |_ -> false
+
+let program_children = function
+  | Abstraction(b) -> [b]
+  | Apply(m,n) -> [m;n]
+  | _ -> []
+
+let rec program_subexpressions p =
+  p::(List.map (program_children p) program_subexpressions |> List.concat)
+
 let rec show_program = function
   | Index(j) -> string_of_int j
   | Abstraction(body) ->
