@@ -11,6 +11,8 @@ lambda:
 	$(c) lambda_calculus.native; cp lambda_calculus.native test
 polynomial:
 	$(c) polynomial.native; cp polynomial.native test
+xor:
+	$(c) xor.native; cp xor.native test
 regress:
 	$(c) regress.native; cp regress.native test
 clean:

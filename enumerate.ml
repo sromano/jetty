@@ -90,7 +90,7 @@ let enumerate_frontiers_for_tasks grammar frontier_size tasks
         let l = task_likelihood t in
         let prune j = not @@ is_valid @@ l j in
         let special_indices = enumerate_ID ~prune dagger special_grammar t.task_type frontier_size in
-	scrub_graph dagger;
+      scrub_graph dagger;
         (dagger, t.task_type, List.fold_left special_indices
            ~f:Int.Set.add ~init:Int.Set.empty)) in
     List.map parallel_results ~f:(fun (d,t,i) ->
@@ -99,40 +99,44 @@ let enumerate_frontiers_for_tasks grammar frontier_size tasks
   let end_time = time () in
   Printf.printf "Enumerated all programs in %f seconds." (end_time-.start_time);
   print_newline ();
+  (* indices: int list list Ej [[1]]*)
+  (*
+  INSPECT INDICES
+  let i = List.map indices (fun t -> List.map t (fun s -> let () = print_newline() in print_int s)) in
+  *)
+  (* clean after *)
   let start_time = time() in
   let indices = List.zip_exn types @@
     List.map indices (fun iDs ->
         List.fold_left iDs ~init:Int.Set.empty ~f:Int.Set.add) in
+  (* Type of indices changed to (tp * Int.Set.t) list *)
   (* combines special indices with normal indices *)
   let indices = List.fold_left special_indices ~f:(fun i (ty,j) ->
       i |> List.map ~f:(fun (ty2,j2) -> if ty = ty2
                          then (ty2,Int.Set.union j j2)
                          else (ty2,j2))) ~init:indices in
+
   let number_of_programs = indices |> List.map ~f:snd |>
                            List.fold_left ~f:Int.Set.union ~init:Int.Set.empty |>
                            Int.Set.length in
   let end_time = time() in
+  (*
+  INSEPECT INDICES
+  let i = List.map indices (fun (tt,ts) -> List.map (Int.Set.to_list ts) (fun s -> let () = print_newline() in print_int s)) in
+  *)
   Printf.printf "Coalesced %i programs in %f seconds." number_of_programs (end_time-.start_time);
   print_newline ();
+  (*
+  EQUIVLANTE
+  (List.map indices (fun (t,s) -> (t,Int.Set.to_list s)),dagger)
+  *)
+
+  (*
+  (int, expressionNode) Hashtbl.t *
+           (expressionNode, int) Hashtbl.t * int ref
+  *)
   (indices |> List.map ~f:(fun (t,s) -> (t,Int.Set.to_list s)), dagger)
 
-
-(*
-let test_enumerate () =
-  let dagger = make_expression_graph 10000 in
-  let indices = enumerate_bounded dagger polynomial_library (make_arrow tint tint) 11.49 in
-  let type_array = infer_graph_types dagger in
-  let requests = Int.Map.map indices (fun _ -> [(make_arrow tint tint)]) in
-  let ls = program_likelihoods polynomial_library dagger type_array requests in
-  let through = List.map (Int.Map.to_alist indices)
-      (fun (e,_) -> ((Hashtbl.find_exn ls (e,make_arrow tint tint)),(extract_expression dagger e)))
-  in let kansas = List.sort (fun (l,_) (r,_) -> compare l r) through in
-  print_string (String.concat ~sep:"\n" (List.map ~f:(fun (l,e) ->
-      string_of_expression  e ^ "\t" ^ Float.to_string l)
-      kansas  ))
-
-(* test_enumerate ();; *)
- *)
 
 
 (* computes likelihood of MAP parse *)

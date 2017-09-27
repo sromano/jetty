@@ -239,6 +239,30 @@ let c_times = Terminal("*",
 let polynomial_library =
   make_flat_library @@ [c_S;c_B;c_C;c_I;c_plus;c_times;c_zero;c_one;](*  @ c_numbers *);;
 
+
+let c_and = Terminal("AND",
+                     make_arrow tint (make_arrow tint tint),
+                     lift_binary (land));;
+
+let c_or = Terminal("OR",
+                     make_arrow tint (make_arrow tint tint),
+                     lift_binary (lor));;
+
+let c_not = Terminal("NOT",
+                     make_arrow tint tint,
+                     lift_unary (fun x -> 2 + (lnot) x));;
+
+let c_xor = Terminal("XOR",
+                     make_arrow tint (make_arrow tint tint),
+                     lift_binary (lxor));;
+
+
+let boolean_library =
+  make_flat_library @@ [c_S;c_B;c_C;c_I;c_K;c_and;c_or;c_not;c_zero;c_one;];;
+
+let boolean_library_with_xor =
+  make_flat_library @@ [c_S;c_B;c_C;c_I;c_K;c_and;c_or;c_not;c_xor;c_zero;c_one;];;
+
 let c_reals = List.map (0--9) (expression_of_float % Float.of_int);;
 let c_sin = Terminal("sin",
                     make_arrow treal treal,
