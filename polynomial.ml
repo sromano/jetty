@@ -10,28 +10,28 @@ open Ec
 open Symbolic_dimensionality_reduction
 
 
-let make_polynomial_task a b c = 
+let make_polynomial_task a b c =
   let n = Printf.sprintf "(%i x^2 + %i x + %i)^2" a b c in
   let test_cases : int list = 0--5 in
-  let scoring_function = (fun (e : expression) -> 
-      let rec t y = 
+  let scoring_function = (fun (e : expression) ->
+      let rec t y =
         match y with
 	  [] -> 0.0
-        | (x::xs) -> 
+        | (x::xs) ->
 	  let q = Application(e,Terminal(string_of_int x,TID(0),Obj.magic (ref x))) in
 	  match run_expression_for_interval 0.01 q with
 	    Some(r) when r = (a*x*x+b*x+c)*(a*x*x+b*x+c) -> t xs
 	  | _ -> Float.neg_infinity
       in t test_cases)
-  in { name = n; task_type = make_arrow tint tint; 
+  in { name = n; task_type = make_arrow tint tint;
        score = LogLikelihood(scoring_function); proposal = None; }
 
 
-let poly () = 
+let poly () =
   let frontier_size = Int.of_string (Sys.argv.(1)) in
   let g = ref (polynomial_library) in
   let interval = 0--9 in
-  let tasks = 
+  let tasks =
     List.concat (List.map ~f:(fun b ->
 	(List.map ~f:(fun c -> make_polynomial_task 0 b c)
            interval)) interval) in
