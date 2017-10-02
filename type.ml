@@ -1,6 +1,5 @@
 open Core.Std
 
-
 module TypeMap = Map.Make(Int)
 
 
@@ -33,9 +32,9 @@ let rec chaseType (context : tContext) (t : tp) : tp*tContext =
   | TCon(s, ts) ->
     let (ts_, context_) =
       List.fold_right ts
-	~f:(fun t (tz, k) ->
-	    let (t_, k_) = chaseType k t in
-	    (t_ :: tz, k_)) ~init:([], context)
+      ~f:(fun t (tz, k) ->
+          let (t_, k_) = chaseType k t in
+          (t_ :: tz, k_)) ~init:([], context)
     in (TCon(s, ts_), context_)
   | TID(i) ->
     match TypeMap.find (snd context) i with
@@ -93,7 +92,7 @@ let can_unify (t1 : tp) (t2 : tp) : bool =
          | None -> let f = FID(ref None) in dictionary := (i,f)::!dictionary; f
          | Some(f) -> f)
       | TCon(k,xs) ->
-	FCon(k, List.map xs ~f:(make_fast_type dictionary))
+        FCon(k, List.map xs ~f:(make_fast_type dictionary))
     in let rec fast_occurs r f =
       match f with
       | FID(r_) -> phys_equal r r_
@@ -101,11 +100,11 @@ let can_unify (t1 : tp) (t2 : tp) : bool =
     in let rec fast_chase f =
       match f with
       | FID(r) ->
-	(match !r with
-         | None -> f
-	 | Some(f_) ->
-	   let f__ = fast_chase f_ in
-	   r := Some(f__); f__)
+        (match !r with
+          | None -> f
+          | Some(f_) ->
+          let f__ = fast_chase f_ in
+          r := Some(f__); f__)
       | FCon(k,fs) -> FCon(k,List.map ~f:fast_chase fs)
     in let rec fast_unify t1 t2 =
       let t1 = fast_chase t1 in
@@ -119,7 +118,7 @@ let can_unify (t1 : tp) (t2 : tp) : bool =
       | (FCon(k1,_),FCon(k2,_)) when k1 <> k2 -> false
       | (FCon(_,[]),FCon(_,[])) -> true
       | (FCon(_,x::xs),FCon(_,y::ys)) ->
-	fast_unify x y &&
+        fast_unify x y &&
         List.for_all2_exn xs ys (fun a b -> fast_unify (fast_chase a) (fast_chase b))
       | _ -> raise (Failure "constructors of different arity")
     in fast_unify (make_fast_type (ref []) t1) (make_fast_type (ref []) t2)
@@ -130,9 +129,9 @@ let instantiate_type (n,m) t =
   let rec instantiate j =
     match j with
     | TID(i) -> (try TID(List.Assoc.find_exn !substitution i)
-		 with Not_found ->
+      with Not_found ->
                    substitution := (i,!next)::!substitution; next := (1+ !next); TID(!next-1)
-		)
+    )
     | TCon(k,js) -> TCon(k,List.map ~f:instantiate js)
   in let q = instantiate t in
   (q,(!next,m))
@@ -151,7 +150,7 @@ let canonical_type t =
   let rec canon q =
     match q with
     | TID(i) -> (try TID(List.Assoc.find_exn !substitution i)
-		 with Not_found ->
+     with Not_found ->
                    substitution := (i,!next)::!substitution; next := (1+ !next); TID(!next-1))
     | TCon(k,a) -> TCon(k,List.map ~f:canon a)
   in canon t
@@ -199,6 +198,7 @@ let rec get_arity = function
 let make_ground g = TCon(g,[]);;
 let tint = make_ground "int";;
 let treal = make_ground "real";;
+let tdraw = make_ground "drawtype";;
 let t0 = TID(0);;
 let t1 = TID(1);;
 let t2 = TID(2);;
@@ -207,10 +207,22 @@ let t4 = TID(4);;
 
 
 let test_type () =
-  print_string (string_of_bool (can_unify (t1 @> t1) (t0 @> (tint @> t0))))
-  (* print_string (string_of_type @@ t1 @> (t2 @> t2) @> tint);
-  print_string (string_of_bool (can_unify (t1 @> t1) (make_arrow t1 t1)));
-  print_string (string_of_bool (can_unify (make_arrow t1 t1) (make_arrow (make_arrow t1 t2) t3)));
-  print_string (string_of_bool (not (can_unify (make_arrow t1 t1) (make_arrow (make_arrow t1 t2) (make_ground "int"))))); *)
+    let () = print_string (string_of_bool (can_unify (t1 @> t1) (t0 @> (tint @> t0)))) in
+    let () = print_newline() in
+  let () = print_string (string_of_type @@ t1 @> (t2 @> t2) @> tint) in
+    let () = print_newline() in
+  let () = print_string (string_of_bool (can_unify (t1 @> t1) (make_arrow t1 t1))) in
+    let () = print_newline() in
+  let () = print_string (string_of_bool (can_unify (make_arrow t1 t1) (make_arrow (make_arrow t1 t2) t3))) in
+    let () = print_newline() in
+  print_string (string_of_bool (not (can_unify (make_arrow t1 t1) (make_arrow (make_arrow t1 t2) (make_ground "int")))));
 ;;
-(* test_type ();; *)
+
+let test_type2 () =
+    let () = print_string (string_of_bool (can_unify (tdraw @> tdraw) (make_arrow tdraw tdraw))) in
+    print_newline()
+;;
+
+(*
+test_type2 ();;
+*)

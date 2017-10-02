@@ -5,6 +5,8 @@ Chinese:
 
 type:
 	$(c) type.native; cp type.native test
+%: %.ml
+	$(c) $@.native; cp $@.native test
 morphology:
 	$(c) morphology.native; cp morphology.native test
 lambda:

@@ -379,12 +379,12 @@ let infer_graph_types dagger =
 
 let expression_of_int i = Terminal(Int.to_string i,tint,Obj.magic (ref i));;
 let expression_of_float i = Terminal(Float.to_string i,treal,Obj.magic (ref i));;
+let expression_of_draw i = Terminal("Drawing",tdraw,Obj.magic (ref i));;
 
 let rec expression_has_identifier v = function
   | Terminal(b,_,_) -> b = v
   | Application(l,r) ->
     expression_has_identifier v l || expression_has_identifier v r
-
 
 let test_expression () =
   let t1 = TID(0) in
@@ -408,5 +408,5 @@ let test_expression () =
   | None -> print_string "timeout")
 ;;
 
+(*print_string (string_of_expression (expression_of_draw (Array.make_matrix 10 5 0)));;*)
 
-(* test_expression ();;  *)

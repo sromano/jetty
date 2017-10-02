@@ -2,7 +2,6 @@ open Core.Std
 open Unix.Select_fds
 open Sys
 
-
 let compose f g = fun x -> f (g x);;
 let (%) = compose;;
 
@@ -305,6 +304,30 @@ let make_random_seeds n =
       if List.mem others r then seeds others m
           else seeds (r::others) (m-1)
   in seeds [] n
+
+let dimensions a = (Array.length a, Array.length (Array.get a 0))
+let string_of_pair a = "(" ^ string_of_int (fst a) ^ "," ^ string_of_int (snd a) ^ ")"
+
+let elements_m matrix = Array.length matrix * Array.length matrix.(0);;
+
+let sprint_array = Array.fold ~f:(fun x s -> x ^ " " ^ (Float.to_string s)) ~init:""
+let print_m a = Array.iter a (fun arr -> printf "%s \n" (sprint_array arr));;
+
+let sum_a = Array.fold ~init:0.0 ~f:(+.)
+let mean_a arr = sum_a arr /. Float.of_int (Array.length arr)
+
+let variance_a arr =
+  let m = mean_a arr in
+  let v = mean_a (Array.map (fun x -> (x -. m) *. (x -. m)) arr) in
+  let n = Float.of_int (Array.length arr) in
+  (n /. (n -.  1.0)) *. v
+
+let covariance_a  x y =
+  let x_m = mean_a x in
+  let y_m = mean_a y in
+  let v = mean_a (Array.map2_exn ~f:(fun x_i y_i -> (x_i -. x_m) *. (y_i -. y_m)) x y) in
+  let n = Float.of_int (Array.length x) in
+    (n /. (n -.  1.0)) *. v
 
 
 (*
