@@ -15,8 +15,8 @@ let frontier_requests frontiers =
     ~init:Int.Map.empty ~f:(fun requests (requested_type,frontier) ->
         List.fold_left frontier ~init:requests ~f:(fun (a : (tp list) Int.Map.t) (i : int) ->
             match Int.Map.find a i with
-	    | Some(old) ->
-	      if List.mem old requested_type then a
+      | Some(old) ->
+        if List.mem old requested_type then a
               else Int.Map.add a ~key:i ~data:(requested_type::old)
             | None -> Int.Map.add a ~key:i ~data:[requested_type]))
 
@@ -97,6 +97,7 @@ let make_frontiers size keep_size grammar tasks =
 
 (* spit out something that is similar to the posterior; *)
 let bic_posterior_surrogate ?print:(print = true) lambda dagger grammar task_solutions =
+  let start_time = time () in
   let likelihood = List.fold_left task_solutions ~init:0. ~f:(fun l (t,f) ->
       if List.length f > 0
       then l +. lse_list (List.map f ~f:(fun (i,s) ->
@@ -109,4 +110,6 @@ let bic_posterior_surrogate ?print:(print = true) lambda dagger grammar task_sol
   let bic = -.0.5 *. m *. (log @@ Float.of_int n) in
   (if print then Printf.printf "Log Prior (%f) + Log Likelihood (%f) + BIC (%f) = \n\t%f\n"
        prior likelihood bic (prior +. likelihood +. bic));
+  let end_time = time () in
+  Printf.printf "Surrogated all programs in %f seconds." (end_time-.start_time);
   (prior +. likelihood +. bic)

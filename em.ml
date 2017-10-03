@@ -78,6 +78,8 @@ let expectation_maximization_iteration ?compression_tries:(compression_tries = 1
   print_string "Scoring programs... \n";
   print_newline ();
   let program_scores = score_programs dagger frontiers tasks in
+  (*let () = List.hd_exn (List.map ~f:(fun i ->  Printf.printf "%i: %f    " (fst(i)) (snd(i))) (List.hd_exn program_scores)) in
+  let () = print_newline () in*)
   (* display the hit rate *)
   let number_hit = List.length (List.filter ~f:(fun scores ->
       List.exists scores (fun (_,s) -> s > log (0.999))
@@ -93,6 +95,8 @@ let expectation_maximization_iteration ?compression_tries:(compression_tries = 1
   let candidates = candidate_ground_fragments dagger @@ List.map program_scores (List.map ~f:fst) in
   let g0 = make_flat_library @@ List.filter ~f:is_terminal @@ List.map ~f:fst @@ snd grammar in
   (* makes the nth (random) frontiers *)
+  Printf.printf "Calculating random frontier";
+  print_newline ();
   let random_frontier n s =
     Random.init s;
     match n with
@@ -113,21 +117,40 @@ let expectation_maximization_iteration ?compression_tries:(compression_tries = 1
                      List.map ~f:log in
            List.map2_exn lps f ~f:(fun lp (i,ll) -> (i,ll,lp)))) in
   let ct_sd = List.zip_exn (1--compression_tries) @@ make_random_seeds compression_tries in
+  Printf.printf "Candidate Grammar";
+  print_newline ();
+  let start_time = time () in
   let candidate_grammars = parallel_map ct_sd ~f:(fun (ct,sd) ->
     let (g0,fs) = random_frontier ct sd in
     expectation_maximization_compress lambda smoothing application_smoothing g0 dagger
       type_array requests candidates tasks fs) in
+  let end_time = time () in
+  Printf.printf "Candidate grammars in %f" (end_time-.start_time);
+  print_newline ();
   let (final_grammar,_) = maximum_by ~cmp:(fun (_,a) (_,b) -> compare a b) candidate_grammars in
   (* save the grammar *)
   Out_channel.write_all (prefix^"_grammar") ~data:(string_of_library final_grammar);
   print_newline ();
   (* save the best programs *)
+  Printf.printf "Calculating task solutions";
+  print_newline ();
+
+  let start_time = time () in
   let task_solutions = List.zip_exn tasks program_scores |> List.map ~f:(fun (t,solutions) ->
       (t, List.map solutions (fun (i,s) ->
            let e = extract_expression dagger i in
            let error_message = "em_best: "^(string_of_expression e) in
+           (*let () = print_string error_message in
+           let () = print_float s in
+           let () = print_newline () in*)
            (i,s+. (safe_get_some error_message @@ likelihood_option final_grammar t.task_type e))))) in
+  (*let a = List.map ~f:(fun i -> Printf.printf "%i: %f   - " (fst(i)) (snd(i)) ) (snd (List.hd_exn task_solutions)) in*)
+  let end_time = time () in
+  Printf.printf "Task solutions in %f" (end_time-.start_time);
+  print_newline ();
   save_best_programs (prefix^"_programs") dagger task_solutions;
+  Printf.printf "Calculating surrogate";
+  print_newline ();
   ignore(bic_posterior_surrogate lambda dagger final_grammar task_solutions);
   final_grammar
 

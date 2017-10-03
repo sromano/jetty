@@ -30,6 +30,10 @@ let empty_matrix w h = Array.make_matrix w h 0.0
 (* let empty_drawing w h = Draw(empty_matrix w h,0,0,0) *)
 let empty_drawing () = Draw(empty_matrix 10 10,0,0,3)
 
+let drawing_array draw =
+  match draw with
+  | Draw(arr,_,_,_) -> arr
+
 let width draw =
   match draw with
   | Draw(arr,_,_,_) -> (Array.length arr)
@@ -129,6 +133,69 @@ let d_ndrawing = Terminal("N", make_arrow tint (make_arrow tdraw tdraw), lift_bi
 let drawing_library =
   make_flat_library @@ [c_S;c_B;c_C;c_I;d_rotate;d_drawing;d_ndrawing;]  @ c_numbers ;;
 
+let make_drawing_task n expected =
+  let scoring_function = (fun (e : expression) ->
+    let empty = expression_of_draw (empty_drawing ()) in
+    let q = Application(e,empty) in
+    match run_expression_for_interval 0.01 q with
+    Some(Draw(arr,_,_,_)) ->
+      log (ssim_with_window arr expected 4) *. 1000.0
+    | _ -> Float.neg_infinity) in
+  {
+    name = n;
+    task_type = make_arrow tdraw tdraw;
+    score = LogLikelihood(scoring_function);
+    proposal = None;
+  }
+
+let get_line_task length =
+  let line = move_drawing length (empty_drawing ()) in
+  let expected = drawing_array line in
+  let scoring_function = (fun (e : expression) ->
+    let empty = expression_of_draw (empty_drawing ()) in
+    let q = Application(e,empty) in
+    match run_expression_for_interval 0.01 q with
+    Some(Draw(arr,_,_,_)) ->
+      (*let () = print_float (log (ssim_with_window arr expected 4)) in
+      let () = print_newline() in
+      let () = print_m arr in
+      let () = print_newline() in
+      let () = print_newline() in*)
+
+      (* Here we might use some annealing *)
+      log (ssim_with_window arr expected 8) *. 1000.0
+    | _ -> Float.neg_infinity) in
+  {
+    name = "Line";
+    task_type = make_arrow tdraw tdraw;
+    score = LogLikelihood(scoring_function);
+    proposal = None;
+  }
+
+let draw () =
+  let frontier_size = Int.of_string (Sys.argv.(1)) in
+  let g = ref (drawing_library) in
+  let dim = 10 in
+  let all_tasks =
+    List.fold ~f:(fun acum i -> List.append acum (Csv.load Sys.argv.(i)))
+      ~init:[] (2--(Array.length Sys.argv - 1)) in
+  (*let names = List.hd_exn (Csv.load "graphic_tasks_names.txt") in*)
+  let drawing_tasks = List.map ~f:( fun l -> split (List.map ~f:Float.of_string l) dim) all_tasks in
+  let tasks = List.map ~f:(fun i ->
+    let arr = Array.of_list @@ List.map ~f:(Array.of_list) i in
+    make_drawing_task "Square" arr) drawing_tasks in
+
+  for i = 1 to 8 do
+    Printf.printf "\n \n \n Iteration %i \n" i;
+    g := expectation_maximization_iteration ("log/graphics_"^string_of_int i)
+        1.5 1.0 frontier_size tasks (!g)
+  done;
+  (*  g := load_library "log/iter_1_grammar" ;
+      let decoder =
+      reduce_symbolically (polynomial_library) !g 100000 tasks in
+      Printf.printf "Decoder: %s\n" (string_of_expression decoder) *)
+;;
+
 
 (*
 
@@ -137,6 +204,7 @@ print_drawing (move_one_step_drawing (move_one_step_drawing (rotate 2 (move_one_
 print_drawing (move_drawing 4 (rotate 2 (move_drawing 4 (rotate 2 (move_drawing 4 (rotate 2 (move_drawing 4 (empty_drawing()))))))))
 
 *)
+
 
 let test_drawing () =
 
@@ -178,4 +246,4 @@ let test_repeat () =
     | None -> print_string "timeout"
 );;
 
-test_repeat ();;
+draw ();;
