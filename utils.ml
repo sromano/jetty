@@ -52,7 +52,7 @@ let index_of l x =
 let set_equal c x y =
   let x = List.sort ~cmp:c x
   and y = List.sort ~cmp:c y in
-  List.compare ~cmp:c x y = 0
+  List.compare x y c = 0
 
 
 let log2 = log 2.
@@ -329,6 +329,14 @@ let covariance_a  x y =
   let n = Float.of_int (Array.length x) in
     (n /. (n -.  1.0)) *. v
 
+let split xs size =
+  let (_, r, rs) =
+    List.fold ~f:(fun (csize, ys, zss) elt ->
+      if csize = 0 then (size - 1, [elt], zss @ [ys])
+      else (csize - 1, ys @ [elt], zss))
+        ~init:(size, [], []) xs
+  in
+  rs @ [r]
 
 (*
 let () =
