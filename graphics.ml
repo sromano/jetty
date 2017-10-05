@@ -30,6 +30,11 @@ let empty_matrix w h = Array.make_matrix w h 0.0
 (* let empty_drawing w h = Draw(empty_matrix w h,0,0,0) *)
 let empty_drawing () = Draw(empty_matrix 10 10,0,0,3)
 
+let change_position draw x y =
+  match draw with
+  | Draw(arr,_,_,r) -> Draw(arr,x,y,r)
+  | OutOfBounds -> OutOfBounds
+
 let drawing_array draw =
   match draw with
   | Draw(arr,_,_,_) -> arr
@@ -148,6 +153,24 @@ let make_drawing_task n expected =
     proposal = None;
   }
 
+let make_drawing_task_with_init n expected x y =
+  let scoring_function = (fun (e : expression) ->
+    (*let cdraw = change_position (empty_drawing ()) x y in*)
+    let cdraw = (empty_drawing ()) in
+    let drawe = expression_of_draw cdraw in
+    let xe = expression_of_int x in
+    let ye = expression_of_int y in
+    let q = Application(Application(Application(e,xe),ye),drawe) in
+    match run_expression_for_interval 0.01 q with
+    Some(Draw(arr,_,_,_)) when arr = expected -> 0.0
+    | _ -> Float.neg_infinity) in
+  {
+    name = n;
+    task_type = make_arrow tint (make_arrow tint (make_arrow tdraw tdraw));
+    score = LogLikelihood(scoring_function);
+    proposal = None;
+  }
+
 let get_line_task length =
   let line = move_drawing length (empty_drawing ()) in
   let expected = drawing_array line in
@@ -182,8 +205,10 @@ let draw () =
   (*let names = List.hd_exn (Csv.load "graphic_tasks_names.txt") in*)
   let drawing_tasks = List.map ~f:( fun l -> split (List.map ~f:Float.of_string l) dim) all_tasks in
   let tasks = List.map ~f:(fun i ->
+    let y = find_elem_row 1.0 i in
+    let x = find_elem_pos 1.0 (List.nth_exn i y) in
     let arr = Array.of_list @@ List.map ~f:(Array.of_list) i in
-    make_drawing_task "Square" arr) drawing_tasks in
+    make_drawing_task_with_init "Square" arr x y) drawing_tasks in
 
   for i = 1 to 8 do
     Printf.printf "\n \n \n Iteration %i \n" i;

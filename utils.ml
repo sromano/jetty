@@ -52,7 +52,7 @@ let index_of l x =
 let set_equal c x y =
   let x = List.sort ~cmp:c x
   and y = List.sort ~cmp:c y in
-  List.compare c x y = 0
+  List.compare ~cmp:c x y = 0
 
 
 let log2 = log 2.
@@ -338,6 +338,22 @@ let split xs size =
   in
   rs @ [r]
 
+let find_pos f lst =
+    let rec find_aux f lst =
+      match lst with
+      | [] -> None
+      | h :: t -> if f h then Some(0)
+        else
+          match (find_aux f t) with
+          | None -> None
+          | Some(y) -> Some(1 + y) in
+    match (find_aux f lst)
+      with
+      | None -> 0
+      | Some(x) -> x
+
+let find_elem_pos y = find_pos (fun x -> x = y)
+let find_elem_row y = find_pos (fun x -> List.exists x ~f:((=) y))
 (*
 let () =
   let a =2. in
