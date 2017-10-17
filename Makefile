@@ -19,5 +19,8 @@ regress:
 	$(c) regress.native; cp regress.native test
 clean:
 	rm -rf _build test
+toplevel:
+	ocamlfind ocamlmktop -o play -linkpkg -package core,threads,csv -thread _build/type.cmo _build/utils.cmo _build/time_limit.cmo _build/expression.cmo _build/drawing.cmo _build/task.cmo _build/library.cmo _build/enumerate.cmo _build/compress.cmo _build/partial_evaluation.cmo _build/bottom_up.cmo _build/frontier.cmo _build/em.cmo ;\
+	mv play _build/
 run:
 	./test | tee log/output

@@ -4,6 +4,7 @@ open Task
 open Expression
 open Type
 open Utils
+open Drawing
 
 open Obj
 
@@ -327,6 +328,17 @@ let math_list_library =
     make_flat_library @@ [c_S;c_B;c_C;c_I;c_plus_dot;c_times_dot;c_sin;
                           c_cos;c_null;c_cons;c_inner_product] @ c_reals;;
 
+let d_rotate = Terminal(">", make_arrow tint (make_arrow tdraw tdraw), lift_binary (rotate));;
+
+let d_drawing = Terminal("D", make_arrow tint (make_arrow tdraw tdraw), lift_binary (move_drawing));;
+
+let d_ndrawing = Terminal("N", make_arrow tint (make_arrow tdraw tdraw), lift_binary (move_not_drawing));;
+
+let d_empty = Terminal("E",tdraw,Obj.magic (ref (empty_drawing())));;
+
+let drawing_library =
+  make_flat_library @@ [c_S;c_B;c_C;c_I;d_rotate;d_drawing;d_ndrawing;]  @ c_numbers ;;
+
 let string_of_library (log_application,bindings) =
   String.concat ~sep:"\n"
     ((Float.to_string (exp log_application))::
@@ -335,7 +347,8 @@ let string_of_library (log_application,bindings) =
 
 let all_terminals = ref (List.map ([c_K;c_S;c_B;c_C;c_I;c_bottom;
                           c_sin;c_cos;c_times_dot;c_plus_dot;c_plus;c_times;c_inner_product;
-                          c_null;c_append;c_rcons;c_cons;c_append1;c_last_one;c_exists;c_car;c_cdr;]
+                          c_null;c_append;c_rcons;c_cons;c_append1;c_last_one;c_exists;c_car;c_cdr;
+                          d_rotate; d_drawing; d_ndrawing; d_empty;]
                                    @ c_numbers @ c_reals)
                            (fun e -> (string_of_expression e,e)));;
 let register_terminal t =
