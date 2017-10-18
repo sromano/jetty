@@ -44,44 +44,51 @@ let make_drawing_task_with_init n expected x y =
     proposal = None;
   }
 
-let get_line_task length =
-  let line = move_drawing length (empty_drawing ()) in
-  let expected = drawing_array line in
+let goto_task x y =
   let scoring_function = (fun (e : expression) ->
-    let empty = expression_of_draw (empty_drawing ()) in
-    let q = Application(e,empty) in
+    (*let cdraw = change_position (empty_drawing ()) x y in*)
+    let cdraw = (empty_drawing ()) in
+    let dim = 10 in
+    let empty_arr = empty_matrix dim dim in
+    let drawe = expression_of_draw cdraw in
+    let xe = expression_of_int x in
+    let ye = expression_of_int y in
+    let q = Application(Application(Application(e,xe),ye),drawe) in
     match run_expression_for_interval 0.01 q with
-    Some(Draw(arr,_,_,_)) ->
-      (*let () = print_float (log (ssim_with_window arr expected 4)) in
-      let () = print_newline() in
-      let () = print_m arr in
-      let () = print_newline() in
-      let () = print_newline() in*)
-
-      (* Here we might use some annealing *)
-      log (ssim_with_window arr expected 8) *. 1000.0
+    Some(Draw(arr,xres,yres,_)) when arr = empty_arr && xres = x && yres = y -> 0.0
     | _ -> Float.neg_infinity) in
   {
-    name = "Line";
-    task_type = make_arrow tdraw tdraw;
+    name = "GoTo";
+    task_type = make_arrow tint (make_arrow tint (make_arrow tdraw tdraw));
     score = LogLikelihood(scoring_function);
     proposal = None;
   }
+;;
+
+let all_goto_tasks () =
+  let interval = (0--9) in
+  let tasks_lists = List.map interval ~f:(fun i -> List.map interval ~f:(fun j -> (goto_task i j))) in
+  List.fold ~init:[] ~f:(fun acum i -> List.append acum i) tasks_lists;;
+
+let drawing_task_from_file filename taskname =
+  let ftasks = Csv.load filename in
+  let dim = 10 in
+  let drawing_tasks = List.map ~f:( fun l -> split (List.map ~f:Float.of_string l) dim) ftasks in
+  List.map ~f:(fun i ->
+    let y = find_elem_row 1.0 i in
+    let x = find_elem_pos 1.0 (List.nth_exn i y) in
+    let arr = Array.of_list @@ List.map ~f:(Array.of_list) i in
+    make_drawing_task_with_init taskname arr x y) drawing_tasks
+  ;;
 
 let draw () =
   let frontier_size = Int.of_string (Sys.argv.(1)) in
   let g = ref (drawing_library) in
-  let dim = 10 in
-  let all_tasks =
-    List.fold ~f:(fun acum i -> List.append acum (Csv.load Sys.argv.(i)))
-      ~init:[] (2--(Array.length Sys.argv - 1)) in
-  (*let names = List.hd_exn (Csv.load "graphic_tasks_names.txt") in*)
-  let drawing_tasks = List.map ~f:( fun l -> split (List.map ~f:Float.of_string l) dim) all_tasks in
-  let tasks = List.map ~f:(fun i ->
-    let y = find_elem_row 1.0 i in
-    let x = find_elem_pos 1.0 (List.nth_exn i y) in
-    let arr = Array.of_list @@ List.map ~f:(Array.of_list) i in
-    make_drawing_task_with_init "Square" arr x y) drawing_tasks in
+  let t0 = all_goto_tasks() in
+  let t1 = drawing_task_from_file "tasks/hlines.txt" "Hline" in
+  let t2 = drawing_task_from_file "tasks/vlines.txt" "Vline" in
+  let t3 = drawing_task_from_file "tasks/squares.txt" "Square" in
+  let tasks = List.append t0 (List.append (List.append t1 t2) t3) in
 
   for i = 1 to 8 do
     Printf.printf "\n \n \n Iteration %i \n" i;
@@ -123,6 +130,30 @@ let test_drawing () =
     Some(x) -> print_drawing x;
     | None -> print_string "timeout"
   );;
+
+let get_line_task length =
+  let line = move_drawing length (empty_drawing ()) in
+  let expected = drawing_array line in
+  let scoring_function = (fun (e : expression) ->
+    let empty = expression_of_draw (empty_drawing ()) in
+    let q = Application(e,empty) in
+    match run_expression_for_interval 0.01 q with
+    Some(Draw(arr,_,_,_)) ->
+      (*let () = print_float (log (ssim_with_window arr expected 4)) in
+      let () = print_newline() in
+      let () = print_m arr in
+      let () = print_newline() in
+      let () = print_newline() in*)
+
+      (* Here we might use some annealing *)
+      log (ssim_with_window arr expected 8) *. 1000.0
+    | _ -> Float.neg_infinity) in
+  {
+    name = "Line";
+    task_type = make_arrow tdraw tdraw;
+    score = LogLikelihood(scoring_function);
+    proposal = None;
+  }
 
 let test_repeat () =
 
