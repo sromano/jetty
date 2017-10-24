@@ -328,6 +328,8 @@ let math_list_library =
     make_flat_library @@ [c_S;c_B;c_C;c_I;c_plus_dot;c_times_dot;c_sin;
                           c_cos;c_null;c_cons;c_inner_product] @ c_reals;;
 
+(* DRAWING CLASSIC *)
+
 let d_rotate = Terminal(">", make_arrow tint (make_arrow tdraw tdraw), lift_binary (rotate));;
 
 let d_drawing = Terminal("D", make_arrow tint (make_arrow tdraw tdraw), lift_binary (move_drawing));;
@@ -336,8 +338,21 @@ let d_ndrawing = Terminal("N", make_arrow tint (make_arrow tdraw tdraw), lift_bi
 
 let d_empty = Terminal("E",tdraw,Obj.magic (ref (empty_drawing())));;
 
+(* DRAWING EXTRA *)
+
+(* FIXED ROTATE INSTRUCTIONS *)
+let d_setrotate0 = Terminal("R0", (make_arrow tdraw tdraw), lift_unary (fun x -> rotateTo 0 x));;
+let d_setrotate1 = Terminal("R1", (make_arrow tdraw tdraw), lift_unary (fun x -> rotateTo 1 x));;
+let d_setrotate2 = Terminal("R2", (make_arrow tdraw tdraw), lift_unary (fun x -> rotateTo 2 x));;
+let d_setrotate3 = Terminal("R3", (make_arrow tdraw tdraw), lift_unary (fun x -> rotateTo 3 x));;
+let d_setrotate4 = Terminal("R4", (make_arrow tdraw tdraw), lift_unary (fun x -> rotateTo 4 x));;
+let d_setrotate5 = Terminal("R5", (make_arrow tdraw tdraw), lift_unary (fun x -> rotateTo 5 x));;
+let d_setrotate6 = Terminal("R6", (make_arrow tdraw tdraw), lift_unary (fun x -> rotateTo 6 x));;
+let d_setrotate7 = Terminal("R7", (make_arrow tdraw tdraw), lift_unary (fun x -> rotateTo 7 x));;
+
 let drawing_library =
-  make_flat_library @@ [c_S;c_B;c_C;c_I;d_rotate;d_drawing;d_ndrawing;]  @ c_numbers ;;
+  make_flat_library @@ [c_S;c_B;c_C;c_I;d_setrotate0;d_setrotate1;d_setrotate2;d_setrotate3;
+    d_setrotate4;d_setrotate5;d_setrotate6;d_setrotate7;d_drawing;d_ndrawing;]  @ c_numbers ;;
 
 let string_of_library (log_application,bindings) =
   String.concat ~sep:"\n"

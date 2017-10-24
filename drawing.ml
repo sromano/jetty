@@ -56,6 +56,11 @@ let update_position x y r =
     | 4 -> (x+1,y+1)
     | _ -> (-1,-1)
 
+let rotateTo angle draw =
+  match draw with
+    | OutOfBounds -> OutOfBounds
+    | Draw(arr,x,y,_) -> Draw(arr,x,y, angle mod 8)
+
 let rotate grad draw =
   match draw with
     | OutOfBounds -> OutOfBounds
