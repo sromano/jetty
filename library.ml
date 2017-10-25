@@ -354,6 +354,9 @@ let drawing_library =
   make_flat_library @@ [c_S;c_B;c_C;c_I;d_setrotate0;d_setrotate1;d_setrotate2;d_setrotate3;
     d_setrotate4;d_setrotate5;d_setrotate6;d_setrotate7;d_drawing;d_ndrawing;]  @ c_numbers ;;
 
+(*let drawing_library =
+  make_flat_library @@ [c_S;c_B;c_C;c_I;d_rotate;d_drawing;d_ndrawing;]  @ c_numbers ;;*)
+
 let string_of_library (log_application,bindings) =
   String.concat ~sep:"\n"
     ((Float.to_string (exp log_application))::

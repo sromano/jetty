@@ -28,18 +28,22 @@ let make_drawing_task n expected =
 
 let make_drawing_task_with_init n expected x y =
   let scoring_function = (fun (e : expression) ->
-    (*let cdraw = change_position (empty_drawing ()) x y in*)
-    let cdraw = (empty_drawing ()) in
+    let cdraw = change_position (empty_drawing ()) x y in
+    (*let cdraw = (empty_drawing ()) in*)
     let drawe = expression_of_draw cdraw in
+    (*
     let xe = expression_of_int x in
     let ye = expression_of_int y in
     let q = Application(Application(Application(e,xe),ye),drawe) in
+    *)
+    let q = Application(e,drawe) in
     match run_expression_for_interval 0.01 q with
     Some(Draw(arr,_,_,_)) when arr = expected -> 0.0
     | _ -> Float.neg_infinity) in
   {
     name = n;
-    task_type = make_arrow tint (make_arrow tint (make_arrow tdraw tdraw));
+    (*task_type = make_arrow tint (make_arrow tint (make_arrow tdraw tdraw));*)
+    task_type = make_arrow tdraw tdraw;
     score = LogLikelihood(scoring_function);
     proposal = None;
   }
@@ -84,11 +88,14 @@ let drawing_task_from_file filename taskname =
 let draw () =
   let frontier_size = Int.of_string (Sys.argv.(1)) in
   let g = ref (drawing_library) in
-  let t0 = all_goto_tasks() in
+  (*let t0 = all_goto_tasks() in*)
   let t1 = drawing_task_from_file "tasks/hlines.txt" "Hline" in
   let t2 = drawing_task_from_file "tasks/vlines.txt" "Vline" in
   let t3 = drawing_task_from_file "tasks/squares.txt" "Square" in
-  let tasks = List.append t0 (List.append (List.append t1 t2) t3) in
+  let t4 = drawing_task_from_file "tasks/rectangles.txt" "Rectangles" in
+  let t5 = drawing_task_from_file "tasks/lshapes.txt" "LShape" in
+  (*let tasks = List.append t0 (List.append (List.append t1 t2) t3) in*)
+  let tasks = List.append (List.append (List.append (List.append t1 t2) t3) t4) t5 in
 
   for i = 1 to 8 do
     Printf.printf "\n \n \n Iteration %i \n" i;
